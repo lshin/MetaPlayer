@@ -3,9 +3,12 @@
 <html>
 <head>
 
-    <title>onmiplayer | examples </title>
+    <title>meta3 | examples </title>
 
-    <script src="../external/jquery-1.6.2.js" type="text/javascript"></script>
+    <script src="../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
+    <script src="../external/flowplayer/flowplayer-3.2.6.min.js"></script>
+
+    <link href="../src/skins/mp2/metaplayer.mp2.css" rel="stylesheet"  type="text/css">
     <script src="../src/metaplayer.js"></script>
     <script src="../src/metaplayer.flowplayer.js"></script>
     <script src="../src/metaplayer.controls.js"></script>
@@ -19,7 +22,7 @@
 
             player = $f("target",
                     {
-                        src : "../lib/flowplayer/flowplayer-3.2.7.swf",
+                        src : "../external/flowplayer/flowplayer-3.2.7.swf",
                         wmode: 'opaque'
                     },
                     {
@@ -33,22 +36,22 @@
                         },
                         playlist : [
                             {
-                                url : "../media/flowplayer-700.flv"
+                                url : "../external/media/trailer.mp4"
                             },
-                            {
-                                rampId : "36234888"
-                            },
-                            {
-                                rampId : "45212699",
-                                rampHost : 'http://gkindel.podzinger.local/advisor'
-                            },
-                            {
-                                rampId : "26947907"
-                            },
-                            {
-                                rampId : "40886544",
-                                rampHost : 'http://gkindel.podzinger.local/recipe'
-                            }
+//                            {
+//                                rampId : "36234888"
+//                            },
+//                            {
+//                                rampId : "45212699",
+//                                rampHost : 'http://gkindel.podzinger.local/advisor'
+//                            },
+//                            {
+//                                rampId : "26947907"
+//                            },
+//                            {
+//                                rampId : "40886544",
+//                                rampHost : 'http://gkindel.podzinger.local/recipe'
+//                            }
                         ]
                     }
             );
@@ -111,140 +114,6 @@
             right: 10px;
             padding:  4px;
         }
-
-        .metaplayer-play,
-        .metaplayer-time {
-            display: block;
-            position: absolute;
-            top: 4px;
-        }
-
-        .metaplayer-time {
-            width: 96px;
-            height: 24px;
-            line-height: 28px;
-            font-size: 16px;
-            text-align: center;
-            right: 4px;
-            text-shadow: 0 0 2px #666;
-        }
-        .metaplayer-time-current {
-            display: inline;
-            color: #fff;
-        }
-
-        .metaplayer-time-duration {
-            display: inline;
-            color: #ddd;
-        }
-
-        .metaplayer-play,
-        .metaplayer-pause
-        {
-            cursor: pointer;
-        }
-
-        .metaplayer-play {
-            width: 28px;
-            height: 24px;
-            left: 4px;
-            background: url(../lib/metaplayer/images/control/play-28x24.png);
-        }
-
-        .metaplayer-pause {
-            width: 28px;
-            height: 24px;
-            background: url(../lib/metaplayer/images/control/pause-28x24.png);
-        }
-
-        .metaplayer-fullscreen {
-            width: 32px;
-            height: 24px;
-            right: 4px;
-            background: url(../lib/metaplayer/images/control/fullscreen-32x24.png);
-            display: none;
-        }
-
-        .metaplayer-track {
-            height: 24px;
-            background: #333;
-            margin-left: 32px;
-            margin-right: 100px;
-            display: block;
-            position: relative;
-            top: 0;
-            left: 0;
-            border-radius: 5px;
-            margin-top: 1px;
-        }
-
-        .metaplayer-track-fill {
-            width: 0%;
-            background: #fff;
-            height: 100%;
-            position: absolute;
-            left: 0px;
-            top: 0px;
-            border-top-left-radius: 5px;
-            border-bottom-left-radius: 5px;
-        }
-
-        .metaplayer-track-marker {
-            width: 4px;
-            height: 22px;
-            margin-left: -2px;
-            margin-top: 1px;
-            background: cyan;
-            position: absolute;
-            left:  0;
-            top: 0;
-            cursor: pointer;
-        }
-
-        .metaplayer-track-knob {
-            width: 8px;
-            height: 24px;
-            border: 1px solid #666;
-            margin-top: -1px;
-            margin-left: -5px;
-            background: #eee;
-            position: absolute;
-            top : 0;
-            z-index: 100;
-            cursor: pointer;
-            border-radius: 3px;
-
-        }
-
-        .metaplayer-track-knob:hover {
-            border: 1px solid blue;
-        }
-
-        .metaplayer-track-knob:active {
-            background: #aaaaff;
-            border: 1px solid blue;
-        }
-
-        .metaplayer-track-buffer {
-            width: 0%;
-            margin-top: -1px;
-            height: 24px;
-            background: #666;
-            left: 0px;
-            top: 0px;
-            border-radius: 5px;
-        }
-
-        /* Captions */
-        .metaplayer-captions-cc-content {
-            color: white;
-            margin-top: -3em;
-            text-align: center;
-            font-size: 1.1em;
-            position: relative;
-            z-index: 999;
-        }
-
     </style>
 </head>
 

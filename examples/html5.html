@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+
+    <!--Dependency: jQuery-->
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+
+    <!--Plugin: ramp core-->
+    <script src="../src/metaplayer.js"></script>
+
+    <!--Plugin: ramp controls-->
+
+    <link href="../assets/ramp.controls.css" rel="stylesheet" type="text/css">
+
+    <script type="text/javascript">
+        var video, controls, popcorn;
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            video = document.getElementById('video');
+
+            popcorn = Ramp.popcorn();
+
+            controls = Ramp.controls(video, {
+                leading: true,
+                trackIntervalMsec : 3000,
+                container : '#controls'
+            })
+
+        }, false);
+    </script>
+
+    <style>
+        .container {
+            width: 400px;
+            height: 2250px;
+        }
+        #video, #controls {
+            width: 100%
+        }
+
+    </style>
+
+</head>
+<body>
+
+<h1 id="qunit-header">Popcorn Controlbar Plug-in Demo</h1>
+
+<p>Sample Popcorn Controlbar w/ Annotation Markers</p>
+
+</div>
+<div class='container'>
+    <video id="video" preload="auto" autobuffer="" poster="http://videos.mozilla.org/serv/webmademovies/popcornposter.png">
+        <source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.mp4" type="video/mp4">
+        <source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.webm" type="video/webM">
+        <source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.ogv" type="video/ogg">
+        <p>Your user agent does not support the HTML5 Video element.</p>
+    </video>
+    <div id="controls"></div>
+</div>
+
+
+</body>
+</html>
