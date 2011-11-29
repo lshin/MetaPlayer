@@ -1,7 +1,7 @@
 (function () {
 
     var defaults = {
-        jsonService : "/external/media/{e}.json"
+        jsonService : "..//external/media/{e}.json"
     };
 
     var JsonService = function (host, options) {
