@@ -13,7 +13,7 @@
         },
         {
             "name" : "some.name",
-            "type" : "video/ogv",
+            "type" : "video/ogg",
             "url"  : "../external/media/trailer.ogv"
         },
         {
