@@ -1,0 +1,53 @@
+{
+    "metadata" : {
+        "title" : "Sample Title",
+        "description" : "this is a sample description.",
+        "thumbnail" : "http://publishing.ramp.com/thumbnails/cached_media/0006/0006401/0006401014/images/thumb.jpg",
+        "poster" : "http://publishing.ramp.com/thumbnails/cached_media/0006/0006401/0006401014/images/thumb.jpg"
+    },
+    "transcodes" : [
+        {
+            "name" : "some.name",
+            "type" : "video/mp4",
+            "url"  : "../external/media/trailer.mp4"
+        },
+        {
+            "name" : "some.name",
+            "type" : "video/ogv",
+            "url"  : "../external/media/trailer.ogv"
+        },
+        {
+            "name" : "some.name",
+            "type" : "video/webm",
+            "url"  : "../external/media/trailer.webm"
+        }
+    ],
+    "tags" : [
+        {
+            "term" : "Touch",
+            "type" : "unk",
+            "score" : 3.6826441,
+            "origin" : "namedentity",
+            "timestamps" : [ 1, 14, 21, 40, 53, 60 ]
+        }
+    ],
+    "captions" : [
+        {
+            "start" : 0,
+            "text" : "Jeremy Glaser : For Morningstar, I'm Jeremy Glaser. I'm here"
+        },
+        {
+            "start" : 10.29,
+            "text" : "today with our bond strategist, Dave Sekera, to get an "
+        },
+        {
+            "start" : 12.30,
+            "text" : "update on the corporate credit market , and on what investors"
+        },
+        {
+            "start" : 14.69,
+            "text" : ""
+        }
+    ],
+    "metaq" : []
+}

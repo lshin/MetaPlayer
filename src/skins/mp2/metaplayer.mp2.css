@@ -1,3 +1,10 @@
+.metaplayer-controls {
+    background: #aaa;
+    height: 24px;
+    padding:  4px;
+    position: relative;
+}
+
 .metaplayer-play,
 .metaplayer-time {
     display: block;

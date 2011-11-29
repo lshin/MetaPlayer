@@ -1,11 +1,9 @@
 
+// timeline / control bar for HTML5 media API
+// supports timeline annotations
 (function () {
 
     var $ = jQuery;
-
-    Ramp.Plugin.prototype.controls = function (options){
-        this.controls = new Ramp.Controls(this, options);
-    };
 
     var defaults = {
         cssPrefix : 'metaplayer-',
@@ -16,12 +14,23 @@
         createMarkup : true
     };
 
-    Ramp.Controls = function (player, options) {
+    var Controls = function (video, options, ramp) {
+
+        if( !(this instanceof Controls) )
+            return new Controls(video, options, ramp);
+
         this.options = $.extend(true, {}, defaults, options);
 
-        this.container = options.container;
+        var target = $(this.options.container || $(video).parent() );
+        this.container = this.create('controls');
+        target.append(this.container );
 
-        this.player = player;
+        if( typeof video == "string")
+            video = document.getElementById( video.substr(1) );
+        this.player = video;
+        this.player.controls = false;
+
+        this.ramp = ramp;
 
         this.annotations = [];
 
@@ -29,8 +38,8 @@
             this.createMarkup();
 
         this.addPlayerListeners();
-
         this.addUIListeners();
+        this.addDataListeners();
 
         this.trackTimer = Ramp.Timer(this.options.trackIntervalMsec);
         this.trackTimer.listen('time', this.render, this);
@@ -39,14 +48,27 @@
         this.clockTimer.listen('time', this.onClockTimer, this);
     };
 
+    Ramp.Controls = Controls;
 
-    Ramp.Controls.prototype = {
+    Ramp.prototype.controls = function (media, options) {
+        return Controls(media, options, this);
+    };
+
+    if( Ramp.Video ) {
+        Ramp.Video.prototype.controls = function ( options ) {
+            return Controls(this.media, options, this.ramp);
+        }
+    }
+
+    Controls.prototype = {
 
         addPlayerListeners : function () {
             var self = this;
-            this.player.listen('load', this.onLoad, this);
-            this.player.listen('playback', this.onPlayStateChange, this);
-            this.player.listen('seek', this.onPlayStateChange, this);
+//            this.player.listen('load', this.onLoad, this);
+            $(this.player).bind('pause play seeked seeking', function(){
+                self.onPlayStateChange()
+            });
+//            this.player.listen('seeked', this.onPlayStateChange, this);
         },
 
         onLoad : function (data) {
@@ -79,6 +101,10 @@
                 return self.onKnobMouseDown(e);
             });
 
+            this.find('track').mousedown( function (e) {
+                return self.onKnobMouseDown(e);
+            });
+
             $(document).mouseup( function (e) {
                 return self.onKnobMouseUp(e);
             });
@@ -89,21 +115,44 @@
 
         },
 
+        addDataListeners : function () {
+            if(! this.ramp ) {
+                return;
+            }
+            this.ramp.tags(this._onTags, null, this);
+        },
+
+        _onTags : function (tags) {
+            var self = this;
+            this.clearAnnotations();
+            $.each(tags, function (i, tag){
+                $.each(tag.timestamps, function (j, time){
+                    self.addAnnotation(time, null, tag.term);
+                });
+            });
+            this.renderAnnotations();
+        },
+
         onClockTimer : function (e) {
             if( ! this.dragging )
                 this.renderTime();
-            if( ! this.buffered )
-                this.renderBuffer();
+//            if( ! this.buffered )
+//                this.renderBuffer();
         },
 
         onPlayToggle : function () {
-            this.player.toggle();
+            var p = this.player;
+            if( p.paused )
+                p.play();
+            else
+                p.pause();
+
             this.render();
         },
 
         onPlayStateChange : function () {
             // manage our timers based on play state
-            if( this.player.playing ){
+            if(! this.player.paused ){
                 this.clockTimer.start();
                 this.trackTimer.start();
             }
@@ -143,11 +192,13 @@
 
 
             x = Math.min(x, track.width());
-            x = Math.min(x, buffer.width());
+//            x = Math.min(x, buffer.width());
             x = Math.max(x, 0);
 
+
             var ratio = x / track.width();
-            var t = ratio * this.player.duration();
+            var t = ratio * this.player.duration;
+
             this.renderTime(t);
 
             knob.css('left', x + "px");
@@ -161,7 +212,7 @@
             var x = knob.position().left;
 
             var percent = x / parent.width();
-            var time = percent * this.player.duration();
+            var time = percent * this.player.duration;
 
             if( throttle )
                 this.throttledSeek(time);
@@ -173,39 +224,37 @@
             clearTimeout( this.seekDelay );
             var self = this;
             this.seekDelay = setTimeout( function () {
-                self.seek(time);
+//                self.seek(time);
             }, 100);
         },
 
         seek : function (time) {
             clearTimeout( this.seekDelay );
-            this.player.seek( parseInt(time) );
+            this.player.currentTime = parseFloat(time);
             this.render();
         },
 
         renderTime : function (time ) {
             if( ! time ) {
-                var status = this.player.status();
-                time = status.target || status.time; // render seek target if present
+                time = this.player.currentTime; // render seek target if present
             }
             this.find("time-current").text( this.formatTime(time) );
         },
 
-        renderBuffer : function (){
-            var status = this.player.status();
-            var bufferPercent = status.buffer.end / this.player.duration() * 100;
-            var buffer = this.find('track-buffer').stop();
-            buffer.animate( { width : bufferPercent + "%"}, this.options.clockIntervalMsec, 'linear');
-            if( bufferPercent == 100)
-                this.buffered = true;
-        },
+//        renderBuffer : function (){
+//            var status = this.player.status();
+//            var bufferPercent = status.buffer.end / this.player.duration * 100;
+//            var buffer = this.find('track-buffer').stop();
+//            buffer.animate( { width : bufferPercent + "%"}, this.options.clockIntervalMsec, 'linear');
+//            if( bufferPercent == 100)
+//                this.buffered = true;
+//        },
 
         render : function (){
-            var status = this.player.status();
-            var duration = this.player.duration();
-            var time = status.target || status.time; // render seek target if present
+            var duration = this.player.duration;
+            var time = this.player.currentTime // render seek target if present
 
-            this.find('play').toggleClass( this.cssName('pause'), this.player.playing );
+            this.find('play').toggleClass( this.cssName('pause'), ! this.player.paused );
             this.find('time-duration').text(' / ' + this.formatTime( duration ) );
 
             if( duration ){
@@ -225,7 +274,7 @@
             var fill = this.find('track-fill').stop();
             var knob = this.find('track-knob').stop();
 
-            if( ! this.player.playing ) {
+            if( this.player.paused ) {
                 toPercent = trackPercent;
             }
 
@@ -239,7 +288,7 @@
                 knob.css('left', trackPercent + "%");
             }
 
-            if( this.player.playing && this.options.leading && !(this.player.seeking || this.dragging) ){
+            if( ! this.player.paused && this.options.leading && !(this.player.seeking || this.dragging) ){
                 fill.animate( { width : toPercent + "%"}, msec, 'linear');
                 knob.animate( { left : toPercent + "%"}, msec, 'linear');
             }
@@ -270,7 +319,7 @@
         },
 
         renderAnnotations : function () {
-            var duration = this.player.duration();
+            var duration = this.player.duration;
             if( ! duration )
                 return;
             $(this.annotations).each( function (i, annotation) {
@@ -291,7 +340,9 @@
 
         createMarkup : function () {
             var controls = $(this.container);
-            controls.append( this.create('play') );
+            var play = this.create('play');
+            play.append( this.create('icon-play') );
+            controls.append( play);
             controls.append( this.create('fullscreen') );
 
             var time = this.create('time');
