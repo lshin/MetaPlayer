@@ -11,7 +11,9 @@
         trackIntervalMsec : 5000,
         clockIntervalMsec : 500,
         annotationSeekOffsetSec : -1,
-        createMarkup : true
+        createMarkup : true,
+        renderMetaq : true,
+        renderTags : false
     };
 
     var Controls = function (video, options, ramp) {
@@ -19,9 +21,9 @@
         if( !(this instanceof Controls) )
             return new Controls(video, options, ramp);
 
-        this.options = $.extend(true, {}, defaults, options);
+        this.config = $.extend(true, {}, defaults, options);
 
-        var target = $(this.options.container || $(video).parent() );
+        var target = $(this.config.container || $(video).parent() );
         this.container = this.create('controls');
         target.append(this.container );
 
@@ -34,17 +36,17 @@
 
         this.annotations = [];
 
-        if( this.options.createMarkup )
+        if( this.config.createMarkup )
             this.createMarkup();
 
         this.addPlayerListeners();
         this.addUIListeners();
         this.addDataListeners();
 
-        this.trackTimer = Ramp.Timer(this.options.trackIntervalMsec);
+        this.trackTimer = Ramp.Timer(this.config.trackIntervalMsec);
         this.trackTimer.listen('time', this.render, this);
 
-        this.clockTimer = Ramp.Timer(this.options.clockIntervalMsec);
+        this.clockTimer = Ramp.Timer(this.config.clockIntervalMsec);
         this.clockTimer.listen('time', this.onClockTimer, this);
     };
 
@@ -119,16 +121,27 @@
             if(! this.ramp ) {
                 return;
             }
-            this.ramp.tags(this._onTags, null, this);
+            if( this.config.renderTags )
+                this.ramp.tags(this._onTags, null, this);
+
+            if( this.config.renderMetaq )
+                this.ramp.metaq(this._onMetaq, null, this);
         },
 
         _onTags : function (tags) {
             var self = this;
-            this.clearAnnotations();
             $.each(tags, function (i, tag){
                 $.each(tag.timestamps, function (j, time){
                     self.addAnnotation(time, null, tag.term);
                 });
+            });
+            this.renderAnnotations();
+        },
+
+        _onMetaq : function (popcorn) {
+            var self = this;
+            $.each(popcorn, function (i, event){
+                self.addAnnotation(event.start, event.end, event.text);
             });
             this.renderAnnotations();
         },
@@ -245,7 +258,7 @@
 //            var status = this.player.status();
 //            var bufferPercent = status.buffer.end / this.player.duration * 100;
 //            var buffer = this.find('track-buffer').stop();
-//            buffer.animate( { width : bufferPercent + "%"}, this.options.clockIntervalMsec, 'linear');
+//            buffer.animate( { width : bufferPercent + "%"}, this.config.clockIntervalMsec, 'linear');
 //            if( bufferPercent == 100)
 //                this.buffered = true;
 //        },
@@ -261,7 +274,7 @@
                this.renderAnnotations();
             }
 
-            var msec = this.options.trackIntervalMsec;
+            var msec = this.config.trackIntervalMsec;
 
             // time isn't always ok correct immediately following a seek
             this.renderTime();
@@ -288,7 +301,7 @@
                 knob.css('left', trackPercent + "%");
             }
 
-            if( ! this.player.paused && this.options.leading && !(this.player.seeking || this.dragging) ){
+            if( ! this.player.paused && this.config.leading && !(this.player.seeking || this.dragging) ){
                 fill.animate( { width : toPercent + "%"}, msec, 'linear');
                 knob.animate( { left : toPercent + "%"}, msec, 'linear');
             }
@@ -388,7 +401,7 @@
         },
 
         cssName : function (className){
-            return  this.options.cssPrefix + className;
+            return  this.config.cssPrefix + className;
         }
 
     };

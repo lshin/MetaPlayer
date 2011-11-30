@@ -42,6 +42,11 @@ var Ramp;
         autoLoad : true
     };
 
+    // namespace anchors
+    Ramp.Loaders = {};
+    Ramp.Services = {};
+    Ramp.Views = {};
+
     Ramp.prototype = {
         load : function  (){
             this.service.load(this.mediaId, this._onLoad, this);
