@@ -15,6 +15,7 @@
         this.ramp = ramp;
         this.popcorn = popcorn;
         this._sequences = {};
+        this.metaq = {};
 
         this.addDataListeners();
     };
@@ -35,14 +36,25 @@
         addDataListeners : function () {
             if(! (this.ramp && this.popcorn ) )
                 return;
-
+            this.ramp.captions( this._onCaptions, null, this);
             this.ramp.metaq( this._onMetaq, null, this);
+        },
+
+        _onCaptions : function (captions) {
+            var self = this;
+            $.extend(this.metaq, { captions : captions });
         },
 
         _onMetaq : function (metaq) {
             var self = this;
-            this.metaq = metaq;
+            $.extend(this.metaq, metaq);
             this._renderPopcorn();
+        },
+
+        _renderCaptions : function () {
+            $.each(this.captions, function (i, caption){
+
+            });
         },
 
         _renderPopcorn : function () {

@@ -22,7 +22,8 @@
 
     <!--Plugin: ramp core-->
     <script src="../src/ramp.js"></script>
-    <script src="../src/services/service.js"></script>
+    <!--<script src="../src/services/service.json.js"></script>-->
+    <script src="../src/services/smil/service.smil.js"></script>
     <script src="../src/utils/util.event-dispatcher.js"></script>
 
     <!--Plugin: html5 video boostrap-->
@@ -38,7 +39,9 @@
 
         document.addEventListener("DOMContentLoaded", function () {
 
-            var ramp = Ramp('trailer');
+//            var ramp = Ramp('trailer');
+            ramp = Ramp('36234882', "http://localhost/publishing/pca", { serviceType : "smil" });
+
 
             video = ramp.video('#target', {autoplay: true});
         }, false);
