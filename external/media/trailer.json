@@ -13,13 +13,13 @@
         },
         {
             "name" : "some.name",
-            "type" : "video/ogg",
-            "url"  : "../external/media/trailer.ogv"
+            "type" : "video/webm",
+            "url"  : "../external/media/trailer.webm"
         },
         {
             "name" : "some.name",
-            "type" : "video/webm",
-            "url"  : "../external/media/trailer.webm"
+            "type" : "video/ogg",
+            "url"  : "../external/media/trailer.ogv"
         }
     ],
     "tags" : [
