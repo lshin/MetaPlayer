@@ -87,11 +87,19 @@
     height: 22px;
     margin-left: -2px;
     margin-top: 1px;
-    background: cyan;
     position: absolute;
     left:  0;
     top: 0;
     cursor: pointer;
+    background: gray;
+}
+
+.metaplayer-tag {
+    background: cyan;
+}
+
+.metaplayer-metaq {
+    background: #ee82ee;
 }
 
 .metaplayer-track-knob {

@@ -12,13 +12,14 @@
         clockIntervalMsec : 500,
         annotationSeekOffsetSec : -1,
         createMarkup : true,
-        renderMetaq : true,
-        renderTags : false
+        renderTags : true,
+        renderMetaq : false
     };
 
     var Controls = function (video, options, ramp) {
 
         if( !(this instanceof Controls) )
+
             return new Controls(video, options, ramp);
 
         this.config = $.extend(true, {}, defaults, options);
@@ -132,7 +133,7 @@
             var self = this;
             $.each(tags, function (i, tag){
                 $.each(tag.timestamps, function (j, time){
-                    self.addAnnotation(time, null, tag.term);
+                    self.addAnnotation(time, null, tag.term, "tag");
                 });
             });
             this.renderAnnotations();
@@ -140,8 +141,11 @@
 
         _onMetaq : function (popcorn) {
             var self = this;
-            $.each(popcorn, function (i, event){
-                self.addAnnotation(event.start, event.end, event.text);
+            console.log(["metaq", popcorn]);
+            $.each(popcorn, function (type, events){
+                $.each(events, function (i, event){
+                    self.addAnnotation(event.start, event.end, event.text || event.term, "metaq");
+                });
             });
             this.renderAnnotations();
         },
@@ -308,7 +312,7 @@
 
         },
 
-        addAnnotation : function (start, end, title) {
+        addAnnotation : function (start, end, title, cssClass) {
             var overlay = this.find('track-overlay');
             var marker = this.create("track-marker");
 
@@ -321,6 +325,9 @@
 
             if( title  )
                 marker.attr('title', this.formatTime(start) + "  " + title);
+
+            if( cssClass)
+                marker.addClass( this.cssName(cssClass) );
 
             overlay.append(marker);
             this.annotations.push({

@@ -4,6 +4,7 @@
     var $ = jQuery;
 
     var defaults = {
+        subtitles : true
     };
 
     var PopcornLoader = function (popcorn, options , ramp) {
@@ -27,7 +28,7 @@
     };
 
     if( Ramp.Video ) {
-        Ramp.Video.prototype.controls = function ( options ) {
+        Ramp.Video.prototype.popcorn = function ( options ) {
             return PopcornLoader(this.popcorn, options, this.ramp);
         }
     }
@@ -42,19 +43,14 @@
 
         _onCaptions : function (captions) {
             var self = this;
-            $.extend(this.metaq, { captions : captions });
+            if( this.config.subtitles )
+                $.extend(this.metaq, { subtitle : captions });
         },
 
         _onMetaq : function (metaq) {
             var self = this;
             $.extend(this.metaq, metaq);
             this._renderPopcorn();
-        },
-
-        _renderCaptions : function () {
-            $.each(this.captions, function (i, caption){
-
-            });
         },
 
         _renderPopcorn : function () {
@@ -122,10 +118,12 @@
 
         _schedule : function (type, options){
             var fn = this.popcorn[type];
+            if( type == "subtitle ")
+                debugger;
             if( fn  )
                 fn.call(this.popcorn, options);
-//            else
-//                console.log("no plugin: " + type + " " + options.text)
+            else
+                console.log(["no plugin: ", type,  options.text])
         }
     };
 
