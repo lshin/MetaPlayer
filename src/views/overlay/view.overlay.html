@@ -1,0 +1,186 @@
+<!doctype html>
+<html>
+<head>
+
+    <title>example: popcornjs loader</title>
+
+    <style>
+        #target {
+            width: 600px;
+            height: 300px;
+            background:  #333;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+        }
+        #overlaydiv {
+            width: 600px;
+            height: 300px;
+            background:  gray;
+            margin-top: 10px;
+        }
+    </style>
+
+
+    <!--Dependency: jQuery-->
+    <script src="../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
+
+    <!--Plugin: ramp core-->
+    <script src="../../ramp.js"></script>
+    <script src="../../services/smil/service.smil.js"></script>
+    <script src="../../utils/util.event-dispatcher.js"></script>
+
+    <!--Plugin: html5 video boostrap-->
+    <script src="../../loaders/loader.html5.js"></script>
+
+    <!--Plugin: ramp popcorn loader-->
+    <script src="../../loaders/loader.popcorn.js"></script>
+    <script src="../../../external/popcorn/popcorn.js" type="text/javascript"></script>
+    <script src="../../../external/popcorn/popcorn.subtitle.js" type="text/javascript"></script>
+
+    <!-- View: Overlay -->
+    <script src="view.overlay.js"></script>
+    <link href="view.overlay.css" rel="stylesheet"  type="text/css">
+    <link href="../../skins/mp2/view.overlay.css" rel="stylesheet"  type="text/css">
+
+    <script type="text/javascript">
+        var ramp, overlay;
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // ramp services
+            ramp = Ramp('36234882', "http://localhost/publishing/pca", { serviceType : "smil" });
+
+            // html5 player loader
+            video = ramp.video('#target', {autoplay: false});
+
+
+            // initialize subtitles
+            popcorn = Popcorn( video.media );
+            loader = ramp.popcorn( popcorn );
+
+            video.media.volume =0.05;
+
+            overlay = Ramp.Views.Overlay(popcorn, { container : '#overlaydiv' }, ramp);
+
+        }, false);
+
+    </script>
+
+
+</head>
+<body>
+
+<div id='target'>
+</div>
+
+<div id="overlaydiv">
+    <div class="metaplayer-overlay">
+        <div class="metaplayer-overlay-left">
+            <div class="metaplayer-overlay-left-title">IN THIS VIDEO</div>
+
+            <div class="metaplayer-overlay-search">
+                <a class="metaplayer-overlay-search-btn"></a>
+                <input class="metaplayer-overlay-search-input" type="text" />
+            </div>
+
+            <div class="metaplayer-overlay-clear"></div>
+
+
+            <div class="metaplayer-overlay-tags">
+                <div class="metaplayer-overlay-tag">
+                    <div class="metaplayer-overlay-tag-label">
+                        Aaaa Aaaaaaaaaa
+                    </div>
+                </div>
+                <div class="metaplayer-overlay-tag">
+                    <div class="metaplayer-overlay-tag-label">
+                        Bbbbbb Bbb
+                    </div>
+                </div>
+                <div class="metaplayer-overlay-tag">
+                    <div class="metaplayer-overlay-tag-label">
+                        Ccccccc Cccc Cccccc
+                    </div>
+                </div>
+                <div class="metaplayer-overlay-tag">
+                    <div class="metaplayer-overlay-tag-label">
+                        Ddddd D DDDDD
+                    </div>
+                </div>
+                <div class="metaplayer-overlay-tag">
+                    <div class="metaplayer-overlay-tag-label">
+                        E EEEE Eeee
+                    </div>
+                </div>
+                <div class="metaplayer-overlay-clear"></div>
+            </div>
+
+            <div class="metaplayer-overlay-controls">
+
+                <div class="metaplayer-overlay-play"></div>
+                <div class="metaplayer-overlay-pause"></div>
+                <div class="metaplayer-overlay-cc"></div>
+                <div class="metaplayer-overlay-cc-off"></div>
+                <div class="metaplayer-overlay-mute"></div>
+                <div class="metaplayer-overlay-unmute"></div>
+
+                <div class="metaplayer-overlay-volume-bg">
+                    <div class="metaplayer-overlay-volume"></div>
+                </div>
+
+                <div class="metaplayer-overlay-clear"></div>
+            </div>
+
+
+        </div>
+
+
+
+        <div class="metaplayer-overlay-right">
+
+            <div class="metaplayer-overlay-next">
+                <div class="metaplayer-overlay-right-title">UP NEXT</div>
+
+                <div class="metaplayer-overlay-preview">
+                    <div class="metaplayer-overlay-preview-thumb">
+                    </div>
+                    <div class="metaplayer-overlay-preview-desc">
+                        <div class="metaplayer-overlay-preview-title">
+                            One Two Three Four Five Six Seven Eight Nine
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <div class="metaplayer-overlay-clear"></div>
+
+        <div class="metaplayer-overlay-bottom">
+
+            <div class="metaplayer-overlay-embed">
+                <div class="metaplayer-overlay-embed-label">
+                    Embed:
+                </div>
+                <div class="metaplayer-overlay-embed-large"></div>
+                <div class="metaplayer-overlay-embed-medium"></div>
+                <div class="metaplayer-overlay-embed-small"></div>
+                <div class="metaplayer-overlay-clear"></div>
+            </div>
+
+            <div class="metaplayer-overlay-social">
+                social
+            </div>
+            <div class="metaplayer-overlay-clear"></div>
+
+        </div>
+
+    </div>
+</div>
+
+
+</body>
+</html>
