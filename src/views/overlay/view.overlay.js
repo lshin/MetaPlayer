@@ -5,20 +5,20 @@
 
     var defaults = {
         target : '',
-        cssPrefix : 'metaplayer-overlay-'
+        autoHide : true,
+        cssPrefix : 'metaplayer-overlay'
     };
 
     var Overlay = function (player, options, ramp) {
 
         if( !(this instanceof Overlay ))
-            return new Overlay(player, options);
+            return new Overlay(player, options, ramp);
 
         if( options.container )
             this.container = options.container;
-//        else
-//            ... generate  markup
 
         this.config = $.extend({}, defaults, options);
+        this.ramp = ramp;
 
         if( window.Popcorn && (player instanceof Popcorn )){
             this.popcorn = player;
@@ -27,21 +27,27 @@
         else
             this.player = player;
 
-        this.addUIListeners();
-        this.addPlayerListeners();
-        this.addPopcornListeners();
-
-        //  render initial state
-        this.onVolumeChange();
-        this.onPlayStateChange();
-        this.setCaptions(true);
-
+        if( ! this.container )
+            this.createMarkup();
+        else
+            this.init();
     };
 
     Ramp.Views.Overlay = Overlay;
 
     Overlay.prototype = {
+        init : function () {
+            this.addUIListeners();
+            this.addPlayerListeners();
+            this.addPopcornListeners();
+            this.addServiceListeners();
 
+            //  render initial state
+            this.onVolumeChange();
+            this.onPlayStateChange();
+            this.setCaptions(true);
+
+        },
         addUIListeners : function () {
             var self = this;
             this.find('play').click( function (e) {
@@ -73,6 +79,44 @@
                 self.onVolumeDrag(e);
             });
 
+            if( this.config.autoHide ) {
+                this.container.bind('mouseenter', function () {
+                    self.toggle(true)
+                });
+                this.container.bind('mouseleave', function () {
+                    self.toggle(false)
+                })
+            }
+
+            this.find('preview').click( function () {
+                self.ramp.load( self.nextup );
+            });
+        },
+
+        addServiceListeners : function () {
+            this.ramp.tags(this.onTags, null, this);
+            this.ramp.mediaChange(this.onMediaChange, null, this);
+        },
+
+        onTags : function (tags) {
+            var self = this;
+            $.each(tags, function (i, tag){
+                self.createTag(tag.term);
+            });
+        },
+
+        onMediaChange : function () {
+            this.nextup = null;
+            $('.' + this.cssName('tag') ).remove();
+            this.find('next').hide();
+        },
+
+        createTag : function ( term ) {
+            var el = this.create('tag');
+            var label = this.create('tag-label');
+            label.text(term);
+            el.append(label);
+            this.find('tags').prepend(el);
         },
 
         addPopcornListeners : function () {
@@ -106,7 +150,7 @@
         addPlayerListeners : function () {
             var self = this;
             $(this.player).bind('pause play seeked seeking canplay', function(e){
-                    self.onPlayStateChange();
+                self.onPlayStateChange();
             });
             $(this.player).bind('volumechange', function(e){
                 self.onVolumeChange();
@@ -156,6 +200,37 @@
             this.find('pause').toggle( !paused );
         },
 
+        createMarkup : function () {
+            $.ajax('view.overlay.tmpl.html', {
+                context: this,
+                success : function (data){
+                    this.container = $(this.player).parent();
+                    this.container.append(data);
+                    this.init();
+                }
+            });
+        },
+
+        toggle : function ( bool ) {
+            var node = this.find().stop();
+            var height = this.find('container').height();
+            if( bool )
+                node.animate({height: height}, 500);
+            else
+                node.animate({height: 0}, 500);
+        },
+
+        nextUp : function ( next ) {
+            this.nextup = next;
+            next.metadata(this.onNextData, null, this);
+        },
+
+        onNextData : function (metadata) {
+            this.find('preview-thumb').attr('src', metadata.thumbnail);
+            this.find('preview-title').text(metadata.title);
+            this.find('next').show();
+        },
+
         /* utils */
         find : function (className){
             return $(this.container).find('.' + this.cssName(className) );
@@ -165,7 +240,7 @@
         },
 
         cssName : function (className){
-            return  this.config.cssPrefix + className;
+            return this.config.cssPrefix + (  className ?  '-' + className : '' );
         }
     };
 

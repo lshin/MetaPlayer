@@ -911,7 +911,6 @@
   };
 
   Popcorn.removeTrackEvent  = function( obj, trackId ) {
-
     var historyLen = obj.data.history.length,
         indexWasAt = 0,
         byStart = [],

@@ -1,11 +1,12 @@
 
 .metaplayer-overlay {
-    position: relative;
+    position: absolute;
     top: 0; left: 0;
     width: 100%;
     color: white;
-    background:  black;
+    background:  rgba(0,0,0, .5);
     font-family: arial,sans-serif;
+    overflow:  hidden;
 }
 .metaplayer-overlay-left-title,
 .metaplayer-overlay-right-title {
@@ -78,10 +79,10 @@
 
 /* Tags */
 .metaplayer-overlay-tags {
-    background:  black;
     position: relative;
     top: 0; left: 0;
     padding: 5px 0 10px 20px;
+    min-height: 3em;
 }
 .metaplayer-overlay-tag {
     color: cyan;
@@ -103,7 +104,6 @@
 
 /* Controls */
 .metaplayer-overlay-controls {
-    background:  black;
     margin:  5px 0;
     padding: 0 10px;
     position: relative;
@@ -149,22 +149,25 @@
 .metaplayer-overlay-next {
     position: relative;
     top: 0; left: 0;
+    display: none;
 }
 .metaplayer-overlay-preview {
+    cursor: pointer;
     margin: 14px 15px 10px 15px;
 }
 .metaplayer-overlay-preview-thumb {
     width: 140px;
     height: 90px;
-    background:  beige;
-    float: left
+    border:  none;
+    float: left;
 }
 .metaplayer-overlay-preview-desc {
     height: 90px;
     margin-left: 140px;
 }
 .metaplayer-overlay-preview-title {
-    color: white;
+    font-size: 14px;
+    color: #999;
     padding: 5px;
 }
 

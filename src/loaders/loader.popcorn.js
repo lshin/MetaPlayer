@@ -39,6 +39,7 @@
                 return;
             this.ramp.captions( this._onCaptions, null, this);
             this.ramp.metaq( this._onMetaq, null, this);
+            this.ramp.mediaChange( this.onMediaChange, null, this);
         },
 
         _onCaptions : function (captions) {
@@ -51,6 +52,15 @@
             var self = this;
             $.extend(this.metaq, metaq);
             this._renderPopcorn();
+        },
+
+        onMediaChange : function () {
+            // cleanup
+            var events = this.popcorn.getTrackEvents();
+            var self = this;
+            $.each(events, function (i, e){
+                self.popcorn.removeTrackEvent(e._id);
+            });
         },
 
         _renderPopcorn : function () {

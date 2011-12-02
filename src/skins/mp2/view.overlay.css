@@ -1,4 +1,8 @@
 
+.metaplayer-overlay {
+    background: url('images/black80.png');
+}
+
 .metaplayer-overlay-tag-label {
     color: #439DDD;
     background: none;

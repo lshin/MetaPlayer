@@ -25,12 +25,11 @@ var Ramp;
         this.config = $.extend(true, {}, Ramp.defaults, options);
         this.service = Ramp.getService( this.config.serviceType, this.host, this.config.service);
         this.mediaData = {};
-        this.mediaId = mediaId;
 
-        Ramp.EventDispatcher(this)
+        Ramp.EventDispatcher(this);
 
         if( this.config.autoLoad )
-            this.load();
+            this.load(mediaId);
     };
 
     /* Defaults */
@@ -48,7 +47,19 @@ var Ramp;
     Ramp.Views = {};
 
     Ramp.prototype = {
-        load : function  (){
+        load : function  (mediaId){
+
+            // notify of clip change
+            if( this.mediaId )
+                this.dispatch('mediaChange');
+
+            if( mediaId instanceof Ramp ) {
+                this.mediaId = mediaId.mediaId;
+                this._onLoad(mediaId.mediaData);
+                return;
+            }
+
+            this.mediaId = mediaId;
             this.service.load(this.mediaId, this._onLoad, this);
         },
 
@@ -79,6 +90,10 @@ var Ramp;
 
         metaq : function ( callback, data, scope ) {
             this.bind('metaq', callback, data, scope);
+        },
+
+        mediaChange : function ( callback, data, scope ) {
+            this.bind('mediaChange', callback, data, scope);
         },
 
         bind : function (eventType, callback, data, context ){

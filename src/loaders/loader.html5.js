@@ -18,15 +18,20 @@
         this.config = $.extend({}, defaults, options);
         this.container = el;
 
-        this.ramp = metaservice;
-        this.ramp.transcodes(this._onTranscodes, null, this);
-
         Ramp.EventDispatcher(this);
 
         this.createMarkup();
+
+        this.load(metaservice);
     };
 
     Video.prototype = {
+        load: function  (metaservice){
+            this.ramp = metaservice;
+            this.ramp.transcodes(this._onTranscodes, null, this);
+            this.ramp.mediaChange(this.onMediaChange, null, this);
+        },
+
         createMarkup : function () {
             var c = $(this.container);
             if( c.is('video') ) {
@@ -41,6 +46,10 @@
             }
         },
 
+        onMediaChange : function () {
+            this.media.autoplay = true;
+        },
+
         _onTranscodes : function (transcodes) {
             this.transcodes = transcodes;
 
@@ -53,6 +62,7 @@
 
         _addSources : function () {
             var media = this.media;
+            $(media).find('source').remove();
             $.each(this.transcodes, function (i, source) {
                 var src = document.createElement('source');
                 src.setAttribute('type', source.type);
