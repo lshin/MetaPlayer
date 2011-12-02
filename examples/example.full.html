@@ -9,6 +9,8 @@
             width: 600px;
             height: 300px;
             background:  #333;
+            position: relative;
+            top: 0; left: 0;
         }
         video {
             width: 100%;
@@ -25,6 +27,7 @@
     <script src="../src/ramp.js"></script>
     <script src="../src/services/smil/service.smil.js"></script>
     <script src="../src/utils/util.event-dispatcher.js"></script>
+    <script src="../src/utils/util.script.js"></script>
 
     <!--Plugin: html5 video boostrap-->
     <script src="../src/loaders/loader.html5.js"></script>
@@ -33,6 +36,12 @@
     <script src="../src/utils/util.timer.js"></script>
     <script src="../src/views/view.controls.js"></script>
     <link href="../src/skins/mp2/metaplayer.mp2.css" rel="stylesheet"  type="text/css">
+
+    <!-- View: Overlay -->
+    <script src="../src/views/overlay/view.overlay.js"></script>
+    <link href="../src/views/overlay/view.overlay.css" rel="stylesheet"  type="text/css">
+    <link href="../src/skins/mp2/view.overlay.css" rel="stylesheet"  type="text/css">
+
 
     <!--Plugin: ramp popcorn loader-->
     <script src="../src/loaders/loader.popcorn.js"></script>
@@ -60,8 +69,12 @@
 
             // initialize popcorn events
             popcorn = Popcorn( video.media );
-
             loader = ramp.popcorn( popcorn );
+
+            overlay = Ramp.Views.Overlay(popcorn, {}, ramp);
+            var nextup = Ramp('36234885', "/pca", { serviceType : "smil" });
+            overlay.nextUp( nextup )
+
         }, false);
 
     </script>

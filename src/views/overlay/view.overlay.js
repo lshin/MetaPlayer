@@ -6,7 +6,8 @@
     var defaults = {
         target : '',
         autoHide : true,
-        cssPrefix : 'metaplayer-overlay'
+        cssPrefix : 'metaplayer-overlay',
+        template : 'view.overlay.tmpl.html'
     };
 
     var Overlay = function (player, options, ramp) {
@@ -33,6 +34,7 @@
             this.init();
     };
 
+
     Ramp.Views.Overlay = Overlay;
 
     Overlay.prototype = {
@@ -48,6 +50,9 @@
             this.setCaptions(true);
 
         },
+
+        baseUrl :  Ramp.Utils.Script.base('view.overlay.js'),
+
         addUIListeners : function () {
             var self = this;
             this.find('play').click( function (e) {
@@ -201,7 +206,8 @@
         },
 
         createMarkup : function () {
-            $.ajax('view.overlay.tmpl.html', {
+            var url = this.baseUrl + this.config.template;
+            $.ajax(url , {
                 context: this,
                 success : function (data){
                     this.container = $(this.player).parent();

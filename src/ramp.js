@@ -45,6 +45,7 @@ var Ramp;
     Ramp.Loaders = {};
     Ramp.Services = {};
     Ramp.Views = {};
+    Ramp.Utils = {};
 
     Ramp.prototype = {
         load : function  (mediaId){

@@ -127,6 +127,9 @@
 
             if( this.config.renderMetaq )
                 this.ramp.metaq(this._onMetaq, null, this);
+
+            this.ramp.mediaChange(this.onMediaChange, null, this);
+
         },
 
         _onTags : function (tags) {
@@ -148,6 +151,10 @@
                 });
             });
             this.renderAnnotations();
+        },
+
+        onMediaChange: function () {
+            this.clearAnnotations();
         },
 
         onClockTimer : function (e) {
