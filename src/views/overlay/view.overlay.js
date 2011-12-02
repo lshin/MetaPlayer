@@ -134,6 +134,8 @@
                 ratio = 0;
             if( ratio > 1 )
                 ratio = 1;
+            // todo, throttle the mousemove
+            this.player.muted = false;
             this.player.volume = ratio;
         },
 
