@@ -10,32 +10,29 @@
         template : 'view.overlay.tmpl.html'
     };
 
-    var Overlay = function (player, options, ramp) {
+    var Overlay = function (media, options, ramp) {
 
         if( !(this instanceof Overlay ))
-            return new Overlay(player, options, ramp);
-
-        if( options.container )
-            this.container = options.container;
+            return new Overlay(media, options, ramp);
 
         this.config = $.extend({}, defaults, options);
         this.ramp = ramp;
+        this.media = media;
 
-        if( window.Popcorn && (player instanceof Popcorn )){
-            this.popcorn = player;
-            this.player = player.media;
+        if( this.config.container ) {
+            this.container = this.config.container;
+            this.init();
         }
         else
-            this.player = player;
-
-        if( ! this.container )
-            this.createMarkup();
-        else
-            this.init();
+            this.createMarkup(); // async init
     };
 
-
     Ramp.Views.Overlay = Overlay;
+
+    Ramp.prototype.overlay = function (options) {
+        return Overlay(this.media, options, this);
+    };
+
 
     Overlay.prototype = {
         init : function () {
@@ -56,19 +53,19 @@
         addUIListeners : function () {
             var self = this;
             this.find('play').click( function (e) {
-                self.player.play();
+                self.media.play();
             });
             this.find('play').click( function (e) {
-                self.player.play();
+                self.media.play();
             });
             this.find('pause').click( function (e) {
-                self.player.pause();
+                self.media.pause();
             });
             this.find('mute').click( function (e) {
-                self.player.muted = true;
+                self.media.muted = true;
             });
             this.find('unmute').click( function (e) {
-                self.player.muted = false;
+                self.media.muted = false;
             });
 
             var volume_bg = this.find('volume-bg');
@@ -94,13 +91,12 @@
             }
 
             this.find('preview').click( function () {
-                self.ramp.load( self.nextup );
+                self.media.nextTrack();
             });
         },
 
         addServiceListeners : function () {
-            this.ramp.tags(this.onTags, null, this);
-            this.ramp.mediaChange(this.onMediaChange, null, this);
+            this.ramp.service.tags(this.onTags, this);
         },
 
         onTags : function (tags) {
@@ -110,10 +106,18 @@
             });
         },
 
-        onMediaChange : function () {
+        onTrackChange : function () {
             this.nextup = null;
+
             $('.' + this.cssName('tag') ).remove();
             this.find('next').hide();
+
+            var nextup = this.media.playlist[ this.media.nextTrackIndex() ];
+            if( nextup ){
+                this.find('preview-thumb').attr('src', nextup.thumbnail);
+                this.find('preview-title').text(nextup.title);
+                this.find('next').show();
+            }
         },
 
         createTag : function ( term ) {
@@ -125,7 +129,7 @@
         },
 
         addPopcornListeners : function () {
-            if(! this.popcorn )
+            if(! this.ramp.popcorn )
                 return;
 
             var self = this;
@@ -139,13 +143,13 @@
         },
 
         setCaptions : function ( bool ){
-            if(! this.popcorn )
+            if(! this.ramp.popcorn )
                 return;
 
             if( bool )
-                this.popcorn.enable('subtitle');
+                this.ramp.popcorn.enable('subtitle');
             else
-                this.popcorn.disable('subtitle');
+                this.ramp.popcorn.disable('subtitle');
 
             this.find('cc').toggle(bool);
             this.find('cc-off').toggle(!bool)
@@ -154,11 +158,15 @@
 
         addPlayerListeners : function () {
             var self = this;
-            $(this.player).bind('pause play seeked seeking canplay', function(e){
+            $(this.media).bind('pause play seeked seeking canplay', function(e){
                 self.onPlayStateChange();
             });
-            $(this.player).bind('volumechange', function(e){
+            $(this.media).bind('volumechange', function(e){
                 self.onVolumeChange();
+            });
+
+            $(this.media).bind('trackChange', function(e){
+                self.onTrackChange();
             });
         },
 
@@ -184,23 +192,23 @@
             if( ratio > 1 )
                 ratio = 1;
             // todo, throttle the mousemove
-            this.player.muted = false;
-            this.player.volume = ratio;
+            this.media.muted = false;
+            this.media.volume = ratio;
         },
 
         onVolumeChange : function () {
-            var muted = this.player.muted;
+            var muted = this.media.muted;
             this.find('mute').toggle( !muted );
             this.find('unmute').toggle( muted );
 
-            var volume = muted ? 0 : this.player.volume;
+            var volume = muted ? 0 : this.media.volume;
 
             this.find('volume').width( (volume * 100) + "%");
         },
 
         onPlayStateChange : function (e) {
             // manage our timers based on play state
-            var paused = this.player.paused;
+            var paused = this.media.paused;
             this.find('play').toggle( paused );
             this.find('pause').toggle( !paused );
         },
@@ -210,7 +218,7 @@
             $.ajax(url , {
                 context: this,
                 success : function (data){
-                    this.container = $(this.player).parent();
+                    this.container = $(this.media).parent();
                     this.container.append(data);
                     this.init();
                 }
@@ -224,17 +232,6 @@
                 node.animate({height: height}, 500);
             else
                 node.animate({height: 0}, 500);
-        },
-
-        nextUp : function ( next ) {
-            this.nextup = next;
-            next.metadata(this.onNextData, null, this);
-        },
-
-        onNextData : function (metadata) {
-            this.find('preview-thumb').attr('src', metadata.thumbnail);
-            this.find('preview-title').text(metadata.title);
-            this.find('next').show();
         },
 
         /* utils */

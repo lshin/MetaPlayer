@@ -19,7 +19,6 @@
     var Controls = function (video, options, ramp) {
 
         if( !(this instanceof Controls) )
-
             return new Controls(video, options, ramp);
 
         this.config = $.extend(true, {}, defaults, options);
@@ -53,25 +52,17 @@
 
     Ramp.Controls = Controls;
 
-    Ramp.prototype.controls = function (media, options) {
-        return Controls(media, options, this);
+    Ramp.prototype.controls = function (options) {
+        return Controls(this.media, options, this);
     };
-
-    if( Ramp.Video ) {
-        Ramp.Video.prototype.controls = function ( options ) {
-            return Controls(this.media, options, this.ramp);
-        }
-    }
 
     Controls.prototype = {
 
         addPlayerListeners : function () {
             var self = this;
-//            this.player.listen('load', this.onLoad, this);
             $(this.player).bind('pause play seeked seeking', function(){
                 self.onPlayStateChange()
             });
-//            this.player.listen('seeked', this.onPlayStateChange, this);
         },
 
         onLoad : function (data) {
@@ -123,12 +114,12 @@
                 return;
             }
             if( this.config.renderTags )
-                this.ramp.tags(this._onTags, null, this);
+                this.ramp.service.tags(this._onTags, this);
 
             if( this.config.renderMetaq )
-                this.ramp.metaq(this._onMetaq, null, this);
+                this.ramp.service.metaq(this._onMetaq, this);
 
-            this.ramp.mediaChange(this.onMediaChange, null, this);
+            this.ramp.service.mediaChange(this.onMediaChange, this);
 
         },
 
@@ -144,7 +135,6 @@
 
         _onMetaq : function (popcorn) {
             var self = this;
-            console.log(["metaq", popcorn]);
             $.each(popcorn, function (type, events){
                 $.each(events, function (i, event){
                     self.addAnnotation(event.start, event.end, event.text || event.term, "metaq");

@@ -8,44 +8,45 @@
 
     <!--Plugin: ramp core-->
     <script src="../../ramp.js"></script>
-    <script src="../../utils/util.event-dispatcher.js"></script>
+    <script src="../../utils/util.event.js"></script>
 
     <!--Plugin: ramp json service-->
     <script src="service.smil.js"></script>
 
     <script type="text/javascript">
 
-        ramp = Ramp('36234882', "/pca", { serviceType : "smil" });
+        var ramp = Ramp();
 
-        ramp.metadata( function (metadata) {
+        ramp.service.metadata( function (metadata) {
             console.log(['metadata', metadata])
         });
 
-        ramp.transcodes( function (transcodes) {
+        ramp.service.transcodes( function (transcodes) {
             console.log(['transcodes', transcodes])
         });
 
-        ramp.captions( function (captions) {
+        ramp.service.captions( function (captions) {
             console.log(['captions', captions]);
-
         });
 
-        ramp.tags( function (captions) {
+        ramp.service.tags( function (captions) {
             console.log(['tags', captions]);
-
         });
 
-        ramp.metaq( function (captions) {
+        ramp.service.metaq( function (captions) {
             console.log(['metaq', captions])
         });
 
+        ramp.service.related( function (captions) {
+            console.log(['related', captions])
+        });
+
+        ramp.service.load('36234882', "/pca");
 
         // if data has already loaded, callback will fire immediately
-        setTimeout( function () {
-            ramp.captions( function (captions) {
-                console.log(["delayed captions access", captions]);
-            });
-        }, 3000);
+        ramp.service.captions( function (captions) {
+            console.log(["post load captions", captions]);
+        });
 
     </script>
 

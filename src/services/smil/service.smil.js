@@ -4,20 +4,35 @@
         playlistService : "/device/services/mp2-playlist?e={e}"
     };
 
-    var SmilService = function (host, options) {
+    var SmilService = function (options) {
         if( ! (this instanceof SmilService ))
-            return new SmilService(host, options);
-
+            return new SmilService(options);
         this.config = $.extend({}, defaults, options);
-        this.data = {};
-        this.host = host || '';
         Ramp.EventDispatcher(this);
+
+        this.observable('metadata');
+        this.observable('transcodes');
+        this.observable('captions');
+        this.observable('tags');
+        this.observable('metaq');
+        this.observable('related');
+        this.observable('mediaChange');
     };
 
     SmilService.prototype = {
 
-        load : function (mediaId, callback, scope) {
-            var url = this.host + this.config.playlistService.replace(/{e}/, mediaId);
+        load : function (mediaId, rampHost) {
+
+            if( this.mediaId )
+                this.dispatch('mediaChange');
+
+            this.mediaId = mediaId;
+
+            if( rampHost )
+                this.lastHost = rampHost;
+
+            var host = this.lastHost || rampHost;
+            var url = host + this.config.playlistService.replace(/{e}/, mediaId);
 
             var params = {
 //                format: 'playlist',
@@ -34,24 +49,39 @@
                     console.error("Load playlist error: " + textStatus + ", url: " + url);
                 },
                 success : function (response, textStatus, jqXHR) {
-                    var media = this.parse(response);
-                    callback.call(scope, media);
+                    var data = this.parse(response);
+                    data.metadata.host = host;
+                    this.dispatch('metadata', data.metadata);
+                    this.dispatch('related', data.related);
+                    this.dispatch('transcodes', data.transcodes);
+                    this.dispatch('captions', data.captions);
+                    this.dispatch('tags', data.tags);
+                    this.dispatch('metaq', data.metaq);
                 }
             });
         },
 
         parse : function (data) {
-            var playlist = [];
             var self = this;
+            var playlist = $(data).find('par').toArray();
+            var node = playlist.shift();
 
-            var node = $(data).find('par').first();
+            var media = this.parseMedia(node);
+            $.each(playlist, function(i, node) {
+                media.related.push( self.parseMedia(node).metadata );
+            });
 
+            return media;
+        },
+
+        parseMedia : function (node) {
             var media = {
                 metadata : {},
                 transcodes : [],
                 tags : [],
                 captions : [],
-                metaq : {}
+                metaq : {},
+                related : []
             };
 
             var video = $(node).find('video');
@@ -130,15 +160,14 @@
         // static factory constructor
         var nodes = $(xml).contents();
         var cues  = [
-            {
-                text : '',
-                start: 0,
-                end: null,
-                offset : 0
-            }
         ];
 
-        var current = cues[0];
+        var current = {
+            text : '',
+            start: 0,
+            end: null,
+            offset : 0
+        };
 
         var getStart = function (node, lastCue) {
             var el = $(node);
@@ -226,6 +255,9 @@
         return "video/"+ext;
     };
 
-    Ramp.addService("smil", SmilService);
+    Ramp.prototype.service = function (options) {
+        this.service = SmilService(options);
+        return this;
+    };
 
 })();

@@ -28,7 +28,7 @@
     <!--Plugin: ramp core-->
     <script src="../src/ramp.js"></script>
     <script src="../src/services/service.json.js"></script>
-    <script src="../src/utils/util.event-dispatcher.js"></script>
+    <script src="../src/utils/util.event.js"></script>
 
     <!--Plugin: html5 video boostrap-->
     <script src="../src/loaders/loader.html5.js"></script>
@@ -41,11 +41,7 @@
 
         document.addEventListener("DOMContentLoaded", function () {
 
-            ramp = Ramp('wtfpopcorn');
-
-            popcorn = Popcorn('#video');
-
-            loader = ramp.popcorn(popcorn, {
+            loader = Ramp.Loaders.Popcorn(popcorn, {
                 metadata : {
                     clone : "subtitle footnote"
                 },

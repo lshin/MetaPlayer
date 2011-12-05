@@ -21,25 +21,22 @@
         this.addDataListeners();
     };
 
-    Ramp.Loaders.PopcornLoader = PopcornLoader;
+    Ramp.Loaders.Popcorn = PopcornLoader;
 
-    Ramp.prototype.popcorn = function (popcorn, options) {
-        return PopcornLoader(popcorn, options, this);
+    Ramp.prototype.metaq = function (options) {
+        if( ! this.popcorn && this.media )
+            this.popcorn = Popcorn(this.media);
+        PopcornLoader(this.popcorn, options, this);
+        return this;
     };
-
-    if( Ramp.Video ) {
-        Ramp.Video.prototype.popcorn = function ( options ) {
-            return PopcornLoader(this.popcorn, options, this.ramp);
-        }
-    }
 
     PopcornLoader.prototype = {
         addDataListeners : function () {
             if(! (this.ramp && this.popcorn ) )
                 return;
-            this.ramp.captions( this._onCaptions, null, this);
-            this.ramp.metaq( this._onMetaq, null, this);
-            this.ramp.mediaChange( this.onMediaChange, null, this);
+            this.ramp.service.captions( this._onCaptions, this);
+            this.ramp.service.metaq( this._onMetaq, this);
+            this.ramp.service.mediaChange( this.onMediaChange, this);
         },
 
         _onCaptions : function (captions) {
@@ -128,12 +125,9 @@
 
         _schedule : function (type, options){
             var fn = this.popcorn[type];
-            if( type == "subtitle ")
-                debugger;
+//            console.log(["shedule", type, fn, options]);
             if( fn  )
                 fn.call(this.popcorn, options);
-            else
-                console.log(["no plugin: ", type,  options.text])
         }
     };
 

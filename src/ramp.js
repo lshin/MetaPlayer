@@ -21,24 +21,20 @@ var Ramp;
     Ramp = function (mediaId, host, options){
         if( ! (this instanceof Ramp) )
             return new Ramp(mediaId, host, options);
-        this.host = host || Ramp.host;
+
         this.config = $.extend(true, {}, Ramp.defaults, options);
-        this.service = Ramp.getService( this.config.serviceType, this.host, this.config.service);
-        this.mediaData = {};
 
         Ramp.EventDispatcher(this);
 
-        if( this.config.autoLoad )
-            this.load(mediaId);
+        this.service();
+        if( mediaId && host ) {
+            this.service.load(mediaId, host)
+        }
     };
 
     /* Defaults */
     Ramp.host = '';
     Ramp.defaults = {
-        host : '',
-        serviceType : 'json',
-        service : {},
-        autoLoad : true
     };
 
     // namespace anchors
@@ -48,54 +44,6 @@ var Ramp;
     Ramp.Utils = {};
 
     Ramp.prototype = {
-        load : function  (mediaId){
-
-            // notify of clip change
-            if( this.mediaId )
-                this.dispatch('mediaChange');
-
-            if( mediaId instanceof Ramp ) {
-                this.mediaId = mediaId.mediaId;
-                this._onLoad(mediaId.mediaData);
-                return;
-            }
-
-            this.mediaId = mediaId;
-            this.service.load(this.mediaId, this._onLoad, this);
-        },
-
-        _onLoad  : function  (response) {
-            this.mediaData = response;
-            response.metadata && this.dispatch('metadata');
-            response.transcodes && this.dispatch('transcodes');
-            response.captions && this.dispatch('captions');
-            response.tags && this.dispatch('tags');
-            response.metaq && this.dispatch('metaq');
-        },
-
-        metadata : function ( callback, data, scope ) {
-            this.bind('metadata', callback, data, scope);
-        },
-
-        captions : function ( callback, data, scope ) {
-            this.bind('captions', callback, data, scope);
-        },
-
-        transcodes : function ( callback, data, scope ) {
-            this.bind('transcodes', callback, data, scope);
-        },
-
-        tags : function ( callback, data, scope ) {
-            this.bind('tags', callback, data, scope);
-        },
-
-        metaq : function ( callback, data, scope ) {
-            this.bind('metaq', callback, data, scope);
-        },
-
-        mediaChange : function ( callback, data, scope ) {
-            this.bind('mediaChange', callback, data, scope);
-        },
 
         bind : function (eventType, callback, data, context ){
             var events = eventType.split(/\s/);
@@ -114,7 +62,6 @@ var Ramp;
         }
     };
 
-
     /* Static */
     Ramp._services = [];
 
@@ -123,8 +70,8 @@ var Ramp;
         Ramp._services[name] = service;
     };
 
-    Ramp.getService = function (name, host, options) {
-        return Ramp._services[name]( host, options );
+    Ramp.getService = function (name, options) {
+        return Ramp._services[name]( options );
     };
 
 
