@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <script src="../../external/okjs/ok.js" type="text/javascript"></script>
+    <link href="unit.css" rel="stylesheet" type="text/css">
+
+    <script src="../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
+    <script src="../src/defunct/service-ramp.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+        var unit = okjs({
+            exceptions: 1, // enable for debugging
+            verbose: true
+        });
+
+        var ramp, media;
+        unit.test("setup",  function () {
+            ramp = Ramp('', {
+                playlistService : "data/mp2-playlist.advisor.xml"
+            });
+
+            ramp.getMedia(45212699, unit.callback("got media", null, function (response, data){
+                media = response;
+            }));
+        });
+
+        window.onload = function () {
+            unit.start()
+        };
+    </script>
+
+</head>
+<body>
+
+
+</body>
+</html>
