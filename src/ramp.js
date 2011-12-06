@@ -27,6 +27,7 @@ var Ramp;
         Ramp.EventDispatcher(this);
 
         this.service();
+
         if( mediaId && host ) {
             this.service.load(mediaId, host)
         }
