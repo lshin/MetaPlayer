@@ -43,40 +43,29 @@
     <script type="text/javascript">
 
         var unit = okjs({
-            exceptions: 1, // enable for debugging
+            exceptions: 0, // enable for debugging
             verbose: true
         });
 
         var harness = PlayerUnit();
-
         var ramp, media;
 
-        unit.test("test setup", function () {
+        unit.test("ramp setup", function () {
             ramp = Ramp('36234882', "/pca");
-            unit.event("transcodes", ramp.service, "transcodes ready")
+            unit.event("transcodes", ramp.service, "transcodes ready");
+            unit.event("metadata", ramp.service, "metadata ready");
+            unit.event("related", ramp.service, "related ready");
         });
 
-        unit.test("test setup", function () {
-            media = ramp.html5('#target', {  preload: false, autoplay: false});
-
-
-            var events = "loadstart progress suspend emptied stalled play pause " +
-                    "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
-                    "seeking seeked timeupdate ended ratechange durationchange volumechange";
-
-            var logit = function(e, type){
-                if( e.type != "timeupdate" &&  e.type != "progress" )
-                    console.log(["event", type, e.type, e]);
-            };
-
-            $(media).bind(events, function (e){ logit(e, "player") });
-            $(media.media).bind(events, function (e){ logit(e, "media") });
-
+        unit.test("harness setup", function () {
+            media = ramp.html5('#target', {
+                preload: false,
+                autoplay: false,
+                related : false
+            });
             harness.media = media;
             unit.nequal( harness.media, null, "have video element");
-
         });
-
 
         harness.addTests(unit);
 

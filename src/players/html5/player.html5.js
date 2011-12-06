@@ -10,14 +10,14 @@
         preload : true,
         autoAdvance : true,
         related: true,
-        loop : true,
+        loop : false,
         controls : true
     };
 
-    var Html5Loader = function (metaservice, el, options) {
+    var Html5Player = function (ramp, el, options) {
 
-        if( !(this instanceof Html5Loader ))
-            return new Html5Loader(metaservice, el, options);
+        if( !(this instanceof Html5Player ))
+            return new Html5Player(ramp, el, options);
 
         this.config = $.extend({}, defaults, options);
         this.container = el;
@@ -28,33 +28,31 @@
         this.createMarkup();
         this.addMediaProxy();
         this.addMediaListeners();
-        Ramp.Utils.Proxy.map("index", this, this._index);
+        Ramp.Utils.Proxy.mapProperty("index", this, this._index);
 
-        this.ramp = metaservice;
+        this.ramp = ramp;
         this.ramp.service.metadata(this.onMetadata, this);
         this.ramp.service.transcodes(this.onTranscodes, this);
         this.ramp.service.related(this.onRelated, this);
     };
 
-    Ramp.Loaders.HTML5 = Html5Loader;
+    Ramp.Players.Html5Player = Html5Player;
 
     Ramp.prototype.html5 = function (el, options) {
-        this.media = Html5Loader(this, el, options);
+        this.media = Html5Player(this, el, options);
         return this.media;
     };
 
-    Html5Loader.prototype = {
+    Html5Player.prototype = {
 
         load : function () {
-            console.log(["load", this.transcodes.length])
-
             if( this.config.applySources )
                 this._addSources();
 
             if( this.config.selectSource )
                 this._selectSource();
 
-            this.config.preload = true;
+            this.config.preload = true; // can be called before transcodes available
             this.media.load();
         },
 
@@ -88,14 +86,12 @@
         },
 
         onTranscodes : function (transcodes) {
-            console.log(["have transcodes"])
             this.transcodes = transcodes;
             if( this.config.preload )
                 this.load();
         },
 
         _addSources : function () {
-            console.log(["_addSources", this.transcodes.length])
             var media = this.media;
             $(media).find('source').remove();
             $.each(this.transcodes, function (i, source) {
@@ -120,7 +116,6 @@
         addMediaListeners : function () {
             var self = this;
             $(this.media).bind('ended', function(){
-                console.log("ENDED");
                 self.onEnded()
             });
 

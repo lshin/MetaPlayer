@@ -13,7 +13,7 @@ PlayerUnit.prototype = {
 
         unit.test("media setup",  function () {
             unit.nequal( self.media, undefined, "media instance not null");
-            unit.equal( isNaN(self.media.duration), true, "duration ended is NaN");
+            unit.equal( isNaN(self.media.duration), true, "duration at start is NaN");
         });
 
         unit.test("load events",  function () {
@@ -38,10 +38,10 @@ PlayerUnit.prototype = {
         });
 
         unit.test("volume",  function () {
-            unit.equal( self.media.volume, 1, "media.ended is 1");
+            unit.equal( self.media.volume, 1, "media.volume is 1");
             self.media.volume = .5;
             unit.event("volumechange", self.media, "volumechange event", function (e) {
-                unit.equal( self.media.volume, .5, "init: self.media.ended is 1");
+                unit.equal( self.media.volume, .5, "self.volume is 1");
             })
         });
 
@@ -109,7 +109,7 @@ PlayerUnit.prototype = {
                 unit.equal( Math.abs(self.media.currentTime - 10) < 1, true, "seeked currentTime is near 10");
             });
 
-            unit.event("timeupdate", self.media, "seeking event");
+            unit.event("timeupdate", self.media, "timeupdate event");
 
             self.media.play();
         });

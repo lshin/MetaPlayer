@@ -39,7 +39,7 @@ var Ramp;
     };
 
     // namespace anchors
-    Ramp.Loaders = {};
+    Ramp.Players = {};
     Ramp.Services = {};
     Ramp.Views = {};
     Ramp.Utils = {};

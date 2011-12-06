@@ -8,11 +8,16 @@
     <!--Dependency: jQuery-->
     <script src="../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
 
-    <!--Dependency: jQuery-->
+    <!-- Core: Ramp -->
+    <script src="../../ramp.js"></script>
+    <script src="../../services/smil/service.smil.js"></script>
+    <script src="../../utils/util.event.js"></script>
+    <script src="../../utils/util.proxy.js"></script>
+    <script src="../../utils/util.script.js"></script>
+
+    <!--Dependency: Flowplayer-->
     <script src="../../../external/flowplayer/flowplayer-3.2.6.min.js"></script>
-    <script src="../../../external/popcorn/popcorn.js"></script>
-    <script src="../../../external/popcorn/popcorn.footnote.js"></script>
-    <script src="../../../external/popcorn/popcorn.subtitle.js"></script>
+    <!--<script src="../../../../lib/flowplayer/flowplayer-3.2.6.js"></script>-->
 
     <!-- Media Plugin: Flowplayer -->
     <script src="player.flowplayer.js"></script>
@@ -36,9 +41,11 @@
 <div id="target"></div>
 
 <script>
-    var flowplayer = $f("target", "../../../external/flowplayer/flowplayer-3.2.7.swf",
+    var player = $f("target", "../../../external/flowplayer/flowplayer-3.2.7.swf",
             {
                 clip: {
+//                    autoPlay: false,
+//                    autoBuffering: false,
                     url: "http://pseudo01.hddn.com/vod/demo.flowplayervod/flowplayer-700.flv"
                 },
                 plugins: {
@@ -48,12 +55,31 @@
                 }
             });
 
-    flowplayer.ramp();
+//    player.onLoad( function (){
+//        console.log("load");
+//        return false;
+//    });
+//    player.onBeforeLoad( function (){
+//        console.log("before load");
+//        return false;
+//    });
+    var media = Ramp.Players.FlowplayerLoader( player, {preload: true} );
 
-//    flowplayer.ramp.popcorn();
-//    flowplayer.ramp.controls();
 
-    flowplayer.load();
+    var events = "loadstart progress suspend emptied stalled play pause " +
+            "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
+            "seeking seeked timeupdate ended ratechange durationchange volumechange";
+    var logit = function(e, type){
+        if( e.type != "timeupdate" &&  e.type != "progress" )
+            console.log(["event", type, e.type, e]);
+    };
+    $(media).bind(events, function (e){ logit(e, "player") });
+    $(media).bind("foo", function (e){ logit(e, "player") });
+
+    console.log("ok go");
+
+    player.load();
+
 </script>
 
 </body>

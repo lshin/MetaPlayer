@@ -8,7 +8,7 @@
                         source[prop] = val;
                     return source[prop];
                 };
-                Proxy.map(prop, target, fn);
+                Proxy.mapProperty(prop, target, fn);
             });
         },
 
@@ -29,10 +29,15 @@
             });
         },
 
-        map : function (prop, target, fn){
+        mapProperty : function (props, target, fn){
             // example :   map("name" myObject, myObject._name);
-            Proxy.define(target, prop, { get : fn, set : fn });
+            //             map("name" myObject);
+            $.each(props.split(/\s+/g), function (i, prop) {
+                var callback = fn || target["_" + prop];
+                Proxy.define(target, prop, { get : callback, set : callback });
+            });
         },
+
 
         define : function (obj, prop, descriptor) {
             if( Object.defineProperty )

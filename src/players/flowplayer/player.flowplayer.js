@@ -1,165 +1,197 @@
 (function () {
 
     var $ = jQuery;
-
+    var $f = flowplayer;
 
     var defaults = {
     };
 
-    function Plugin (player, options, callbacks) {
+    function FlowplayerLoader (el, options, ramp) {
 
-        var services = this.service = new Ramp(options, callbacks);
-        var self = this;
 
+        if( !(this instanceof FlowplayerLoader ))
+            return new FlowplayerLoader(el, options, ramp);
 
         this.config = $.extend({}, defaults, options);
-        this.playing = false;
-        this.seeking = false;
-
-        player.onBeforeLoad (function () {
-        });
-
-        player.onLoad (function () {
-        });
-
-        player.onBeforeBegin(function (e) {
-            return self.onBeforeBegin(e);
-        });
-
-        player.onBegin (function () {
-            self.dispatch("load", self._clipData);
-        });
-
-        player.onStart (function () {
-            self.playing = true;
-            self.dispatch("playback");
-        });
-
-        player.onFinish (function () {
-            self.playing = false;
-            self.dispatch("playback");
-        });
-
-        player.onResume (function () {
-            self.playing = true;
-            self.dispatch("playback");
-        });
-
-        player.onPause (function () {
-            self.playing = false;
-            self.dispatch("playback");
-        });
-
-        player.getCommonClip().onSeek (function () {
-            self.seeking = false;
-            self._seekTarget = null;
-            self.dispatch("seek");
-        });
-
-        player.getCommonClip().onBufferEmpty(function () {
-            self.playing = false;
-            self.dispatch("playback");
-        });
+        this.container = el;
+        this.playlist = [];
+        this.transcodes = [];
 
 
-        if( options.playlist ) {
-            // replace/append playlist
-        }
+        this.readyState = 0;
 
-        Ramp.Player(this);
 
-        this.player = player;
-        this.services = services;
+        Ramp.EventDispatcher(this);
+
+        this.playerSetup();
+        this.addContainerProxy();
+        this.addMediaProxy();
+        this.addPlayerListeners();
 
     }
 
-    Plugin.prototype = {
+    Ramp.Players.FlowplayerLoader = FlowplayerLoader;
 
-        container : function () {
-            return this.player.getParent();
+    FlowplayerLoader.prototype = {
+
+        load : function () {
+            this.config.preload = true;
+            this.dispatchEvent('loadstart');
+            this.media.load();
+
         },
 
-        seek : function (time) {
-            this._seekTarget = time;
-            this.seeking = true;
-            this.player.seek(this.seeking);
-            this.player.seek(time);
-            this.dispatch("seeking", {time : time});
-        },
-
-        toggle : function ( bool ) {
-            if( bool == null )
-                this.player.toggle();
-            else if( bool )
-                this.player.resume();
-            else
-                this.player.pause();
-        },
-
-        status : function () {
-            var status = this.player.getStatus();
-            return {
-                target : this._seekTarget,
-                time : status.time,
-                buffer : {
-                    start : status.bufferStart,
-                    end : status.bufferEnd
-                }
-            };
-        },
-
-        duration : function () {
-            if(! this._duration ) {
-                var clip = this.player.getClip();
-                this._duration = clip.duration
+        playerSetup : function () {
+            // .. instantiate player if doesn't exist
+            if( this.container.getParent ) {
+                this.media = this.container;
+                this.container = this.media.getParent();
             }
-            return this._duration
         },
 
-        onBeforeBegin : function (e) {
-            var clip = player.getClip();
+        addPlayerListeners : function () {
+            var self = this;
+            this.media.onBeforeLoad( function () {
+                return self.config.preload;
 
-            if(! clip.rampId  )
-                return;
-
-            if(clip.ramp === null ) // already loading
-                return;
-
-            if( clip.ramp && clip.ramp.transcodes.length > 0 ) // already fully loaded
-                return;
-
-            clip.ramp = null;
-
-            var host = clip.rampHost || this.config.rampHost;
-
-            this.services.getMedia(host, clip.rampId, this.onMediaLoaded, clip, this);
-            this._duration = null; // clear memoization
-
-            return false;
-        },
-
-        onMediaLoaded : function (data, clip) {
-            clip.update({
-                originalUrl : clip.url,
-                url : data[0].video.src,
-                iosUrl : data[0].video.metadata.iosURL,
-                ramp : data
             });
 
-            this._clipData = data[0];
+            this.media.onLoad( function () {
+                self.readyState = 4;
+            });
 
-            if( clip.autoPlay )
-                this.player.play();
+            this.addCommonListeners();
+        },
 
-            else if( clip.autoBuffering )
-                this.player.startBuffering();
+        addCommonListeners : function () {
+            var common = this.media.getCommonClip();
+            var self = this;
+
+            common.onBegin( function (clip) {
+                self.media.setVolume(100);
+                self.dispatch('loadstart');
+            });
+
+            common.onStart( function (clip) {
+                self.dispatch("playing");
+                self.dispatch('loadeddata');
+                self.dispatch('loadedmetadata');
+                self.dispatch("durationchange");
+            });
+
+            common.onStop( function (clip) {
+                self.dispatch("paused");
+            });
+
+            common.onFinish( function (clip) {
+                self.dispatch("paused");
+                self.dispatch("ended");
+            });
+
+            common.onPause( function (clip) {
+                self.dispatch("pause");
+            });
+            common.onResume( function (clip) {
+                self.dispatch("playing");
+                self.dispatch("play");
+            });
+
+            common.onBeforeSeek( function (clip) {
+                self.dispatch("seeking");
+            });
+
+            common.onSeek( function (clip) {
+                self.dispatch("seeked");
+            });
+
+            common.onBufferFull( function (clip) {
+                self.dispatch("canplay");
+            });
+
+            common.onBufferFull( function (clip) {
+                self.dispatch("canplay");
+            });
+
+        },
+
+        addContainerProxy : function () {
+            Ramp.Utils.Proxy.proxyProperty("parentNode offsetHeight offsetWidth style className id",
+                this.container, this);
+
+            Ramp.Utils.Proxy.proxyFunction("getBoundingClientRect getElementsByTagName",
+                this.container, this);
+        },
+
+        addMediaProxy : function () {
+
+            Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted buffered seekable" +
+                " paused played seeking defaultPlaybackRate playbackRate controls",
+                this);
+
+//            Ramp.Utils.Proxy.proxyFunction("play pause" +
+//                " getBoundingClientRect getElementsByTagName",
+//                this.media, this);
+//
+//            Ramp.Utils.Proxy.proxyEvent("loadstart progress suspend emptied stalled play pause " +
+//                "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
+//                "seeking seeked timeupdate ended ratechange durationchange volumechange",
+//                this.media, this);
+        },
+
+        /* Properties */
+        _duration : function (){
+            if(! this.media.isLoaded() )
+                return NaN;
+            return this.media.getClip().duration;
+        },
+
+        _currentTime : function (){
+            var status = this.media.getStatus();
+            return status.time;
+        },
+
+        _volume : function (val){
+            if( val !== undefined )
+                this.media.setVolume(val * 100);
+            return this.media.getVolume() / 100;
+        },
+
+        _muted : function (val){
+            if( val !== undefined ){
+                if( val )
+                    this.media.mute();
+                else
+                    this.media.unmute();
+            }
+            var status = this.media.getStatus();
+            return status.muted;
+        },
+
+//        _buffered : function (){},
+//        _seekable : function (){},
+
+        _paused : function (){
+            return this.media.isPaused();
+        },
+
+        _playing : function (){
+            return this.media.isPlaying();
         }
+
+        // seeking defaultPlaybackRate playbackRate controls
+
+        /* Methods */
+
+
     };
 
-    Ramp.Plugin = Plugin;
+    $f.addPlugin("ramp", function (el, options, ramp) {
 
-    $f.addPlugin("ramp", function (options, callbacks) {
-        this.ramp = new Plugin(this, options, callbacks);
+        // ... set up ramp instance
+
+
+        // ... set up flowplayer mediacontroller
+
         return this;
     });
 })();
