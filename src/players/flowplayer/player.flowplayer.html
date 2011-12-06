@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset=utf-8>
+
+    <title>Flowplayer Plugin | Metaplayer</title>
+
+    <!--Dependency: jQuery-->
+    <script src="../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
+
+    <!--Dependency: jQuery-->
+    <script src="../../../external/flowplayer/flowplayer-3.2.6.min.js"></script>
+    <script src="../../../external/popcorn/popcorn.js"></script>
+    <script src="../../../external/popcorn/popcorn.footnote.js"></script>
+    <script src="../../../external/popcorn/popcorn.subtitle.js"></script>
+
+    <!-- Media Plugin: Flowplayer -->
+    <script src="player.flowplayer.js"></script>
+
+    <style>
+        #target {
+            width: 600px;
+            height: 300px;
+            background:  #333;
+            position: relative;
+            top: 0; left: 0;
+        }
+    </style>
+
+</head>
+
+<body>
+
+<h3>Metaplayer &raquo; Flowplayer Plugin</h3>
+
+<div id="target"></div>
+
+<script>
+    var flowplayer = $f("target", "../../../external/flowplayer/flowplayer-3.2.7.swf",
+            {
+                clip: {
+                    url: "http://pseudo01.hddn.com/vod/demo.flowplayervod/flowplayer-700.flv"
+                },
+                plugins: {
+                    controls: {
+                        autoHide: false
+                    }
+                }
+            });
+
+    flowplayer.ramp();
+
+//    flowplayer.ramp.popcorn();
+//    flowplayer.ramp.controls();
+
+    flowplayer.load();
+</script>
+
+</body>
+</html>

@@ -65,6 +65,10 @@
             this.report(error, message);
         },
 
+        skip  : function( got, expected, message ) {
+            this.report(null, message, "skip" );
+        },
+
         throws : function  (message, callback, opt_message) {
             // todo: test which expects an exception to be thrown?
             throw "to be implemented";
@@ -217,21 +221,21 @@
             // for internal testing, flip assumptions
             if( this._testErrors ){
                 if( error ) {
-                    type = "success item"
+                    type = "success"
                     error = null;
                 }
                 else {
-                    type = "error item";
+                    type = "error";
                     error = "Expected error."
                 }
             }
 
             if(error) {
                 this._errors++;
-                type = 'error item'
+                type = 'error'
             }
             if( ! type ) {
-                type = "success item"
+                type = "success"
             }
 
             var logType = 'OK';
@@ -240,6 +244,9 @@
             }
             else if( type == "info" ){
                 logType = "INFO";
+            }
+            else if( type == "skip" ){
+                logType = "SKIP";
             }
 
             msg =   "#" + (++this._count)
@@ -370,7 +377,7 @@
                 body.appendChild(output);
             }
             var msgContainer = document.createElement('div');
-            msgContainer.setAttribute('class', type);
+            msgContainer.setAttribute('class', type + " item");
             var msgEl = document.createTextNode(msg);
 
             msgContainer.appendChild(msgEl);

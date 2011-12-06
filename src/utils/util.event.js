@@ -20,6 +20,19 @@
             })
         };
 
+        target.forget = function (callback) {
+            var l, t, i;
+            for(t in this._listeners ){
+                l = this._listeners[t];
+                for(i= l.length - 1; i >= 0; i-- ){
+                    if( l[i].fn = callback ) {
+                        l.splice(i, 1);
+                    }
+                }
+            }
+
+        };
+
         target.dispatch = function (eventType, data, eventObject) {
             if( ! this._listeners[eventType] )
                 return;
@@ -64,6 +77,10 @@
 
         target.addEventListener = function (eventType, callback) {
             this.listen(eventType, callback);
+        };
+
+        target.removeEventListener = function (callback) {
+            this.forget(callback);
         };
 
         target.dispatchEvent = function (event) {

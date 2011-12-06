@@ -29,22 +29,20 @@
         this.addMediaListeners();
         Ramp.Utils.Proxy.map("index", this, this._index);
 
-        this.load(metaservice);
+        this.ramp = metaservice;
+        this.ramp.service.metadata(this.onMetadata, this);
+        this.ramp.service.transcodes(this.onTranscodes, this);
+        this.ramp.service.related(this.onRelated, this);
     };
 
     Ramp.Loaders.HTML5 = Html5Loader;
 
     Ramp.prototype.html5 = function (el, options) {
         this.media = Html5Loader(this, el, options);
+        return this.media;
     };
 
     Html5Loader.prototype = {
-        load: function  (metaservice){
-            this.ramp = metaservice;
-            this.ramp.service.metadata(this.onMetadata, this);
-            this.ramp.service.transcodes(this.onTranscodes, this);
-            this.ramp.service.related(this.onRelated, this);
-        },
 
         createMarkup : function () {
             var c = $(this.container);
@@ -172,20 +170,21 @@
         },
 
         addMediaProxy : function () {
-         // proxy entire MediaController interface
-         // http://dev.w3.org/html5/spec/Overview.html#mediacontroller
-         //     .. plus a few unofficial dom extras
+            // proxy entire MediaController interface
+            // http://dev.w3.org/html5/spec/Overview.html#mediacontroller
+            //     .. plus a few unofficial dom extras
             Ramp.Utils.Proxy.proxyProperty("duration currentTime volume muted buffered seekable" +
                 " paused played defaultPlaybackRate playbackRate" +
-                " readyState parentNode offsetHeight offsetWidth style className id controls",
+                " ended readyState parentNode offsetHeight offsetWidth style className id controls",
                 this.media, this);
 
-            Ramp.Utils.Proxy.proxyFunction("play pause" +
+            Ramp.Utils.Proxy.proxyFunction("play pause load" +
                 " getBoundingClientRect getElementsByTagName",
                 this.media, this);
 
-            Ramp.Utils.Proxy.proxyEvent("emptied loadedmetadata loadeddata canplay canplaythrough playing" +
-                "ended waiting durationchange timeupdate play pause ratechange volumechange",
+            Ramp.Utils.Proxy.proxyEvent("loadstart progress suspend emptied stalled play pause " +
+                "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
+                "seeking seeked timeupdate ended ratechange durationchange volumechange",
                 this.media, this);
         }
 
