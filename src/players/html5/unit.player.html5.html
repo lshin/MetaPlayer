@@ -49,33 +49,39 @@
 
         var harness = PlayerUnit();
 
-
-        var media;
-
-        var ramp = Ramp('36234882', "/pca");
+        var ramp, media;
 
         unit.test("test setup", function () {
-            media = ramp.html5('#target', { preload : false, autoplay: false});
+            ramp = Ramp('36234882', "/pca");
+            unit.event("transcodes", ramp.service, "transcodes ready")
+        });
+
+        unit.test("test setup", function () {
+            media = ramp.html5('#target', {  preload: false, autoplay: false});
+
 
             var events = "loadstart progress suspend emptied stalled play pause " +
                     "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
                     "seeking seeked timeupdate ended ratechange durationchange volumechange";
 
-            $(media.media).bind(events, function(e){
-                console.log(["event", e.type, e]);
-            });
+            var logit = function(e, type){
+                if( e.type != "timeupdate" &&  e.type != "progress" )
+                    console.log(["event", type, e.type, e]);
+            };
+
+            $(media).bind(events, function (e){ logit(e, "player") });
+            $(media.media).bind(events, function (e){ logit(e, "media") });
 
             harness.media = media;
             unit.nequal( harness.media, null, "have video element");
+
         });
+
 
         harness.addTests(unit);
 
         $( function () {
-
-
             unit.start();
-
         });
     </script>
 </head>

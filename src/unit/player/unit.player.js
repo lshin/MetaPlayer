@@ -20,9 +20,9 @@ PlayerUnit.prototype = {
             unit.event("loadstart", self.media, "loadstart event");
 
             // FF bug: won't fire unless media.play() already called
-            unit.log("skipping canplay/canplaythrough event: not supported in FF w/ autoplay=false");
-//            unit.event("canplay", self.media, "canplay event");
-//            unit.event("canplaythrough", self.media, "canplaythrough event");
+            unit.log("canplay/canplaythrough event are not supported in FF w/ autoplay=false");
+            unit.event("canplay", self.media, "canplay event");
+            unit.event("canplaythrough", self.media, "canplaythrough event");
 
             unit.event("loadeddata", self.media, "loadeddata event");
 
@@ -59,13 +59,13 @@ PlayerUnit.prototype = {
 
             self.media.currentTime = 30;
             unit.event("seeking", self.media, "seeking event", function (e) {
-                unit.equal( self.media.seeking, true, "media.seeking is true");
+                unit.equal( self.media.seeking, true, "seeking media.seeking is true");
             });
             unit.event("seeked", self.media, "seeked event", function (e) {
                 unit.equal( self.media.currentTime, 30, "seeked currentTime 30");
             });
-            unit.event("timeupdate", self.media, "seeking event", function (e) {
-                unit.equal( self.media.currentTime, 30, "seeked currentTime 30");
+            unit.event("timeupdate", self.media, "timeupdate event", function (e) {
+                unit.equal( self.media.currentTime, 30, "timeupdate currentTime 30");
             });
 
         });

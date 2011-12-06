@@ -22,6 +22,7 @@
         this.config = $.extend({}, defaults, options);
         this.container = el;
         this.playlist = [];
+        this.transcodes = [];
 
         Ramp.EventDispatcher(this);
         this.createMarkup();
@@ -43,6 +44,19 @@
     };
 
     Html5Loader.prototype = {
+
+        load : function () {
+            console.log(["load", this.transcodes.length])
+
+            if( this.config.applySources )
+                this._addSources();
+
+            if( this.config.selectSource )
+                this._selectSource();
+
+            this.config.preload = true;
+            this.media.load();
+        },
 
         createMarkup : function () {
             var c = $(this.container);
@@ -74,16 +88,14 @@
         },
 
         onTranscodes : function (transcodes) {
+            console.log(["have transcodes"])
             this.transcodes = transcodes;
-
-            if( this.config.applySources )
-                this._addSources();
-
-            if( this.config.selectSource )
-                this._selectSource();
+            if( this.config.preload )
+                this.load();
         },
 
         _addSources : function () {
+            console.log(["_addSources", this.transcodes.length])
             var media = this.media;
             $(media).find('source').remove();
             $.each(this.transcodes, function (i, source) {
@@ -174,11 +186,11 @@
             // http://dev.w3.org/html5/spec/Overview.html#mediacontroller
             //     .. plus a few unofficial dom extras
             Ramp.Utils.Proxy.proxyProperty("duration currentTime volume muted buffered seekable" +
-                " paused played defaultPlaybackRate playbackRate" +
+                " paused played seeking defaultPlaybackRate playbackRate" +
                 " ended readyState parentNode offsetHeight offsetWidth style className id controls",
                 this.media, this);
 
-            Ramp.Utils.Proxy.proxyFunction("play pause load" +
+            Ramp.Utils.Proxy.proxyFunction("play pause" +
                 " getBoundingClientRect getElementsByTagName",
                 this.media, this);
 
