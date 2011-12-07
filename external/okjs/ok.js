@@ -36,7 +36,7 @@
 
         this.options = {
             verbose : false,
-            exceptions: true,
+            exceptions: false,
             wait_ms : 5000
         };
         for(var o in this.options ){
@@ -83,7 +83,7 @@
 
             if( options ) {
                 test.testErrors = options.testErrors;
-                test.postDelay = options.postDelay;
+                test.delay = options.postDelay;
             }
 
             if( this._current ) {

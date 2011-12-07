@@ -14,6 +14,7 @@
     <script src="../../utils/util.event.js"></script>
     <script src="../../utils/util.proxy.js"></script>
     <script src="../../utils/util.script.js"></script>
+    <script src="../../utils/util.timer.js"></script>
 
     <!--Dependency: Flowplayer-->
     <script src="../../../external/flowplayer/flowplayer-3.2.6.min.js"></script>
@@ -44,7 +45,7 @@
     var player = $f("target", "../../../external/flowplayer/flowplayer-3.2.7.swf",
             {
                 clip: {
-//                    autoPlay: false,
+                    autoPlay: false,
 //                    autoBuffering: false,
                     url: "http://pseudo01.hddn.com/vod/demo.flowplayervod/flowplayer-700.flv"
                 },
@@ -55,28 +56,16 @@
                 }
             });
 
-//    player.onLoad( function (){
-//        console.log("load");
-//        return false;
-//    });
-//    player.onBeforeLoad( function (){
-//        console.log("before load");
-//        return false;
-//    });
-    var media = Ramp.Players.FlowplayerLoader( player, {preload: true} );
+    var media = Ramp.Players.FlowplayerLoader( player, {preload: false} );
 
-
-    var events = "loadstart progress suspend emptied stalled play pause " +
-            "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
-            "seeking seeked timeupdate ended ratechange durationchange volumechange";
-    var logit = function(e, type){
-        if( e.type != "timeupdate" &&  e.type != "progress" )
-            console.log(["event", type, e.type, e]);
-    };
-    $(media).bind(events, function (e){ logit(e, "player") });
-    $(media).bind("foo", function (e){ logit(e, "player") });
-
-    console.log("ok go");
+//    var events = "loadstart progress suspend emptied stalled play pause " +
+//            "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
+//            "seeking seeked timeupdate ended ratechange durationchange volumechange";
+//    var logit = function(e, type){
+////        if( e.type != "timeupdate" &&  e.type != "progress" )
+//            console.log(["event", type, e.type, e]);
+//    };
+//    $(media).bind(events, function (e){ logit(e, "player") });
 
     player.load();
 

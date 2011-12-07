@@ -36,6 +36,7 @@
     <script src="../../utils/util.event.js"></script>
     <script src="../../utils/util.proxy.js"></script>
     <script src="../../utils/util.script.js"></script>
+    <script src="../../utils/util.timer.js"></script>
 
     <!--Dependency: Flowplayer-->
     <script src="../../../external/flowplayer/flowplayer-3.2.6.min.js"></script>
@@ -46,7 +47,7 @@
     <script type="text/javascript">
 
         var unit = okjs({
-            exceptions: 1, // enable for debugging
+            exceptions: 0, // enable for debugging
             verbose: true
         });
 
@@ -58,37 +59,24 @@
             player = $f("target", "../../../external/flowplayer/flowplayer-3.2.7.swf",
                     {
                         clip: {
+                            autoPlay: false,
+                            autoBuffering: false,
                             url: "http://pseudo01.hddn.com/vod/demo.flowplayervod/flowplayer-700.flv"
                         },
                         plugins: {
                             controls: {
+
                                 autoHide: false
                             }
                         }
                     });
-            harness.media = media;
         });
 
         unit.test("harness init", function () {
-            media = Ramp.Players.FlowplayerLoader( player );
-
-            var events = "loadstart progress suspend emptied stalled play pause " +
-                    "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
-                    "seeking seeked timeupdate ended ratechange durationchange volumechange";
-
-            var logit = function(e, type){
-                if( e.type != "timeupdate" &&  e.type != "progress" )
-                    console.log(["event", type, e.type, e]);
-            };
-
-            $(media).bind(events, function (e){ logit(e, "player") });
-            $(media.media).bind(events, function (e){ logit(e, "media") });
-
+            media = Ramp.Players.FlowplayerLoader( player, {preload: false, autoplay: false} );
             harness.media = media;
             unit.nequal( harness.media, null, "have video element");
-
         });
-
 
         harness.addTests(unit);
 

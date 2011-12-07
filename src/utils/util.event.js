@@ -83,6 +83,8 @@
         };
 
         target.dispatchEvent = function (event) {
+            if( ! (event instanceof Object) )
+                throw "invalid event";
             this.dispatch(event.type, null, event);
         };
 

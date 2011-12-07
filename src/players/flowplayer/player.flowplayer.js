@@ -18,15 +18,24 @@
         this.transcodes = [];
 
 
+        this.seeking = false;
         this.readyState = 0;
-
+        this.ended = false;
+        this._loading = true;
+        this.__playing = false;
 
         Ramp.EventDispatcher(this);
 
-        this.playerSetup();
-        this.addContainerProxy();
-        this.addMediaProxy();
-        this.addPlayerListeners();
+        this._playerSetup();
+        this._addContainerProxy();
+        this._addMediaProxy();
+        this._addPlayerListeners();
+
+        this._statepoll = Ramp.Timer(250);
+        this._statepoll.listen('time', this._onPlayStatePoll, this);
+
+        this._timeupdater = Ramp.Timer(250);
+        this._timeupdater.listen('time', this._onTimeUpdate, this);
 
     }
 
@@ -36,12 +45,22 @@
 
         load : function () {
             this.config.preload = true;
-            this.dispatchEvent('loadstart');
-            this.media.load();
+            this.dispatch('loadstart');
 
+            if( this.media.isLoaded()  ) {
+                this.media.startBuffering();
+            }
         },
 
-        playerSetup : function () {
+        play : function () {
+            this.media.play();
+        },
+
+        pause : function () {
+            this.media.pause();
+        },
+
+        _playerSetup : function () {
             // .. instantiate player if doesn't exist
             if( this.container.getParent ) {
                 this.media = this.container;
@@ -49,18 +68,88 @@
             }
         },
 
-        addPlayerListeners : function () {
+        _addPlayerListeners : function () {
             var self = this;
-            this.media.onBeforeLoad( function () {
-                return self.config.preload;
 
+            this.media.onBeforeLoad( function () {
             });
 
             this.media.onLoad( function () {
-                self.readyState = 4;
+                if( self.config.preload )
+                    self.load();
+            });
+
+            this.media.onVolume( function (level) {
+                self.dispatch("volumechange");
+            });
+
+            this.media.onMute( function (level) {
+                self.dispatch("volumechange");
+            });
+
+            this.media.onUnmute( function (level) {
+                self.dispatch("volumechange");
+            });
+
+            this.media.onError( function () {
+            });
+
+            this.media.onPlaylistReplace( function () {
+            });
+
+            this.media.onClipAdd( function () {
+            });
+
+            this.media.onBufferFull( function () {
+            });
+
+            this.media.onBufferEmpty( function () {
+            });
+            this.media.onBufferStop( function () {
             });
 
             this.addCommonListeners();
+        },
+
+        _setReady : function (){
+            if( this.readyState != 4 ) {
+                this.readyState = 4;
+                this.dispatch("canplay");
+            }
+        },
+
+        _setPlaying : function ( bool ){
+            this.__playing = bool;
+            // the play and pause events fire before isPlaying() and isPaused() update
+
+            this._statepoll.start();
+        },
+
+        _onPlayStatePoll : function () {
+            if( this.media.isPlaying() != this.__playing ) {
+                if( ! this._statePollInterval ) {
+                    var self = this;
+                    this._statePollInterval = setInterval( function () {
+                        self._pollPlayState();
+                    }, 1000);
+                }
+                return;
+            }
+            clearInterval(this._statePollInterval);
+            this._statePollInterval = null;
+
+            if( this.__playing ) {
+                this.dispatch("playing");
+                this._timeupdater.start();
+            }
+            else {
+                this.dispatch("pause");
+                this._timeupdater.reset();
+            }
+        },
+
+        _onTimeUpdate : function  () {
+            this.dispatch("timeupdate");
         },
 
         addCommonListeners : function () {
@@ -69,52 +158,58 @@
 
             common.onBegin( function (clip) {
                 self.media.setVolume(100);
-                self.dispatch('loadstart');
+                self.media.unmute();
+                // if not autoplay, then it's not safe to seek until we get a pause
+                if( self.media.getClip().autoPlay )
+                    self._setReady();
             });
 
             common.onStart( function (clip) {
-                self.dispatch("playing");
                 self.dispatch('loadeddata');
                 self.dispatch('loadedmetadata');
                 self.dispatch("durationchange");
+                self._setPlaying(true);
             });
 
             common.onStop( function (clip) {
-                self.dispatch("paused");
+                self._setPlaying(false);
             });
 
             common.onFinish( function (clip) {
-                self.dispatch("paused");
+                self.ended = true;
+                self._setPlaying(false);
                 self.dispatch("ended");
             });
 
             common.onPause( function (clip) {
-                self.dispatch("pause");
+                self._setPlaying(false);
+                self._setReady();
             });
             common.onResume( function (clip) {
-                self.dispatch("playing");
+                self._setPlaying(true);
                 self.dispatch("play");
             });
 
             common.onBeforeSeek( function (clip) {
+                self.seeking = true;
                 self.dispatch("seeking");
             });
 
             common.onSeek( function (clip) {
+                self.seeking = false;
                 self.dispatch("seeked");
-            });
+                self.dispatch("timeupdate");
 
-            common.onBufferFull( function (clip) {
-                self.dispatch("canplay");
-            });
+                if( this.___playing  )
+                    self.dispatch("playing");
+                else
+                    self.dispatch("pause");
 
-            common.onBufferFull( function (clip) {
-                self.dispatch("canplay");
             });
 
         },
 
-        addContainerProxy : function () {
+        _addContainerProxy : function () {
             Ramp.Utils.Proxy.proxyProperty("parentNode offsetHeight offsetWidth style className id",
                 this.container, this);
 
@@ -122,10 +217,10 @@
                 this.container, this);
         },
 
-        addMediaProxy : function () {
+        _addMediaProxy : function () {
 
             Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted buffered seekable" +
-                " paused played seeking defaultPlaybackRate playbackRate controls",
+                " paused played defaultPlaybackRate playbackRate controls autoplay loop preload",
                 this);
 
 //            Ramp.Utils.Proxy.proxyFunction("play pause" +
@@ -145,8 +240,11 @@
             return this.media.getClip().duration;
         },
 
-        _currentTime : function (){
+        _currentTime : function (val){
             var status = this.media.getStatus();
+            if( val !== undefined ){
+                this.media.seek(val);
+            }
             return status.time;
         },
 
@@ -169,18 +267,20 @@
 
 //        _buffered : function (){},
 //        _seekable : function (){},
+//        _played : function (){},
 
         _paused : function (){
-            return this.media.isPaused();
+            /// use local --flowplayer.isPaused() is still false during onPause()!
+            return ! this.__playing;
         },
 
-        _playing : function (){
-            return this.media.isPlaying();
+        _preload : function (val) {
+            if( val !== undefined )
+                this.config.preload = val;
         }
 
         // seeking defaultPlaybackRate playbackRate controls
 
-        /* Methods */
 
 
     };
