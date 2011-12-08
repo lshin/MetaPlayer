@@ -17,7 +17,6 @@
 
     function FlowplayerLoader (el, options, ramp) {
 
-
         if( !(this instanceof FlowplayerLoader ))
             return new FlowplayerLoader(el, options, ramp);
 
@@ -63,6 +62,12 @@
         this.media = FlowplayerLoader(el, options, this);
         return this.media;
     };
+
+    $f.addPlugin("ramp", function (rampId, rampHost) {
+        this.ramp = Ramp(rampId, rampHost);
+        Ramp.Players.FlowplayerLoader( this, {}, this.ramp );
+        return this;
+    });
 
     FlowplayerLoader.prototype = {
 
@@ -410,13 +415,4 @@
 
     };
 
-    $f.addPlugin("ramp", function (el, options, ramp) {
-
-        // ... set up ramp instance
-
-
-        // ... set up flowplayer mediacontroller
-
-        return this;
-    });
 })();

@@ -42,18 +42,9 @@
 <div id="target"></div>
 
 <script>
-    var player = $f("target", "../../../external/flowplayer/flowplayer-3.2.7.swf",
-            {
-                clip: {
-                    autoPlay: false,
-                    autoBuffering: true
-                }
-            });
-
-    var ramp = Ramp(36234882, '/pca');
-    var media = Ramp.Players.FlowplayerLoader( player, {}, ramp );
-
-    player.load();
+    var fp = $f("target", "../../../external/flowplayer/flowplayer-3.2.7.swf")
+        .ramp(36234882, '/pca')
+        .load();
 
 </script>
 
