@@ -21,7 +21,7 @@
         this.addDataListeners();
     };
 
-    Ramp.Loaders.Popcorn = PopcornLoader;
+    Ramp.Views.Popcorn = PopcornLoader;
 
     Ramp.prototype.metaq = function (options) {
         if( ! this.popcorn && this.media )

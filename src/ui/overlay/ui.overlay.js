@@ -23,8 +23,10 @@
             this.container = this.config.container;
             this.init();
         }
-        else
+        else {
+            this.container = this.config.target || this.media.parentNode;
             this.createMarkup(); // async init
+        }
     };
 
     Ramp.Views.Overlay = Overlay;
@@ -81,11 +83,12 @@
                 self.onVolumeDrag(e);
             });
 
-            if( this.config.autoHide ) {
-                this.container.bind('mouseenter', function () {
+            if( this.config.autoHide  && ! this.config.target ) {
+                var container = $(this.container);
+                container.bind('mouseenter', function () {
                     self.toggle(true)
                 });
-                this.container.bind('mouseleave', function () {
+                container.bind('mouseleave', function () {
                     self.toggle(false)
                 })
             }
@@ -218,8 +221,7 @@
             $.ajax(url , {
                 context: this,
                 success : function (data){
-                    this.container = $(this.media).parent();
-                    this.container.append(data);
+                    $(this.container).append(data);
                     this.init();
                 }
             });

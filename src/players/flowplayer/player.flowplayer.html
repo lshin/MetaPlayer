@@ -46,26 +46,12 @@
             {
                 clip: {
                     autoPlay: false,
-//                    autoBuffering: false,
-                    url: "http://pseudo01.hddn.com/vod/demo.flowplayervod/flowplayer-700.flv"
-                },
-                plugins: {
-                    controls: {
-                        autoHide: false
-                    }
+                    autoBuffering: true
                 }
             });
 
-    var media = Ramp.Players.FlowplayerLoader( player, {preload: false} );
-
-//    var events = "loadstart progress suspend emptied stalled play pause " +
-//            "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
-//            "seeking seeked timeupdate ended ratechange durationchange volumechange";
-//    var logit = function(e, type){
-////        if( e.type != "timeupdate" &&  e.type != "progress" )
-//            console.log(["event", type, e.type, e]);
-//    };
-//    $(media).bind(events, function (e){ logit(e, "player") });
+    var ramp = Ramp(36234882, '/pca');
+    var media = Ramp.Players.FlowplayerLoader( player, {}, ramp );
 
     player.load();
 

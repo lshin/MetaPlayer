@@ -31,9 +31,11 @@
         Ramp.Utils.Proxy.mapProperty("index", this, this._index);
 
         this.ramp = ramp;
-        this.ramp.service.metadata(this.onMetadata, this);
-        this.ramp.service.transcodes(this.onTranscodes, this);
-        this.ramp.service.related(this.onRelated, this);
+        if( ramp ) {
+            this.ramp.service.metadata(this.onMetadata, this);
+            this.ramp.service.transcodes(this.onTranscodes, this);
+            this.ramp.service.related(this.onRelated, this);
+        }
     };
 
     Ramp.Players.Html5Player = Html5Player;

@@ -40,25 +40,28 @@ PlayerUnit.prototype = {
                 unit.equal( isNaN(self.media.duration), false, "duration defined");
             });
 
-            self.media.load();
-        },{ postDelay: 3000 });
+            unit.equal( self.media.paused, true, "media instance paused");
 
-//        unit.test("currentTime",  function () {
-//            var seekTarget = Math.floor(self.media.duration / 2);
-//            unit.log("Seek target: " + seekTarget);
-//            unit.equal( self.isNearTime(0), true, "initial self.media.currentTime is 0");
-//            unit.equal( self.media.seeking, false, "initial self.media.seeking is false");
-//            unit.event("seeking", self.media, "seeking event", function (e) {
-//                unit.equal( self.media.seeking, true, "seeking media.seeking is true");
-//            });
-//            unit.event("seeked", self.media, "seeked event", function (e) {
-//                unit.equal( self.isNearTime(seekTarget), true, "seeked currentTime near "  + seekTarget);
-//            });
-//            unit.event("timeupdate", self.media, "timeupdate event", function (e) {
-//                unit.equal( self.isNearTime(seekTarget), true, "timeupdate currentTime near " + seekTarget);
-//            });
-//            self.media.currentTime = seekTarget;
-//        });
+            self.media.load();
+        }, {postDelay : 0 });
+
+        unit.test("currentTime",  function () {
+            var seekTarget = Math.floor(self.media.duration / 2);
+            unit.log("Seek target: " + seekTarget);
+            unit.equal( self.media.paused, true, "media instance paused");
+            unit.equal( self.isNearTime(0), true, "initial self.media.currentTime is 0");
+            unit.equal( self.media.seeking, false, "initial self.media.seeking is false");
+            unit.event("seeking", self.media, "seeking event", function (e) {
+                unit.equal( self.media.seeking, true, "seeking media.seeking is true");
+            });
+            unit.event("seeked", self.media, "seeked event", function (e) {
+                unit.equal( self.isNearTime(seekTarget), true, "seeked currentTime near "  + seekTarget);
+            });
+            unit.event("timeupdate", self.media, "timeupdate event", function (e) {
+                unit.equal( self.isNearTime(seekTarget), true, "timeupdate currentTime near " + seekTarget);
+            });
+            self.media.currentTime = seekTarget;
+        }, {postDelay : 0 });
 
         unit.test("play",  function () {
             unit.equal( self.media.ended, false, "media.ended is false");

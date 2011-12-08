@@ -206,7 +206,6 @@
 
 
             x = Math.min(x, track.width());
-//            x = Math.min(x, buffer.width());
             x = Math.max(x, 0);
 
 
@@ -238,7 +237,7 @@
             clearTimeout( this.seekDelay );
             var self = this;
             this.seekDelay = setTimeout( function () {
-//                self.seek(time);
+                self.seek(time);
             }, 100);
         },
 

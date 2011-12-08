@@ -1,4 +1,5 @@
 (function () {
+    var $ = jQuery;
 
     var Proxy = {
         proxyProperty : function (props, source, target ){

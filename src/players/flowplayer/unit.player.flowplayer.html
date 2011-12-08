@@ -47,7 +47,7 @@
     <script type="text/javascript">
 
         var unit = okjs({
-            exceptions: 0, // enable for debugging
+            exceptions: 1, // enable for debugging
             verbose: true
         });
 
@@ -56,24 +56,18 @@
         var ramp, player, media;
 
         unit.test("ramp setup", function () {
-            player = $f("target", "../../../external/flowplayer/flowplayer-3.2.7.swf",
-                    {
-                        clip: {
-                            autoPlay: false,
-                            autoBuffering: false,
-                            url: "http://pseudo01.hddn.com/vod/demo.flowplayervod/flowplayer-700.flv"
-                        },
-                        plugins: {
-                            controls: {
+           // ramp services
+            ramp = Ramp('36234882', "/pca");
 
-                                autoHide: false
-                            }
-                        }
-                    });
+            // html5 player loader
+            media = ramp.flowplayer('#target', {
+                autoplay: false, preload: false,
+                swfUrl : "../../../external/flowplayer/flowplayer-3.2.7.swf"
+            });
+
         });
 
         unit.test("harness init", function () {
-            media = Ramp.Players.FlowplayerLoader( player, {preload: false, autoplay: false} );
             harness.media = media;
             unit.nequal( harness.media, null, "have video element");
         });
