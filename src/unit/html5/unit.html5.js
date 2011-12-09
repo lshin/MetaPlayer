@@ -127,8 +127,8 @@ PlayerUnit.prototype = {
         unit.test("ended event",  function () {
             unit.equal( self.media.paused, false, "media.paused is false");
             unit.event("seeking", self.media, "seeking event");
-            unit.event("ended", self.media, "ended event");
-            self.media.currentTime = self.media.duration - 3;
+            unit.event("ended", self.media, "ended event", null, 5000);
+            self.media.currentTime = self.media.duration - 1;
         });
 
     }

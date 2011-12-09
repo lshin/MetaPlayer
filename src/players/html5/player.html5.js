@@ -70,6 +70,8 @@
                 this.media.autoplay = this.config.autoplay;
                 this.media.preload = this.config.preload;
                 this.media.controls = this.config.controls;
+                this.media.style.width = "100%";
+                this.media.style.height = "100%";
                 c.append(this.media);
             }
         },
