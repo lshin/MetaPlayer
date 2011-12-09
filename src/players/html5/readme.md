@@ -1,4 +1,4 @@
-Metaplayer : Flowplayer Plugin
+Metaplayer : Html5 Playlist Plugin
 =============
  An HTML5 Playlist adapter for Metaplayer.
 
