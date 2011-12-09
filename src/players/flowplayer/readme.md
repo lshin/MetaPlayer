@@ -4,9 +4,9 @@ Metaplayer : Flowplayer Plugin
 
 About
 -------------
-This library adapts a Flowplayer instance into an HTML5 MediaController.  Additional, if a RAMP Metaplayer object
+This library adapts a Flowplayer instance into an HTML5 MediaController.  Additionally, if a Metaplayer object
 is provided, it will initialize the flowplayer instance with media urls and transcripts.  Use of this library will
-enable other HTML5 Videoi utilities, such as PopcornJS, to work without modification.
+enable other HTML5 Video utilities, such as PopcornJS, to work without modification.
 
 
 Quick Start
