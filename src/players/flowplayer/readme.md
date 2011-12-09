@@ -77,7 +77,7 @@ Constructors
         * `swfUrl` (required) - url to the flowplayer swf
         * `related` (optional) - use RAMP related videos to initialize a Flowplayer playlist. Default is `true`
         * `preload` (optional) - enables flowplayer autoBuffering on all clips added/ Default is `true`.,
-        * `autoplay` (optional) - enables flowplayer autoPlay on all clips added.. Default is `true`.,
+        * `autoplay` (optional) - enables flowplayer autoPlay on all clips added. Default is `true`.,
         * `wmode` (optional) - sets the swf wmode. Default is `true` to allow for HTML overlays.
         * `fpConfig` (optional) - optional flowplayer configuration to be used.
 

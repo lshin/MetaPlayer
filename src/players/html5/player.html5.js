@@ -14,10 +14,10 @@
         controls : true
     };
 
-    var Html5Player = function (ramp, el, options) {
+    var Html5Playlist = function (el, options, ramp) {
 
-        if( !(this instanceof Html5Player ))
-            return new Html5Player(ramp, el, options);
+        if( !(this instanceof Html5Playlist ))
+            return new Html5Playlist(el, options, ramp);
 
         this.config = $.extend({}, defaults, options);
         this.container = el;
@@ -38,14 +38,14 @@
         }
     };
 
-    Ramp.Players.Html5Player = Html5Player;
+    Ramp.Players.Html5Playlist = Html5Playlist;
 
     Ramp.prototype.html5 = function (el, options) {
-        this.media = Html5Player(this, el, options);
+        this.media = Html5Playlist(el, options, this);
         return this.media;
     };
 
-    Html5Player.prototype = {
+    Html5Playlist.prototype = {
 
         load : function () {
             if( this.config.applySources )
@@ -55,7 +55,9 @@
                 this._selectSource();
 
             this.config.preload = true; // can be called before transcodes available
-            this.media.load();
+
+            var media = $(this.media).get(0);
+            media.load();
         },
 
         createMarkup : function () {
@@ -94,18 +96,18 @@
         },
 
         _addSources : function () {
-            var media = this.media;
-            $(media).find('source').remove();
+            var media = $(this.media);
+            media.find('source').remove();
             $.each(this.transcodes, function (i, source) {
                 var src = document.createElement('source');
                 src.setAttribute('type', source.type);
                 src.setAttribute('src', source.url);
-                media.appendChild(src);
+                media.append(src);
             });
         },
 
         _selectSource : function () {
-            var media = this.media;
+            var media = $(this.media).get(0);
             $.each(this.transcodes, function (i, source) {
                 if( media.canPlayType(source.type) ){
                     media.src = source.url;
@@ -179,22 +181,23 @@
         },
 
         addMediaProxy : function () {
+            var media = $(this.media).get(0);
             // proxy entire MediaController interface
             // http://dev.w3.org/html5/spec/Overview.html#mediacontroller
             //     .. plus a few unofficial dom extras
             Ramp.Utils.Proxy.proxyProperty("duration currentTime volume muted buffered seekable" +
                 " paused played seeking defaultPlaybackRate playbackRate" +
                 " ended readyState parentNode offsetHeight offsetWidth style className id controls",
-                this.media, this);
+                media, this);
 
             Ramp.Utils.Proxy.proxyFunction("play pause" +
                 " getBoundingClientRect getElementsByTagName",
-                this.media, this);
+                media, this);
 
             Ramp.Utils.Proxy.proxyEvent("loadstart progress suspend emptied stalled play pause " +
                 "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
                 "seeking seeked timeupdate ended ratechange durationchange volumechange",
-                this.media, this);
+                media, this);
         }
 
 
