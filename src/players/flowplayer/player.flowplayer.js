@@ -15,10 +15,10 @@
         }
     };
 
-    function FlowplayerLoader (el, options, ramp) {
+    function FlowPlayer (el, options, ramp) {
 
-        if( !(this instanceof FlowplayerLoader ))
-            return new FlowplayerLoader(el, options, ramp);
+        if( !(this instanceof FlowPlayer ))
+            return new FlowPlayer(el, options, ramp);
 
         this.config = $.extend(true, {}, defaults, options);
         this.container = el;
@@ -56,20 +56,20 @@
         }
     }
 
-    Ramp.Players.FlowplayerLoader = FlowplayerLoader;
+    Ramp.Players.FlowPlayer = FlowPlayer;
 
     Ramp.prototype.flowplayer = function (el, options){
-        this.media = FlowplayerLoader(el, options, this);
+        this.media = FlowPlayer(el, options, this);
         return this.media;
     };
 
     $f.addPlugin("ramp", function (rampId, rampHost) {
         this.ramp = Ramp(rampId, rampHost);
-        Ramp.Players.FlowplayerLoader( this, {}, this.ramp );
+        Ramp.Players.FlowPlayer( this, {}, this.ramp );
         return this;
     });
 
-    FlowplayerLoader.prototype = {
+    FlowPlayer.prototype = {
 
         load : function () {
             this.preload = true;
