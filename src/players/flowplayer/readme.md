@@ -4,14 +4,6 @@ Metaplayer : Flowplayer Plugin
 
 About
 -------------
-JavaScript and the web form a heavily asynchronous environment, which can pose particular challenges for JS based unit
-testing.  In particular, Ajax, click handlers, and other observer models require that exceptions be caught in various
-execution blocks and without interfering with object scope.  Additionally, these methods need to execute in a specified
-amount of time.
-
-The okjs library directly attends to these hurdles, and is specifically intended for the development process.
-
-
 This library adapts a Flowplayer instance into an HTML5 MediaController.  Additional, if a RAMP Metaplayer object
 is provided, it will initialize the flowplayer instance with media urls and transcripts.  Use of this library will
 enable other HTML5 Videoi utilities, such as PopcornJS, to work without modification.
@@ -74,7 +66,7 @@ Constructors
 
         (optional) Object with key value pair options:
 
-            * related - use RAMP related videos to initialize a Flowplayer playlist. Defaults to true.
+        * related - use RAMP related videos to initialize a Flowplayer playlist. Defaults to true.
 
 
 * `ramp.flowplayer(el, config)`
