@@ -1,0 +1,119 @@
+
+<!doctype html>
+<html>
+<head>
+
+
+
+
+</head>
+
+<body>
+
+<pre>
+    <!--<script type="text/javascript">-->
+    var RAMP, callback_fn;
+
+    /* Data Services */
+    var media;
+    media = RAMP.media("ramp:pca/12345");
+    media = RAMP.media("ramp://publishing.ramp.com/12345");
+
+
+    /* MetaPlayer */
+    var mp;
+
+    mp = RAMP.metaplayer('#target', "ramp:pca/12345");
+    mp = RAMP.metaplayer('#target');
+
+    mp.load("ramp:pca/12345");
+
+    // metadata & services
+    mp.onMetadata( callback_fn );
+    mp.onCaptions( callback_fn );
+    mp.onMetaQ( callback_fn );
+
+    // playback (html5 mediacontroller)
+    mp.pause();
+    mp.play();
+    mp.currentTime = 10;
+    mp.addEventListener("ended", callback_fn );
+
+    // playlist
+    mp.next();
+    mp.previous();
+    mp.loop = true;
+    mp.index = 2;
+    mp.playlist = [ "ramp:advisor/12345", "ramp:recipe/23456" ];
+    mp.onPlaylist( callback_fn );
+    mp.onTrack( callback_fn );
+
+    // plugins
+    mp.controls();
+    mp.overlay();
+    <!--</script>-->
+</pre>
+
+
+<div id="sketch">
+
+    <!-- developer provided target div-->
+    <div id="target">
+
+        <!-- player generated -->
+        <div class="mp-player" style="position: relative; height: 100%; width: 100%">
+            <div class="mp-video" style="position: absolute; top: 0; bottom: 32px; left: 0; right: 0;"> ... playback video, swfs, etc ... </div>
+            <div class="mp-controls" style="position: absolute; bottom: 0; height: 32px; width: 100%"> ... controls optionally reduce playback height... </div>
+            <div class="mp-overlay" style="position: absolute; top: 0; height: 100px; width: 100%"> ... overlay top ...</div>
+        </div>
+
+    </div>
+
+
+</div>
+
+<style type="text/css">
+    body {
+        font-size: 12px;
+        font-family: monospace;
+    }
+    #sketch {
+        color: white;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+
+    #target {
+        margin:  20px;
+        height: 250px;
+        width: 600px;
+        padding:  20px;
+        background: red;
+    }
+
+    .mp-player {
+        background: blue;
+    }
+    .mp-video {
+        background: #000;
+        color: white;
+        text-align: center;
+        outline:  2px solid white;
+        padding-top: 90px;
+        font-size: 1.5em;
+    }
+    .mp-controls {
+        background: purple;
+        opacity: .8;
+
+    }
+    .mp-overlay {
+        background: #ff8800;
+        opacity: .8;
+
+    }
+</style>
+</body>
+
+</html>
