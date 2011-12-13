@@ -51,7 +51,7 @@
 
         unit.test("test setup", function () {
             ramp = Ramp("video1", "data/");
-            media = ramp.html5('#video', { autoplay : false });
+            media = ramp.html5('#video', { autoplay : false, loop : true });
             harness.media = media;
             harness.service = ramp.service;
         });
@@ -67,7 +67,7 @@
 </head>
 <body>
 
-<h3>Unit Test &raquo;Metaplayer &raquo; HTML5 Player API</h3>
+<h3>Unit Test &raquo; Metaplayer &raquo; HTML5 Player API</h3>
 <div>All implemented player adapters must pass this MediaController API Test</div>
 
 <div id='video' class="video">

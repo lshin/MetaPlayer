@@ -32,26 +32,81 @@ PlaylistUnit.prototype = {
 
         unit.test("intial state", function () {
             unit.equal( self.media.index, 0, "default index is 0");
+            unit.equal(self.media.nextTrackIndex(), 1, "nextTrackIndex: 1");
         });
 
-        unit.test("seek to end", function () {
-            unit.event("seeked", self.media, "seeked     event", function (){
+        unit.test("seek to end, autoadvance", function () {
+            unit.equal(self.media.index, 0, "now on first video");
+            unit.event("seeked", self.media, "seeked event", function (){
                 unit.event("ended", self.media, "ended event");
-                unit.event("mediaChange", self.service, "media change event");
+                unit.event("trackChange", self.media, "trackChange event", function () {
+                    unit.equal(self.media.index, 1, "now on second video");
+                    unit.equal( self.getCurrentTitle(), "Video 2", "second video title matches");
+                });
             });
             self.media.currentTime = self.media.duration - 3;
             self.media.play();
         });
 
-        unit.test("next clip test ", function () {
+        unit.test("index assign", function () {
             unit.equal(self.media.index, 1, "now on second video");
-            unit.equal( self.getCurrentTitle(), "Video 2", "second video title matches");
-
+            unit.event("trackChange", self.media, "trackChange event", function () {
+                unit.equal(self.media.index, 0, "now on first video");
+            });
+            self.media.index = 0;
         });
 
-        // TEST: Playlist Loading
-        // TEST: Next Previous
-        // TEST: Index
-        // TEST: Auto Advance
+        unit.test("nextTrack()", function () {
+            unit.equal(self.media.index, 0, "now on first video");
+            unit.event("trackChange", self.media, "trackChange event", function () {
+                unit.equal(self.media.index, 1, "now on second video");
+            });
+            self.media.nextTrack();
+        });
+
+        unit.test("previousTrack()", function () {
+            unit.equal(self.media.index, 1, "now on second video");
+            unit.event("trackChange", self.media, "trackChange event", function () {
+                unit.equal(self.media.index, 0, "now on first video");
+            });
+            self.media.previousTrack();
+        });
+
+        unit.test("previousTrack() loops ", function () {
+            unit.equal(self.media.index, 0, "now on first video");
+            unit.event("trackChange", self.media, "trackChange event", function () {
+                unit.equal(self.media.index, 1, "now on second video");
+            });
+            unit.equal(self.media.nextTrackIndex(), 1, "nextTrackIndex: 1");
+            self.media.previousTrack()
+        });
+
+        unit.test("nextTrack() loops ", function () {
+            unit.equal(self.media.index, 1, "now on second video");
+            unit.event("trackChange", self.media, "trackChange event", function () {
+                unit.equal(self.media.index, 0, "now on first video");
+            });
+            unit.equal(self.media.nextTrackIndex(), 0, "nextTrackIndex: 0");
+            self.media.nextTrack()
+        });
+
+        unit.test("ended loops ", function () {
+            unit.equal(self.media.index, 0, "now on first video");
+            unit.event("trackChange", self.media, "trackChange event", function () {
+                unit.event("canplay", self.media, "canplay event", function () {
+                    unit.equal(self.media.index, self.media.playlist.length - 1, "now on last video");
+                    unit.event("seeked", self.media, "seeked event", function (){
+                        unit.event("ended", self.media, "ended event");
+                        unit.event("trackChange", self.media, "trackChange event", function () {
+                            unit.equal(self.media.index, 0, "now on first video");
+                        });
+                    });
+                    self.media.currentTime = self.media.duration - 3;
+                    self.media.play();
+                });
+            });
+            self.media.index = self.media.playlist.length - 1;
+        });
+
     }
 };
