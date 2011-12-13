@@ -65,13 +65,15 @@
             this.report(error, message);
         },
 
-        skip  : function( got, expected, message ) {
-            this.report(null, message, "skip" );
+        assert  : function( got, message ) {
+            var error;
+            if( ! this.compare(Boolean(got), true) )
+                error = "assert: unexpected " + got;
+            this.report(error, message);
         },
 
-        throws : function  (message, callback, opt_message) {
-            // todo: test which expects an exception to be thrown?
-            throw "to be implemented";
+        skip  : function( got, expected, message ) {
+            this.report(null, message, "skip" );
         },
 
         test : function (message, callback, options) {
@@ -95,9 +97,10 @@
             }
         },
 
-        callback : function (message, wait_ms, callback, scope) {
-            if( wait_ms == null)
-                wait_ms = this.options.wait_ms;
+        callback : function (message, callback, scope, options) {
+            var wait_ms = ( options &&  options.wait_ms != null )
+                ? options.wait_ms
+                : this.options.wait_ms;
 
             var unit = this;
             var ignore = false;
@@ -131,6 +134,7 @@
                     }
                 }
                 unit._events--;
+                ignore = true;
                 unit._resume();
             };
         },
@@ -138,6 +142,9 @@
         event : function  (type, object, message, callback, wait_ms) {
             if( wait_ms == null)
                 wait_ms = this.options.wait_ms;
+
+            if( ! message )
+                message = "event : " + type;
 
             if( !(object.addEventListener instanceof Function) ){
                 this.report("not an event listener", message);
