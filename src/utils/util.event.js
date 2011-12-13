@@ -1,7 +1,7 @@
 
 (function () {
 
-    Ramp.EventDispatcher = function ( target ) {
+    Ramp.Utils.EventDispatcher = function ( target ) {
 
         if( target._listeners )
             return;

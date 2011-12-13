@@ -24,7 +24,7 @@
         this.playlist = [];
         this.transcodes = [];
 
-        Ramp.EventDispatcher(this);
+        Ramp.Utils.EventDispatcher(this);
         this.createMarkup();
         this.addMediaProxy();
         this.addMediaListeners();

@@ -10,7 +10,7 @@
 
         this.config = $.extend({}, defaults, options);
 
-        Ramp.EventDispatcher(this);
+        Ramp.Utils.EventDispatcher(this);
 
         this.observable('metadata');
         this.observable('transcodes');

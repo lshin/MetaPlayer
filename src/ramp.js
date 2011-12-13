@@ -30,8 +30,6 @@ var Ramp;
         if( ! (this instanceof Ramp) )
             return new Ramp(mediaId, host, options);
 
-        Ramp.EventDispatcher(this);
-
         this.service();
 
         if( mediaId && host ) {

@@ -6,7 +6,7 @@
             return new Ramp.Timer(delay, count);
 
         var self = this;
-        Ramp.EventDispatcher(this);
+        Ramp.Utils.EventDispatcher(this);
         this.delay = delay;
         this.count = count || -1;
         this._counted = 0;
