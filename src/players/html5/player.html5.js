@@ -6,46 +6,59 @@
     var defaults = {
         applySources : true,
         selectSource : true,
-        autoplay : true,
         preload : true,
+        muted : false,
+        autoplay : false,
         autoAdvance : true,
         related: true,
         loop : false,
         controls : true
     };
 
-    var Html5Playlist = function (el, options, ramp) {
+    var Html5Player = function (el, url, options ){
 
-        if( !(this instanceof Html5Playlist ))
-            return new Html5Playlist(el, options, ramp);
+        if( !(this instanceof Html5Player ))
+            return new Html5Player(el, url, options);
 
         this.config = $.extend({}, defaults, options);
-        this.container = el;
-        this.playlist = [];
-        this.transcodes = [];
 
-        Ramp.Utils.EventDispatcher(this);
-        this.createMarkup();
-        this.addMediaProxy();
-        this.addMediaListeners();
-        Ramp.Utils.Proxy.mapProperty("index", this, this._index);
+        this._dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
+        this._dispatcher.attach(this);
 
-        this.ramp = ramp;
-        if( ramp ) {
-            this.ramp.service.metadata(this.onMetadata, this);
-            this.ramp.service.transcodes(this.onTranscodes, this);
-            this.ramp.service.related(this.onRelated, this);
-        }
+        this._transcodes = [];
+        this._haveRelated = false;
+
+        // set up playlist, have it use our event dispatcher
+        this.service = Ramp.data({
+            dispatcher : this._dispatcher
+        });
+        this.service.attach(this);
+
+        // set up playlist, have it use our event dispatcher
+        this.playlist = Ramp.playlist({
+            dispatcher : this._dispatcher,
+            loop : this.config.loop
+        });
+        this.playlist.attach(this);
+
+        this._createMarkup( el);
+        this._addMediaProxy();
+        this._addListeners();
+        this._addMediaListeners();
+
+        if( url )
+            this.queue(url);
     };
 
-    Ramp.Players.Html5Playlist = Html5Playlist;
 
-    Ramp.prototype.html5 = function (el, options) {
-        this.media = Html5Playlist(el, options, this);
-        return this.media;
+    Ramp.html5 = function (el, url, options) {
+        return Html5Player(el, url, options);
     };
 
-    Html5Playlist.prototype = {
+    Ramp.metaplayer = Ramp.html5;
+    Ramp.Players.Html5Player = Html5Player;
+
+    Html5Player.prototype = {
 
         load : function () {
             if( this.config.applySources )
@@ -56,51 +69,81 @@
 
             this.config.preload = true; // can be called before transcodes available
 
-            var media = $(this.media).get(0);
+            var media = $(this._video).get(0);
             media.load();
         },
 
-        createMarkup : function () {
-            var c = $(this.container);
-            if( c.is('video') ) {
-                this.media = this.container;
+
+        _createMarkup : function ( parent ) {
+            var c = $('<div class="mp-player"></div>');
+            c.css('position', 'relative');
+            c.css('left', '0');
+            c.css('top', '0');
+            c.css('width', '100%');
+            c.css('height', '100%');
+
+            var p = $(parent);
+
+            // if is video, wrap with div
+            if( p.is('video') ) {
+                this._video = parent;
+                p.parent().append(c);
             }
+
+            // else append the wrapper to the target, create video element
             else {
-                this.media = document.createElement('video');
-                this.media.autoplay = this.config.autoplay;
-                this.media.preload = this.config.preload;
-                this.media.controls = this.config.controls;
-                this.media.style.width = "100%";
-                this.media.style.height = "100%";
-                c.append(this.media);
+                p.append(c);
+                var video = document.createElement('video');
+                video.autoplay = this.config.autoplay;
+                video.preload = this.config.preload;
+                video.controls = this.config.controls;
+                video.muted = this.config.muted;
+                video.style.width = "100%";
+                video.style.height = "100%";
+                this._video = video;
             }
+
+            var v = $(this._video);
+            v.css("position", "absolute");
+            v.css('left', '0');
+            v.css('top', '0');
+            // append video to wrapper
+            c.append(v);
         },
 
-        onMetadata : function (metadata) {
-            if( this._hasPlaylist )
+
+        _addListeners : function () {
+            this.onTrackChange(this._onTrackChange, this);
+            this.onMetaData(this._onMetaData, this);
+            this.onTranscodes(this._onTranscodes, this);
+            this.onRelated(this._onRelated, this);
+        },
+
+        _onTrackChange : function () {
+            this.service.load( this.playlist.track()  )
+        },
+
+        _onMetaData : function (metadata) {
+
+        },
+
+        _onRelated : function (related) {
+            if( this._haveRelated || ! this.config.related )
                 return;
-            this.playlist.push( metadata );
-            this.__index = 0;
+            this.playlist.queue( related );
+            this._haveRelated = true;
         },
 
-        onRelated : function (related) {
-            if( this._hasPlaylist || ! this.config.related )
-                return;
-            this.playlist = this.playlist.concat(related);
-            this._hasPlaylist = true;
-            this.dispatch("playlistChange", this.playlist);
-        },
-
-        onTranscodes : function (transcodes) {
-            this.transcodes = transcodes;
+        _onTranscodes : function (transcodes) {
+            this._transcodes = transcodes;
             if( this.config.preload )
                 this.load();
         },
 
         _addSources : function () {
-            var media = $(this.media);
+            var media = $(this._video);
             media.find('source').remove();
-            $.each(this.transcodes, function (i, source) {
+            $.each(this._transcodes, function (i, source) {
                 var src = document.createElement('source');
                 src.setAttribute('type', source.type);
                 src.setAttribute('src', source.url);
@@ -109,86 +152,39 @@
         },
 
         _selectSource : function () {
-            var media = $(this.media).get(0);
-            $.each(this.transcodes, function (i, source) {
+            var media = $(this._video).get(0);
+            $.each(this._transcodes, function (i, source) {
                 if( media.canPlayType(source.type) ){
                     media.src = source.url;
                     return false;
                 }
             });
-            this.dispatch("trackChange");
         },
 
-        addMediaListeners : function () {
+        _addMediaListeners : function () {
             var self = this;
-            $(this.media).bind('ended', function(){
-                self.onEnded()
+            $(this._video).bind('ended', function(){
+                self._onEnded()
             });
-
+            $(this._video).bind('playing', function(){
+                self.autoplay = true;
+            });
         },
 
-        onEnded : function () {
+        _onEnded : function () {
             if(! this.config.autoAdvance )
                 return;
-
-            var i = this.nextTrackIndex();
-
-            if(i == null ||  i == 0 ) {
-                this.dispatch("playlistComplete");
-            }
-
-            this.nextTrack();
+            this.autoplay = true;
+            this.playlist.next();
         },
 
-        /* Playlist */
-
-        _index : function ( i ) {
-            if( i !== undefined ) {
-                this.__index = i;
-                this.ramp.service.load( this.playlist[i].rampId );
-            }
-            return this.__index;
-        },
-
-        nextTrackIndex : function () {
-            var i = this.index;
-            if( i + 1 < this.playlist.length )
-                i++;
-            else if(! this.config.loop )
-                return;
-            else
-                i = 0;
-
-            if( i == this.index )
-                i = null;
-
-            return i;
-        },
-
-        nextTrack  : function () {
-            var i = this.nextTrackIndex();
-            if( i !== null )
-                this.index = i;
-        },
-
-        previousTrack : function () {
-            var i = this.index;
-            if( i - 1 >= 0 )
-                i--;
-            else if(! this.config.loop )
-                return;
-            else
-                i = this.playlist.length - 1;
-            this.index = i;
-        },
-
-        addMediaProxy : function () {
-            var media = $(this.media).get(0);
+        _addMediaProxy : function () {
+            var media = $(this._video).get(0);
             // proxy entire MediaController interface
             // http://dev.w3.org/html5/spec/Overview.html#mediacontroller
             //     .. plus a few unofficial dom extras
             Ramp.Utils.Proxy.proxyProperty("duration currentTime volume muted buffered seekable" +
-                " paused played seeking defaultPlaybackRate playbackRate" +
+                " paused played seeking defaultPlaybackRate playbackRate autoplay preload src" +
                 " ended readyState parentNode offsetHeight offsetWidth style className id controls",
                 media, this);
 

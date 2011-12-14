@@ -1,8 +1,14 @@
 .metaplayer-controls {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    height: 32px;
+}
+
+.metaplayer-box {
     background: #aaa;
-    height: 24px;
     padding:  4px;
-    position: relative;
 }
 
 .metaplayer-play,

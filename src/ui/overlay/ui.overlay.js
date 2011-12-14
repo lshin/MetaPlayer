@@ -10,36 +10,40 @@
         template : 'ui.overlay.tmpl.html'
     };
 
-    var Overlay = function (media, options, ramp) {
+    var Overlay = function (player, service, options) {
 
         if( !(this instanceof Overlay ))
-            return new Overlay(media, options, ramp);
+            return new Overlay(player, service, options);
 
         this.config = $.extend({}, defaults, options);
-        this.ramp = ramp;
-        this.media = media;
+
+        // two-argument constructor(player, options)
+        if( options == undefined && player.service ) {
+            options = service;
+            service = player.service;
+        }
+        this.service = service;
+        this.player = player;
 
         if( this.config.container ) {
             this.container = this.config.container;
             this.init();
         }
         else {
-            this.container = this.config.target || this.media.parentNode;
+            this.container = this.config.target || this.player.parentNode;
             this.createMarkup(); // async init
         }
     };
 
-    Ramp.Views.Overlay = Overlay;
-
-    Ramp.prototype.overlay = function (options) {
-        return Overlay(this.media, options, this);
+    Ramp.overlay = function (player, service, options) {
+        return Overlay(player, service, options);
     };
-
 
     Overlay.prototype = {
         init : function () {
             this.addUIListeners();
             this.addPlayerListeners();
+            this.addPlaylistListeners();
             this.addPopcornListeners();
             this.addServiceListeners();
 
@@ -55,19 +59,19 @@
         addUIListeners : function () {
             var self = this;
             this.find('play').click( function (e) {
-                self.media.play();
+                self.player.play();
             });
             this.find('play').click( function (e) {
-                self.media.play();
+                self.player.play();
             });
             this.find('pause').click( function (e) {
-                self.media.pause();
+                self.player.pause();
             });
             this.find('mute').click( function (e) {
-                self.media.muted = true;
+                self.player.muted = true;
             });
             this.find('unmute').click( function (e) {
-                self.media.muted = false;
+                self.player.muted = false;
             });
 
             var volume_bg = this.find('volume-bg');
@@ -94,12 +98,14 @@
             }
 
             this.find('preview').click( function () {
-                self.media.nextTrack();
+                self.player.next();
             });
         },
 
         addServiceListeners : function () {
-            this.ramp.service.tags(this.onTags, this);
+            if( ! this.service.onTags )
+                return;
+            this.service.onTags(this.onTags, this);
         },
 
         onTags : function (tags) {
@@ -110,12 +116,13 @@
         },
 
         onTrackChange : function () {
+
             this.nextup = null;
 
             $('.' + this.cssName('tag') ).remove();
             this.find('next').hide();
 
-            var nextup = this.media.playlist[ this.media.nextTrackIndex() ];
+            var nextup = this.player.nextTrack();
             if( nextup ){
                 this.find('preview-thumb').attr('src', nextup.thumbnail);
                 this.find('preview-title').text(nextup.title);
@@ -132,7 +139,7 @@
         },
 
         addPopcornListeners : function () {
-            if(! this.ramp.popcorn )
+            if(! this.player.popcorn )
                 return;
 
             var self = this;
@@ -146,13 +153,13 @@
         },
 
         setCaptions : function ( bool ){
-            if(! this.ramp.popcorn )
+            if(! this.player.popcorn )
                 return;
 
             if( bool )
-                this.ramp.popcorn.enable('subtitle');
+                this.player.popcorn.enable('subtitle');
             else
-                this.ramp.popcorn.disable('subtitle');
+                this.player.popcorn.disable('subtitle');
 
             this.find('cc').toggle(bool);
             this.find('cc-off').toggle(!bool)
@@ -161,16 +168,20 @@
 
         addPlayerListeners : function () {
             var self = this;
-            $(this.media).bind('pause play seeked seeking canplay', function(e){
+            $(this.player).bind('pause play seeked seeking canplay', function(e){
                 self.onPlayStateChange();
             });
-            $(this.media).bind('volumechange', function(e){
+            $(this.player).bind('volumechange', function(e){
                 self.onVolumeChange();
             });
 
-            $(this.media).bind('trackChange', function(e){
-                self.onTrackChange();
-            });
+        },
+
+        addPlaylistListeners : function (){
+            if( ! this.player.onTrackChange )
+                return;
+            this.player.onTrackChange( this.onTrackChange, this);
+            this.player.onPlaylistChange( this.onTrackChange, this);
         },
 
         onVolumeDragStart : function (e) {
@@ -195,23 +206,23 @@
             if( ratio > 1 )
                 ratio = 1;
             // todo, throttle the mousemove
-            this.media.muted = false;
-            this.media.volume = ratio;
+            this.player.muted = false;
+            this.player.volume = ratio;
         },
 
         onVolumeChange : function () {
-            var muted = this.media.muted;
+            var muted = this.player.muted;
             this.find('mute').toggle( !muted );
             this.find('unmute').toggle( muted );
 
-            var volume = muted ? 0 : this.media.volume;
+            var volume = muted ? 0 : this.player.volume;
 
             this.find('volume').width( (volume * 100) + "%");
         },
 
         onPlayStateChange : function (e) {
             // manage our timers based on play state
-            var paused = this.media.paused;
+            var paused = this.player.paused;
             this.find('play').toggle( paused );
             this.find('pause').toggle( !paused );
         },

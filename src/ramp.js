@@ -17,31 +17,20 @@
 
     Created: 2011 by Greg Kindel <gkindel@ramp.com>
 
-     Dependencies: jQuery
+    Dependencies: jQuery
 */
-var Ramp;
-
 (function () {
-    // ============================================================== Ramp()
-
-    var $ = jQuery;
-
-    Ramp = function (mediaId, host, options){
-        if( ! (this instanceof Ramp) )
-            return new Ramp(mediaId, host, options);
-
-        this.service();
-
-        if( mediaId && host ) {
-            this.service.load(mediaId, host)
+    window.Ramp = {
+        wrap : function (method, object) {
+            return function () {
+                method.apply(object || this, arguments);
+            };
         }
     };
-
-    // namespace anchors
     Ramp.Players = {};
     Ramp.Services = {};
     Ramp.Views = {};
     Ramp.UI = {};
     Ramp.Utils = {};
-
+    Ramp.Models = {};
 })();

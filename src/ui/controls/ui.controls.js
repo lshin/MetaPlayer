@@ -16,23 +16,29 @@
         renderMetaq : false
     };
 
-    var Controls = function (video, options, ramp) {
+    var Controls = function (player, service, options) {
 
         if( !(this instanceof Controls) )
-            return new Controls(video, options, ramp);
+            return new Controls(player, service, options);
 
         this.config = $.extend(true, {}, defaults, options);
 
-        var target = $(this.config.container || $(video).parent() );
+        // two-argument constructor(player, options)
+        if( options == undefined && player.service ) {
+            options = service;
+            service = player.service;
+        }
+
+        this.service = service;
+
+        var target = $(this.config.container || $(player).parent() );
         this.container = this.create('controls');
         target.append(this.container );
 
-        if( typeof video == "string")
-            video = document.getElementById( video.substr(1) );
-        this.player = video;
+        if( typeof player == "string")
+            player = document.getElementById( player.substr(1) );
+        this.player = player;
         this.player.controls = false;
-
-        this.ramp = ramp;
 
         this.annotations = [];
 
@@ -50,10 +56,8 @@
         this.clockTimer.listen('time', this.onClockTimer, this);
     };
 
-    Ramp.Controls = Controls;
-
-    Ramp.prototype.controls = function (options) {
-        return Controls(this.media, options, this);
+    Ramp.controls = function (player, options) {
+        return  Controls(player, options);
     };
 
     Controls.prototype = {
@@ -110,16 +114,15 @@
         },
 
         addDataListeners : function () {
-            if(! this.ramp ) {
+            if(! this.service.onMetaData )
                 return;
-            }
             if( this.config.renderTags )
-                this.ramp.service.tags(this._onTags, this);
+                this.service.onTags(this._onTags, this);
 
             if( this.config.renderMetaq )
-                this.ramp.service.metaq(this._onMetaq, this);
+                this.service.onMetaQ(this._onMetaq, this);
 
-            this.ramp.service.mediaChange(this.onMediaChange, this);
+            this.service.onMediaChange(this.onMediaChange, this);
 
         },
 
@@ -356,10 +359,14 @@
 
         createMarkup : function () {
             var controls = $(this.container);
+
+            var box = this.create('box');
+            controls.append(box)
+
             var play = this.create('play');
             play.append( this.create('icon-play') );
-            controls.append( play);
-            controls.append( this.create('fullscreen') );
+            box.append( play);
+            box.append( this.create('fullscreen') );
 
             var time = this.create('time');
             time.append( this.create('time-current') );
@@ -371,7 +378,7 @@
             track.append( this.create('track-fill') );
             track.append( this.create('track-overlay') );
             track.append( this.create('track-knob') );
-            controls.append(track);
+            box.append(track);
         },
 
         // display seconds in hh:mm:ss format

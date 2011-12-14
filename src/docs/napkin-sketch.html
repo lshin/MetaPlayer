@@ -11,47 +11,47 @@
 <body>
 
 <pre>
-    <!--<script type="text/javascript">-->
-    var RAMP, callback_fn;
+    <script type="text/javascript">
+        var RAMP, callback_fn;
 
-    /* Data Services */
-    var media;
-    media = RAMP.media("ramp:pca/12345");
-    media = RAMP.media("ramp://publishing.ramp.com/12345");
+        /* Data Services */
+        var media;
+        media = RAMP.media("ramp:pca/12345");
+        media = RAMP.media("ramp://publishing.ramp.com/12345");
 
 
-    /* MetaPlayer */
-    var mp;
+        /* MetaPlayer */
+        var mp;
 
-    mp = RAMP.metaplayer('#target', "ramp:pca/12345");
-    mp = RAMP.metaplayer('#target');
+        mp = RAMP.metaplayer('#target', "ramp:pca/12345");
+        mp = RAMP.metaplayer('#target');
 
-    mp.load("ramp:pca/12345");
+        mp.load("ramp:pca/12345");
 
-    // metadata & services
-    mp.onMetadata( callback_fn );
-    mp.onCaptions( callback_fn );
-    mp.onMetaQ( callback_fn );
+        // metadata & services
+        mp.onMetadata( callback_fn );
+        mp.onCaptions( callback_fn );
+        mp.onMetaQ( callback_fn );
 
-    // playback (html5 mediacontroller)
-    mp.pause();
-    mp.play();
-    mp.currentTime = 10;
-    mp.addEventListener("ended", callback_fn );
+        // playback (html5 mediacontroller)
+        mp.pause();
+        mp.play();
+        mp.currentTime = 10;
+        mp.addEventListener("ended", callback_fn );
 
-    // playlist
-    mp.next();
-    mp.previous();
-    mp.loop = true;
-    mp.index = 2;
-    mp.playlist = [ "ramp:advisor/12345", "ramp:recipe/23456" ];
-    mp.onPlaylist( callback_fn );
-    mp.onTrack( callback_fn );
+        // playlist
+        mp.next();
+        mp.previous();
+        mp.loop = true;
+        mp.index = 2;
+        mp.playlist = [ "ramp:advisor/12345", "ramp:recipe/23456" ];
+        mp.onPlaylist( callback_fn );
+        mp.onTrack( callback_fn );
 
-    // plugins
-    mp.controls();
-    mp.overlay();
-    <!--</script>-->
+        // plugins
+        mp.controls();
+        mp.overlay();
+    </script>
 </pre>
 
 

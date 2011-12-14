@@ -10,43 +10,41 @@
     <script src="../../ramp.js"></script>
     <script src="../../utils/util.event.js"></script>
 
+
     <!--Plugin: ramp json service-->
     <script src="service.smil.js"></script>
 
     <script type="text/javascript">
 
-        var ramp = Ramp();
+        var data = Ramp.data('ramp:/pca:36234882', {});
 
-        ramp.service.metadata( function (metadata) {
+        data.onMetaData( function (metadata) {
             console.log(['metadata', metadata])
         });
 
-        ramp.service.transcodes( function (transcodes) {
+        data.onTranscodes( function (transcodes) {
             console.log(['transcodes', transcodes])
         });
 
-        ramp.service.captions( function (captions) {
+        data.onCaptions( function (captions) {
             console.log(['captions', captions]);
         });
 
-        ramp.service.tags( function (captions) {
+        data.onTags( function (captions) {
             console.log(['tags', captions]);
         });
 
-        ramp.service.metaq( function (captions) {
+        data.onMetaQ( function (captions) {
             console.log(['metaq', captions])
         });
 
-        ramp.service.related( function (captions) {
+        data.onRelated( function (captions) {
             console.log(['related', captions])
         });
 
-        ramp.service.load('36234882', "/pca");
-
-        // if data has already loaded, callback will fire immediately
-        ramp.service.captions( function (captions) {
-            console.log(["post load captions", captions]);
-        });
+        setTimeout ( function() {
+            data.load('ramp:/pca:36234885');
+        }, 5000);
 
     </script>
 

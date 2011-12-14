@@ -4,7 +4,7 @@ Metaplayer : Html5 Playlist Plugin
 
 About
 -------------
-This library creates a Html5Playlist instance, which acts as a HTML5 MediaController, with additional APIs for
+This library creates a Html5Player instance, which acts as a HTML5 MediaController, with additional APIs for
 playlist support integration into the Metaplayer data service for initialization.
 
 

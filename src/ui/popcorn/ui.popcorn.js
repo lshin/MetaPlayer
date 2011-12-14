@@ -2,41 +2,54 @@
 (function () {
 
     var $ = jQuery;
+    var Popcorn = window.Popcorn;
 
     var defaults = {
         subtitles : true
     };
 
-    var PopcornLoader = function (popcorn, options , ramp) {
+    var PopcornLoader = function (player, service, options) {
 
         if( !(this instanceof PopcornLoader) )
-            return new PopcornLoader(popcorn, options, ramp);
+            return new PopcornLoader(player, service, options);
 
         this.config = $.extend(true, {}, defaults, options);
-        this.ramp = ramp;
-        this.popcorn = popcorn;
+
+        if( player.getTrackEvent )
+            this.popcorn = player;
+        else if( player.popcorn )
+            this.popcorn = player.popcorn;
+        else {
+            this.popcorn = Popcorn(player);
+            player.popcorn = this.popcorn;
+        }
+
+        // two-argument constructor(player, options)
+        if( options == undefined && player.service ) {
+            options = service;
+            service = player.service;
+        }
+
+        this.player = player;
+        this.service = service;
+
         this._sequences = {};
         this.metaq = {};
 
         this.addDataListeners();
     };
 
-    Ramp.Views.Popcorn = PopcornLoader;
-
-    Ramp.prototype.metaq = function (options) {
-        if( ! this.popcorn && this.media )
-            this.popcorn = Popcorn(this.media);
-        PopcornLoader(this.popcorn, options, this);
-        return this;
+    Ramp.metaq = function (player, options) {
+        return PopcornLoader(player, options);
     };
 
     PopcornLoader.prototype = {
         addDataListeners : function () {
-            if(! (this.ramp && this.popcorn ) )
+            if( ! this.service )
                 return;
-            this.ramp.service.captions( this._onCaptions, this);
-            this.ramp.service.metaq( this._onMetaq, this);
-            this.ramp.service.mediaChange( this.onMediaChange, this);
+            this.service.onCaptions( this._onCaptions, this);
+            this.service.onMetaQ( this._onMetaq, this);
+            this.service.onMediaChange( this.onMediaChange, this);
         },
 
         _onCaptions : function (captions) {
@@ -125,7 +138,6 @@
 
         _schedule : function (type, options){
             var fn = this.popcorn[type];
-//            console.log(["shedule", type, fn, options]);
             if( fn  )
                 fn.call(this.popcorn, options);
         }

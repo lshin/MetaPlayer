@@ -4,12 +4,7 @@
     var Proxy = {
         proxyProperty : function (props, source, target ){
             $.each(props.split(/\s+/g), function (i, prop) {
-                var fn = function (val) {
-                    if( val !== undefined )
-                        source[prop] = val;
-                    return source[prop];
-                };
-                Proxy.mapProperty(prop, target, fn);
+                Proxy.mapProperty(prop, target, source);
             });
         },
 
@@ -30,15 +25,26 @@
             });
         },
 
-        mapProperty : function (props, target, fn){
+        mapProperty : function (props, target, scope){
             // example :   map("name" myObject, myObject._name);
             //             map("name" myObject);
+
             $.each(props.split(/\s+/g), function (i, prop) {
-                var callback = fn || target["_" + prop];
-                Proxy.define(target, prop, { get : callback, set : callback });
+                var fn;
+                if( ! scope || scope === target ){
+                    fn = function () { return target["_" + prop].apply(target, arguments)  };
+                }
+                else {
+                    fn = function (val) {
+                        if( val !== undefined )
+                            scope[prop] = val;
+                        return scope[prop];
+                    };
+                }
+
+                Proxy.define(target, prop, { get : fn, set : fn });
             });
         },
-
 
         define : function (obj, prop, descriptor) {
             if( Object.defineProperty )
@@ -50,5 +56,6 @@
     };
 
     Ramp.Utils.Proxy = Proxy;
+
 
 })();

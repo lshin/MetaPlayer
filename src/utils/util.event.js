@@ -1,15 +1,38 @@
 
 (function () {
 
-    Ramp.Utils.EventDispatcher = function ( target ) {
+    var EventDispatcher = function (target){
+        if( ! (this instanceof EventDispatcher ))
+            return new EventDispatcher(target);
+        this._listeners = {};
+        this._observed = {};
 
-        if( target._listeners )
-            return;
+        if( target )
+            this.attach(target);
+    };
 
-        target._listeners = {};
-        target._observed = {};
+    Ramp.Utils.EventDispatcher = EventDispatcher;
 
-        target.listen = function ( eventType, callback, scope, data) {
+    EventDispatcher.prototype = {
+        _interface : "listen forget dispatch addEventListener removeEventListener dispatchEvent",
+
+        attach : function (target) {
+            var names = this._interface.split(/\s+/g);
+            var i, name;
+            for(i = 0; i < names.length; i++ ) {
+                name = names[i];
+                target[name] = this._wrap(name);
+            }
+        },
+
+        _wrap : function(name) {
+            var self = this;
+            return function () {
+                return self[name].apply(self, arguments);
+            }
+        },
+
+        listen : function ( eventType, callback, scope, data) {
             if( ! this._listeners[eventType] )
                 this._listeners[eventType] = [];
 
@@ -18,9 +41,9 @@
                 scope : scope,
                 data: data
             })
-        };
+        },
 
-        target.forget = function (type, callback) {
+        forget : function (type, callback) {
             var l = this._listeners[type];
             if( ! l )
                 return;
@@ -30,9 +53,9 @@
                     l.splice(i, 1);
                 }
             }
-        };
+        },
 
-        target.dispatch = function (eventType, data, eventObject) {
+        dispatch : function (eventType, data, eventObject) {
             if( ! this._listeners[eventType] )
                 return;
 
@@ -45,8 +68,8 @@
             if( data !== undefined)
                 eventObject.data = data;
 
-            if( data && this._observed[eventType] !== undefined )
-                this._observed[eventType] = data;
+            if( this._observed[eventType] !== undefined )
+                this._observed[eventType] = data || true;
 
             var l = this._listeners[eventType];
             if( ! l )
@@ -55,38 +78,39 @@
             for(var i=0; i < l.length; i++ ){
                 l[i].fn.call(l[i].scope || this, eventObject, l[i].data )
             }
-        };
+        },
 
         // makes myobject.eventtype(fn) listen for event
         // and trigger callback with data immediately, if mapped property not null
         // useful for object that load data synchronously
         // syntax based on jQuery events:  $(element).click( callback );
-        target.observable = function (type) {
-            this._observed[type] = null;
-            this[type] = function (callback, scope) {
-                var self = this;
+        observer : function (eventType) {
+            this._observed[eventType] = null;
+            var self = this;
+            return function (callback, scope) {
                 var listener = function (e) {
-                    callback.call(scope , self._observed[type] );
+                    callback.call(scope , self._observed[eventType] );
                 };
-                this.listen(type, listener);
-                if( self._observed[type] )
+                self.listen(eventType, listener);
+                if( self._observed[eventType] !== null )
                     setTimeout(listener, 0);
             };
         },
 
-        target.addEventListener = function (eventType, callback) {
+        // traditional event apis
+        addEventListener : function (eventType, callback) {
             this.listen(eventType, callback);
-        };
+        },
 
-        target.removeEventListener = function (type, callback) {
+        removeEventListener : function (type, callback) {
             this.forget(type, callback);
-        };
+        },
 
-        target.dispatchEvent = function (event) {
+        dispatchEvent : function (event) {
             if( ! (event instanceof Object) )
                 throw "invalid event";
             this.dispatch(event.type, null, event);
-        };
+        }
 
     }
 
