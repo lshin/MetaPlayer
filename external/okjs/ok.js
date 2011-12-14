@@ -97,6 +97,17 @@
             }
         },
 
+        exception : function (msg, fn) {
+            var error = "exception expected";
+            try {
+                fn();
+            }
+            catch (e){
+                error = '';
+            }
+            this.report(error, msg);
+        },
+
         callback : function (message, callback, scope, options) {
             var wait_ms = ( options &&  options.wait_ms != null )
                 ? options.wait_ms
