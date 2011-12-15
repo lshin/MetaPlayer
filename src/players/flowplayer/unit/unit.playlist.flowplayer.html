@@ -5,8 +5,8 @@
     <title>Player API Test | Metaplayer</title>
 
     <style>
-        #video {
-            width: 300px;
+        #target {
+            width: 600px;
             height: 150px;
             background:  #333;
             position: fixed;
@@ -51,19 +51,18 @@
         });
 
         var harness = PlaylistUnit();
-        var ramp, media;
+        var player;
 
         unit.test("test setup", function () {
-            ramp = Ramp("video1", "../../../unit/playlist/data/");
-
-            // html5 player loader
-            media = ramp.flowplayer('#video', {
-                autoplay: false, preload: false,
-                swfUrl : "../../../../external/flowplayer/flowplayer-3.2.7.swf"
+            player = Ramp.flowplayer('#target', "ramp:../../../unit/playlist/data:video1", {
+                swfUrl : "../../../../external/flowplayer/flowplayer-3.2.7.swf",
+                related: true,
+                preload: false,
+                autoplay: false,
+                loop : true
             });
 
-            harness.media = media;
-            harness.service = ramp.service;
+            harness.media = player;
         });
 
         harness.addTests(unit);
@@ -80,7 +79,7 @@
 <h3>Unit Test &raquo;Metaplayer &raquo; HTML5 Player API</h3>
 <div>All implemented player adapters must pass this MediaController API Test</div>
 
-<div id='video' class="video">
+<div id='target' class="video">
 </div>
 
 </body>

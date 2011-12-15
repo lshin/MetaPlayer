@@ -1,42 +1,83 @@
 (function () {
 
     var defaults = {
-        jsonService : "{e}.json"
+        jsonService : "/{e}.json"
     };
 
-    var JsonService = function (options) {
+    var JsonService = function (url, options) {
         if( ! (this instanceof JsonService ))
-            return new JsonService(options);
+            return new JsonService(url, options);
+
+        if( options == undefined && (url instanceof Object) ){
+            options = url;
+            url = null;
+        }
 
         this.config = $.extend({}, defaults, options);
 
-        Ramp.Utils.EventDispatcher(this);
+        var dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
+        dispatcher.attach(this);
 
-        this.observable('metadata');
-        this.observable('transcodes');
-        this.observable('captions');
-        this.observable('tags');
-        this.observable('metaq');
-        this.observable('related');
-        this.observable('mediaChange');    };
+        this.onMetaData = dispatcher.observer("metaData");
+        this.onTranscodes = dispatcher.observer("transcodes");
+        this.onCaptions = dispatcher.observer("captions");
+        this.onTags = dispatcher.observer("tags");
+        this.onMetaQ = dispatcher.observer("metaQ");
+        this.onRelated = dispatcher.observer("related");
+        this.onMediaChange = dispatcher.observer("mediaChange");
+
+        if( url )
+            this.load( url );
+    };
+
+
+    Ramp.data = function (url, options) {
+        return JsonService(url, options);
+    };
 
     JsonService.prototype = {
+        _interface : "onMetaData onTranscodes onCaptions onTags onMetaQ onRelated onMediaChange",
+
+
+        attach : function (target) {
+            var self = this;
+            var methods = this._interface.split(/\s+/g);
+            $.each(methods, function (i, key) {
+                var val = self[key];
+                if( key[0] == "_" || ! (val instanceof Function))
+                    return;
+                target[key] = function () {
+                    return self[key].apply(self, arguments);
+                }
+            });
+        },
+
         parse : function (str) {
             return jQuery.parseJSON(str);
         },
 
-        load : function (mediaId, rampHost) {
+        load : function ( o  ) {
+
+            // parse format:  "ramp:publishing.ramp.com/ramp:1234"
+            if( typeof o == "string" ) {
+                o = JsonService.parseUrl(o);
+            }
+            else if( o.url && ! o.rampId ) {
+                JsonService.parseUrl(o.url, o);
+            }
+
+            if( ! o.rampId )
+                throw "invalide media id";
 
             if( this.mediaId )
                 this.dispatch('mediaChange');
 
-            this.mediaId = mediaId;
+            this.mediaId = o.rampId;
 
-            if( rampHost )
-                this.lastHost = rampHost;
+            if( o.rampHost )
+                this.lastHost = o.rampHost;
 
-            var host = this.lastHost || rampHost;
-            var url = host + this.config.jsonService.replace(/{e}/, mediaId);
+            var url = this.lastHost + this.config.jsonService.replace(/{e}/, this.mediaId);
 
             $.ajax(url, {
                 dataType : "json",
@@ -47,7 +88,6 @@
                 },
                 success : function (response, textStatus, jqXHR) {
                     var data = response;
-                    data.metadata.host = host;
                     this.dispatch('metadata', data.metadata);
                     this.dispatch('related', data.related);
                     this.dispatch('transcodes', data.transcodes);
@@ -63,9 +103,18 @@
     };
 
 
-    Ramp.prototype.service = function (options) {
-        this.service = JsonService(options);
-        return this;
+    JsonService.parseUrl = function ( url, obj ) {
+        var parts = url.split(':');
+        if( obj == undefined)
+            obj = {};
+        if( parts[0] !== "ramp" )
+            obj.url = url;
+        else {
+            obj.rampHost = parts[1];
+            obj.rampId = parts[2];
+        }
+        return obj;
     };
+
 
 })();

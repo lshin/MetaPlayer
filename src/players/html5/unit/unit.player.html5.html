@@ -32,6 +32,7 @@
 
     <!-- Core: Ramp -->
     <script src="../../../ramp.js"></script>
+    <script src="../../../models/model.playlist.js"></script>
     <script src="../../../services/smil/service.smil.js"></script>
     <script src="../../../utils/util.event.js"></script>
     <script src="../../../utils/util.proxy.js"></script>
@@ -48,23 +49,17 @@
         });
 
         var harness = PlayerUnit();
-        var ramp, media;
+        var player;
 
         unit.test("ramp setup", function () {
-            ramp = Ramp('36234882', "/pca");
-            unit.event("transcodes", ramp.service, "transcodes ready");
-            unit.event("metadata", ramp.service, "metadata ready");
-            unit.event("related", ramp.service, "related ready");
+            player = Ramp.html5('#target', "ramp:/pca:36234882");
+            unit.event("transcodes", player.service, "transcodes ready");
+            unit.event("metaData", player.service, "metadata ready");
+            unit.event("related", player.service, "related ready");
         });
 
         unit.test("harness setup", function () {
-            media = ramp.html5('#target', {
-                preload: false,
-                autoplay: false,
-                related : false
-            });
-            harness.media = media;
-            unit.nequal( harness.media, null, "have video element");
+            harness.media = player;
         });
 
         harness.addTests(unit);
