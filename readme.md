@@ -12,21 +12,25 @@ MetaPlayer's goals are to:
 Quick Start
 -------------
 
+    <script type="text/javascript">
+        var player;
+
         document.addEventListener("DOMContentLoaded", function () {
+            player = Ramp.html5('#target', "ramp:/pca:36234882");
 
-            // ramp services
-            ramp = Ramp('36234882', "/pca");
-
-            // html5 player loader
-            ramp.html5('#target');
+            // initialize popcorn & events
+            Ramp.metaq(player);
 
             // controls & timeline
-            ramp.controls();
+            Ramp.controls(player);
 
             // overlay
-            ramp.overlay();
+            Ramp.overlay(player);
 
         }, false);
+
+    </script>
+
 
 
 License
