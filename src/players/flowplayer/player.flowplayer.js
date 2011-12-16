@@ -73,14 +73,15 @@
     FlowPlayer.prototype = {
 
         load : function () {
+            var clip = this._flowplayer.getClip();
+            if(! (this._flowplayer.isLoaded() && clip) )
+                return;
             this.preload = true;
-            if( this._flowplayer.isLoaded()  ) {
-                this.dispatch('loadstart');
-                if( this.autoplay )
-                    this._flowplayer.play();
-                else
-                    this._flowplayer.startBuffering();
-            }
+            this.dispatch('loadstart');
+            if( this.autoplay )
+                this._flowplayer.play();
+            else
+                this._flowplayer.startBuffering();
         },
 
         play : function () {
@@ -125,6 +126,14 @@
         },
 
         _onMetaData : function (metadata) {
+            var clip = this._flowplayer.getClip();
+            if( clip && ! clip.isCommon )
+                clip.update({
+                    title: metadata.title,
+                    description: metadata.description,
+                    thumbnail: metadata.thumbnail
+                });
+
             // update clip title, desc, etc
         },
 
@@ -133,12 +142,18 @@
                 return;
 
             this._hasPlaylist = true;
+            this._related = related;
             var fp = this._flowplayer;
 
             $.each(related, function (i, rel) {
-                fp.addClip("ramp::"+rel.rampId);
-                if( i == 2)
-                    return false;
+                fp.addClip({
+                    url : "ramp::"+rel.rampId,
+                    rampId : rel.rampId,
+                    rampHost : rel.rampHost,
+                    title : rel.title,
+                    description : rel.description,
+                    thumbnail : rel.thumbnail
+                });
             });
         },
 
@@ -313,7 +328,8 @@
 
             if( this.src ) {
                 this._flowplayer.setPlaylist([{ url : this.src }]);
-                this.service.load(this.src);
+                if( this.config.related )
+                    this.service.load(this.src);
             }
         },
 

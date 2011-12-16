@@ -99,7 +99,6 @@
         player = Ramp.Players.Html5("#target");
 
         player.media("http://some.video/url.mp4");
-            <- player.dispatch("mediaChange")
         player.load([ "http://some.video/url.mp4", "http://some.other/url.mp4"} ])
 
         player = Ramp.player("#target", );
@@ -111,7 +110,6 @@
         player.play(12345, 'ramp/');
             player.playlist = Ramp.playlist()
             player.playlist.media( Ramp.media(12345, 'ramp/');
-                <- player.dispatch("mediaChange")
         player.media([ {rampId : 12345, rampHost:12345} ])
 
         player.search("foo")

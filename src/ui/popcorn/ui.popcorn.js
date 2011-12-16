@@ -49,7 +49,6 @@
                 return;
             this.service.onCaptions( this._onCaptions, this);
             this.service.onMetaQ( this._onMetaq, this);
-            this.service.onMediaChange( this.onMediaChange, this);
         },
 
         _onCaptions : function (captions) {
@@ -64,8 +63,7 @@
             this._renderPopcorn();
         },
 
-        onMediaChange : function () {
-            // cleanup
+        cleanup : function () {
             var events = this.popcorn.getTrackEvents();
             var self = this;
             $.each(events, function (i, e){
@@ -74,6 +72,10 @@
         },
 
         _renderPopcorn : function () {
+            // clean up old events
+            this.cleanup();
+            this.metaq = {};
+
             var self = this;
 
             // clones
@@ -138,8 +140,9 @@
 
         _schedule : function (type, options){
             var fn = this.popcorn[type];
-            if( fn  )
+            if( fn  ) {
                 fn.call(this.popcorn, options);
+            }
         }
     };
 
