@@ -24,12 +24,12 @@
         this.onTags = dispatcher.observer("tags");
         this.onMetaQ = dispatcher.observer("metaQ");
         this.onRelated = dispatcher.observer("related");
-
-        this._cache = [];
+        this.onMediaChange = dispatcher.observer("mediaChange");
 
         if( url )
             this.load( url );
     };
+
 
     Ramp.data = function (url, options) {
         return SmilService(url, options);
@@ -49,10 +49,6 @@
         return obj;
     };
 
-    SmilService.toUri = function ( o ) {
-        return ["ramp:", o.rampHost || '', o.rampId].join(":");
-    };
-
     SmilService.prototype = {
         _interface : "onMetaData onTranscodes onCaptions onTags onMetaQ onRelated onMediaChange",
 
@@ -70,6 +66,7 @@
         },
 
         load : function ( o  ) {
+
             // parse format:  "ramp:publishing.ramp.com/ramp:1234"
             if( typeof o == "string" ) {
                 o = SmilService.parseUrl(o);
@@ -81,29 +78,16 @@
             if( ! o.rampId )
                 throw "invalide media id";
 
+            if( this.mediaId )
+                this.dispatch('mediaChange');
+
+            this.mediaId = o.rampId;
+
             if( o.rampHost )
                 this.lastHost = o.rampHost;
-            else
-                o.rampHost = this.lastHost;
 
-
-            var host = this.lastHost;
-            var uri = SmilService.toUri(o);
-            var url = host + this.config.playlistService.replace(/{e}/, o.rampId);
-
-
-            if( this._cache[uri] )  {
-                var self = this;
-                setTimeout( function () {
-                    self._callbacks( self._cache[uri] );
-                }, 0);
-                return;
-            }
-
-            if( uri == this.loadingUri ) {
-                return;
-            }
-            this.loadingUri = uri;
+            var host = this.lastHost || rampHost;
+            var url = host + this.config.playlistService.replace(/{e}/, this.mediaId);
 
             var params = {
 //                format: 'playlist',
@@ -121,24 +105,15 @@
                 },
                 success : function (response, textStatus, jqXHR) {
                     var data = this.parse(response);
-                    data.metadata.rampHost = host;
-                    $(data.related).map(function () {
-                        this.rampHost = host;
-                        return this;
-                    });
-                    this._cache[uri]  = data;
-                    this._callbacks(data);
+                    data.metadata.host = host;
+                    this.dispatch('metaData', data.metadata);
+                    this.dispatch('related', data.related);
+                    this.dispatch('transcodes', data.transcodes);
+                    this.dispatch('captions', data.captions);
+                    this.dispatch('tags', data.tags);
+                    this.dispatch('metaQ', data.metaq);
                 }
             });
-        },
-
-        _callbacks : function (data) {
-            this.dispatch('metaData', data.metadata);
-            this.dispatch('related', data.related);
-            this.dispatch('transcodes', data.transcodes);
-            this.dispatch('captions', data.captions);
-            this.dispatch('tags', data.tags);
-            this.dispatch('metaQ', data.metaq);
         },
 
         parse : function (data) {

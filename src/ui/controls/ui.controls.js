@@ -121,10 +121,12 @@
 
             if( this.config.renderMetaq )
                 this.service.onMetaQ(this._onMetaq, this);
+
+            this.service.onMediaChange(this.onMediaChange, this);
+
         },
 
         _onTags : function (tags) {
-            this.clearAnnotations();
             var self = this;
             $.each(tags, function (i, tag){
                 $.each(tag.timestamps, function (j, time){
@@ -142,6 +144,10 @@
                 });
             });
             this.renderAnnotations();
+        },
+
+        onMediaChange: function () {
+            this.clearAnnotations();
         },
 
         onClockTimer : function (e) {

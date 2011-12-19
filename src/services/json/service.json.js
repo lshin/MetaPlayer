@@ -24,6 +24,7 @@
         this.onTags = dispatcher.observer("tags");
         this.onMetaQ = dispatcher.observer("metaQ");
         this.onRelated = dispatcher.observer("related");
+        this.onMediaChange = dispatcher.observer("mediaChange");
 
         if( url )
             this.load( url );
@@ -67,6 +68,9 @@
 
             if( ! o.rampId )
                 throw "invalide media id";
+
+            if( this.mediaId )
+                this.dispatch('mediaChange');
 
             this.mediaId = o.rampId;
 

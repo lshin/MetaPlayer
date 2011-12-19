@@ -1,0 +1,67 @@
+.metaplayer-box {
+    background: #aaa;
+}
+
+.metaplayer-time {
+    text-shadow: 0 0 2px #666;
+}
+.metaplayer-time-current {
+    color: #fff;
+}
+
+.metaplayer-time-duration {
+    color: #ddd;
+}
+
+.metaplayer-play {
+    background: url(assets/control/play-28x24.png);
+}
+
+.metaplayer-pause {
+    background: url(assets/control/pause-28x24.png);
+}
+
+.metaplayer-fullscreen {
+    background: url(assets/control/fullscreen-32x24.png);
+}
+
+.metaplayer-track {
+    background: #333;
+    border-radius: 5px;
+}
+
+.metaplayer-track-fill {
+    background: #fff;
+}
+
+.metaplayer-track-marker {
+    background: gray;
+}
+
+.metaplayer-tag {
+    background: cyan;
+}
+
+.metaplayer-metaq {
+    background: #ee82ee;
+}
+
+.metaplayer-track-knob {
+    background: #eee;
+    border-radius: 3px;
+}
+
+.metaplayer-track-knob:hover {
+    border: 1px solid blue;
+}
+
+.metaplayer-track-knob:active {
+    background: #aaaaff;
+    border: 1px solid blue;
+}
+
+.metaplayer-track-buffer {
+    background: #666;
+    border-radius: 5px;
+}
+

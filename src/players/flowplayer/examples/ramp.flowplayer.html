@@ -1,22 +1,12 @@
 <!doctype html>
 <html>
 <head>
+    <meta charset=utf-8>
 
-    <title>Full Demo | Metaplayer</title>
+    <title>Flowplayer Plugin | Metaplayer</title>
 
-    <style>
-        #target {
-            width: 600px;
-            height: 300px;
-            background:  #333;
-        }
-    </style>
-
-     <!--Dependency: jQuery-->
+    <!--Dependency: jQuery-->
     <script src="../../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
-
-    <!--Dependency: Flowplayer-->
-    <script src="../../../../external/flowplayer/flowplayer-3.2.6.min.js"></script>
 
     <!-- Core: Ramp -->
     <script src="../../../ramp.js"></script>
@@ -27,55 +17,35 @@
     <script src="../../../utils/util.script.js"></script>
     <script src="../../../utils/util.timer.js"></script>
 
+    <!--Dependency: Flowplayer-->
+    <script src="../../../../external/flowplayer/flowplayer-3.2.6.min.js"></script>
+
     <!-- Media Plugin: Flowplayer -->
     <script src="../player.flowplayer.js"></script>
 
-    <!-- UI Plugin: Controls & Timeline -->
-    <script src="../../../utils/util.timer.js"></script>
-    <script src="../../../ui/controls/ui.controls.js"></script>
-    <link href="../../../themes/mp2/ui.controls.css" rel="stylesheet"  type="text/css">
-
-    <!-- UI Plugin: Overlay -->
-    <script src="../../../ui/overlay/ui.overlay.js"></script>
-    <link href="../../../ui/overlay/ui.overlay.css" rel="stylesheet"  type="text/css">
-    <link href="../../../themes/mp2/ui.overlay.css" rel="stylesheet"  type="text/css">
-
-    <!-- UI Plugin: Popcorn-->
-    <script src="../../../../external/popcorn/popcorn.js" type="text/javascript"></script>
-    <script src="../../../../external/popcorn/popcorn.subtitle.js" type="text/javascript"></script>
-    <script src="../../../ui/popcorn/ui.popcorn.js"></script>
-
-    <script type="text/javascript">
-        var player, controls, metaq, overlay;
-
-        document.addEventListener("DOMContentLoaded", function () {
-
-            player = Ramp.flowplayer('#target', "ramp:/pca:36234882", {
-                swfUrl : "../../../../external/flowplayer/flowplayer-3.2.7.swf"
-            });
-
-            // initialize popcorn & events
-            metaq = Ramp.metaq(player);
-
-            // controls & timeline
-            controls = Ramp.controls(player);
-
-            // overlay
-            overlay = Ramp.overlay(player);
-
-        }, false);
-
-    </script>
-
+    <style>
+        #target {
+            width: 600px;
+            height: 300px;
+            background:  #333;
+            position: relative;
+            top: 0; left: 0;
+        }
+    </style>
 
 </head>
+
 <body>
-<h3>Metaplayer &raquo; Demo</h3>
 
+<h3>Metaplayer &raquo; Flowplayer Plugin</h3>
 
-<div id='target'>
-</div>
+<div id='target'></div>
 
+<script type="text/javascript">
+    var player = Ramp.flowplayer('#target', "ramp:/pca:36234882", {
+        swfUrl : "../../../../external/flowplayer/flowplayer-3.2.7.swf"
+    });
+</script>
 
 </body>
 </html>

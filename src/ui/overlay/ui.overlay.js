@@ -7,7 +7,7 @@
         target : '',
         autoHide : true,
         cssPrefix : 'metaplayer-overlay',
-        template : 'ui.overlay.tmpl.html'
+        template : 'templates/ui.overlay.tmpl.html'
     };
 
     var Overlay = function (player, service, options) {
@@ -24,6 +24,7 @@
         }
         this.service = service;
         this.player = player;
+        this.baseUrl = Ramp.Utils.Script.base('(metaplayer||ui).overlay(.min)?.js');
 
         if( this.config.container ) {
             this.container = this.config.container;
@@ -53,8 +54,6 @@
             this.setCaptions(true);
 
         },
-
-        baseUrl :  Ramp.Utils.Script.base('ui.overlay.js'),
 
         addUIListeners : function () {
             var self = this;
