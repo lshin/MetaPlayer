@@ -660,6 +660,7 @@
                 success : function (response, textStatus, jqXHR) {
                     var data = this.parse(response);
                     data.metadata.host = host;
+                    this._data = data;
                     this.dispatch('metaData', data.metadata);
                     this.dispatch('related', data.related);
                     this.dispatch('transcodes', data.transcodes);
@@ -758,12 +759,62 @@
             return media;
         },
 
+        search : function ( query, callback, scope) {
 
-        search : function (str) {
-            throw "not implemented"; // ...
+            var url = this._data.metadata.searchapi;
+            url = url.replace(/^(.*\/\/[\w.]+)/, ""); // make match local domain root
+
+            var params = {
+                q : query
+            };
+
+            $.ajax(url, {
+                dataType : "xml",
+                timeout : 5000,
+                context: this,
+                data : params,
+                error : function (jqXHR, textStatus, errorThrown) {
+                    console.error("Load playlist error: " + textStatus + ", url: " + url);
+                },
+                success : function (response, textStatus, jqXHR) {
+                    var results = SmilService.parseSearch(response);
+                    callback.call(scope, results);
+                }
+            });
         }
     };
+    SmilService.parseSearch = function (xml) {
+        var node = $(xml);
+        var ret = {
+            query : [],
+            results : []
+        };
 
+        var terms = node.find('SearchTerms Term');
+        terms.each(function() {
+            ret.query.push( $(this).text() );
+        });
+
+        var snippets = node.find('Snippets Snippet');
+        snippets.each( function (i, snip) {
+            var node = $(snip);
+            var s = {
+                start : node.attr('time'),
+                words : []
+            };
+            var words = node.find('T');
+            $.each(words, function (i, word){
+                var el = $(word);
+                s.words.push({
+                    match : Boolean( el.find('MQ').length ),
+                    start : el.attr('s'),
+                    text : el.text()
+                })
+            });
+            ret.results.push(s);
+        });
+        return ret;
+    },
 
     SmilService.parseCaptions = function (xml) {
         // static factory constructor
@@ -1626,9 +1677,6 @@
 
         if( !(this instanceof PopcornLoader) )
             return new PopcornLoader(player, service, options);
-
-        this.config = $.extend(true, {}, defaults, options);
-
         if( player.getTrackEvent )
             this.popcorn = player;
         else if( player.popcorn )
@@ -1643,6 +1691,8 @@
             options = service;
             service = player.service;
         }
+
+        this.config = $.extend(true, {}, defaults, options);
 
         this.player = player;
         this.service = service;
@@ -1661,9 +1711,9 @@
         addDataListeners : function () {
             if( ! this.service )
                 return;
+            this.service.onMetaData( this.onMetaData, this);
             this.service.onCaptions( this._onCaptions, this);
             this.service.onMetaQ( this._onMetaq, this);
-            this.service.onMediaChange( this.onMediaChange, this);
         },
 
         _onCaptions : function (captions) {
@@ -1678,13 +1728,14 @@
             this._renderPopcorn();
         },
 
-        onMediaChange : function () {
+        onMetaData : function () {
             // cleanup
             var events = this.popcorn.getTrackEvents();
             var self = this;
             $.each(events, function (i, e){
                 self.popcorn.removeTrackEvent(e._id);
             });
+            this.metaq = {};
         },
 
         _renderPopcorn : function () {

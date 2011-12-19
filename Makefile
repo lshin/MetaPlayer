@@ -15,7 +15,7 @@ CORE_MIN=$(CORE:.js=.min.js)
 
 ALL_SERVICES=service.json service.smil 
 ALL_PLAYERS=player.html5 player.flowplayer player.popcorn
-ALL_UI=ui.controls ui.overlay 
+ALL_UI=ui.controls ui.overlay ui.transcript
 ALL_THEME=theme.mp2
 
 compile=$(CLOSURE) $(CLOSURE_FLAGS) --js=$1 >  $2

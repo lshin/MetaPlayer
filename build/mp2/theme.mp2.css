@@ -362,6 +362,18 @@
     float: right;
     height: 20px;
 }
+.transcript {
+    overflow: auto;
+    height: 100%;
+    width: 100%;
+}
+.transcript-scroller {
+    position: relative;
+    top: 0; left: 0;
+}
+.transcript-caption {
+    cursor: pointer;
+}
 .metaplayer-box {
     background: #aaa;
 }

@@ -12,9 +12,6 @@
 
         if( !(this instanceof PopcornLoader) )
             return new PopcornLoader(player, service, options);
-
-        this.config = $.extend(true, {}, defaults, options);
-
         if( player.getTrackEvent )
             this.popcorn = player;
         else if( player.popcorn )
@@ -29,6 +26,8 @@
             options = service;
             service = player.service;
         }
+
+        this.config = $.extend(true, {}, defaults, options);
 
         this.player = player;
         this.service = service;
@@ -47,9 +46,9 @@
         addDataListeners : function () {
             if( ! this.service )
                 return;
+            this.service.onMetaData( this.onMetaData, this);
             this.service.onCaptions( this._onCaptions, this);
             this.service.onMetaQ( this._onMetaq, this);
-            this.service.onMediaChange( this.onMediaChange, this);
         },
 
         _onCaptions : function (captions) {
@@ -64,13 +63,14 @@
             this._renderPopcorn();
         },
 
-        onMediaChange : function () {
+        onMetaData : function () {
             // cleanup
             var events = this.popcorn.getTrackEvents();
             var self = this;
             $.each(events, function (i, e){
                 self.popcorn.removeTrackEvent(e._id);
             });
+            this.metaq = {};
         },
 
         _renderPopcorn : function () {
