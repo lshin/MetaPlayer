@@ -5,8 +5,11 @@ A standards-based, multiple engine, media player framework.
 About
 -------------
 MetaPlayer's goals are to:
+
 * Support multiple playback engines (HTML5, Flowplayer, Youtube, etc).
+
 * Provide a stable UI framework built on the standard-based HTML5 media interface.
+
 * Seamless integration with RAMP transcription and metadata services.
 
 Quick Start
@@ -14,19 +17,19 @@ Quick Start
 
         document.addEventListener("DOMContentLoaded", function () {
 
-            // ramp services
-            ramp = Ramp('36234882', "/pca");
+            var player = Ramp.html5('#target', "ramp:/pca:36234882", { autoplay: true } );
 
-            // html5 player loader
-            ramp.html5('#target');
+            // initialize popcorn & events
+            var metaq = Ramp.metaq(player);
 
             // controls & timeline
-            ramp.controls();
+            var controls = Ramp.controls(player);
 
             // overlay
-            ramp.overlay();
+            var overlay = Ramp.overlay(player);
 
         }, false);
+
 
 
 License
