@@ -40,6 +40,7 @@ all copies or substantial portions of the Software.
         this.service = service;
         this.player = player;
         this.baseUrl = Ramp.Utils.Script.base('(metaplayer||ui).overlay(.min)?.js');
+        this.nextUp = Ramp.data();
 
         if( this.config.container ) {
             this.container = this.config.container;
@@ -119,7 +120,9 @@ all copies or substantial portions of the Software.
         addServiceListeners : function () {
             if( ! this.service.onTags )
                 return;
+
             this.service.onTags(this.onTags, this);
+            this.nextUp.onMetaData(this._onNextUpMetaData, this);
         },
 
         onTags : function (tags) {
@@ -247,6 +250,7 @@ all copies or substantial portions of the Software.
                 context: this,
                 success : function (data){
                     $(this.container).append(data);
+                    this.find().height(0); // start closed
                     this.init();
                 }
             });

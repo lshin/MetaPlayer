@@ -1,5 +1,7 @@
 (function () {
 
+    var $ = jQuery;
+
     var defaults = {
         playlistService : "/device/services/mp2-playlist?e={e}"
     };

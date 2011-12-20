@@ -187,6 +187,7 @@
 })();
 
 (function () {
+    var $ = jQuery;
 
     var EventDispatcher = function (target){
         if( ! (this instanceof EventDispatcher ))
@@ -394,6 +395,7 @@
 })();
 
 (function () {
+    var $ = jQuery;
 
     Ramp.Timer = function (delay, count) {
         if( ! (this instanceof Ramp.Timer ) )
@@ -434,6 +436,7 @@
 
 })();
 (function () {
+    var $ = jQuery;
 
     var defaults = {
         jsonService : "/{e}.json"
@@ -553,6 +556,8 @@
 
 
 })();(function () {
+
+    var $ = jQuery;
 
     var defaults = {
         playlistService : "/device/services/mp2-playlist?e={e}"
@@ -1203,7 +1208,7 @@
 
     if( $f ) {
         $f.addPlugin("ramp", function (url, options) {
-            this.ramp = FlowPlayer(this, url, options);
+            this._ramp = FlowPlayer(this, url, options);
             return this;
         });
     }
@@ -1212,7 +1217,7 @@
 
         load : function () {
             this.preload = true;
-            if( this._flowplayer.isLoaded()  ) {
+            if( this._flowplayer.isLoaded() && this._flowplayer.getClip() ) {
                 this.dispatch('loadstart');
                 if( this.autoplay )
                     this._flowplayer.play();
@@ -1248,7 +1253,7 @@
             else {
                 var config = $.extend(true, {
                     clip : {
-                        autoPlay: this.config.autoplay,
+                        autoPlay: false,
                         autoBuffering: true
                     }
                 },this.config.fpConfig);
@@ -1274,9 +1279,14 @@
             var fp = this._flowplayer;
 
             $.each(related, function (i, rel) {
-                fp.addClip("ramp::"+rel.rampId);
-                if( i == 2)
-                    return false;
+                fp.addClip({
+                    autoBuffering : true,
+                    autoPlay : true,
+                    title : rel.title,
+                    description : rel.description,
+                    thumbnail : rel.thumbnail,
+                    url : "ramp::"+rel.rampId
+                });
             });
         },
 
@@ -1475,6 +1485,7 @@
             this._statepoll.reset();
 
             if( this.__playing ) {
+                this.autoplay = true;
                 this.dispatch("playing");
                 this.dispatch("play");
                 this._timeupdater.start();
@@ -1601,7 +1612,12 @@
         /* Playlist */
 
         _index : function (i) {
-            var index = this._flowplayer.getClip().index; // getIndex() is buggy
+            var clip =  this._flowplayer.getClip();
+            if( ! clip ) {
+                return 0;
+            }
+
+            var index = clip.index; // getIndex() is buggy
             if( i !== undefined ) {
                 i = this._resolveIndex(i);
                 var paused = this.paused;

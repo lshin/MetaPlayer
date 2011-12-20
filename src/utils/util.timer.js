@@ -1,5 +1,6 @@
 
 (function () {
+    var $ = jQuery;
 
     Ramp.Timer = function (delay, count) {
         if( ! (this instanceof Ramp.Timer ) )

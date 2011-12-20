@@ -1,5 +1,6 @@
 
 (function () {
+    var $ = jQuery;
 
     var EventDispatcher = function (target){
         if( ! (this instanceof EventDispatcher ))

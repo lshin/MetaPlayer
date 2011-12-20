@@ -36,10 +36,13 @@
 <body>
     <h3>Metaplayer &raquo; HTML5 Plugin</h3>
 
-    <div id='target'></div>
+    <div id='target'>
+        <video id="video" controls="controls" preload="true" autoplay="false">
+        </video>
+    </div>
 
     <script type="text/javascript">
-        var player = Ramp.html5('#target', "ramp:/pca:36234882");
+        var player = Ramp.html5('#video', "ramp:/pca:36234882");
     </script>
 </body>
 </html>

@@ -42,10 +42,9 @@
 <div id="target"></div>
 
 <script>
-    var fp = $f("target", "../../../../external/flowplayer/flowplayer-3.2.7.swf")
-        .ramp(36234882, '/pca')
-        .load();
-
+    var player = $f("target", "../../../../external/flowplayer/flowplayer-3.2.7.swf");
+    player.ramp("ramp:/pca:36234882");
+    player.load();
 </script>
 
 </body>

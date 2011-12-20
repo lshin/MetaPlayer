@@ -1,4 +1,5 @@
 (function () {
+    var $ = jQuery;
 
     var defaults = {
         jsonService : "/{e}.json"
