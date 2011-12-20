@@ -774,7 +774,7 @@
                 context: this,
                 data : params,
                 error : function (jqXHR, textStatus, errorThrown) {
-                    console.error("Load playlist error: " + textStatus + ", url: " + url);
+                    console.error("Load search error: " + textStatus + ", url: " + url);
                 },
                 success : function (response, textStatus, jqXHR) {
                     var results = SmilService.parseSearch(response);
@@ -825,9 +825,10 @@
         var current = {
             text : '',
             start: 0,
-            end: null,
             offset : 0
         };
+
+        var previous;
 
         var getStart = function (node, lastCue) {
             var el = $(node);
@@ -844,13 +845,17 @@
         };
 
         var handleNode = function (node, text) {
-            current.end = getStart(node);
+            var start = getStart(node);
+            previous = current;
+            previous.end = start;
+            if( text )
+                previous.text += text ;
+            cues.push(previous);
             current = {
-                text: text,
-                start : current.end,
+                text: '',
+                start : start,
                 offset : current.offset+1
             };
-            cues.push(current);
         };
 
         nodes.each( function ( i, node ){
@@ -863,17 +868,17 @@
             switch (node.tagName) {
                 case "smil:clear":
                 case "clear":
-                    handleNode(node, "");
+                    handleNode(node);
                     break;
 
                 case "smil:tev":
                 case "tev":
-                    handleNode(node, current.text );
+                    handleNode(node);
                     break;
 
                 case "smil:br":
                 case "br":
-                    handleNode(node, current.text + "<br />" );
+                    handleNode(node, "<br />" );
                     break;
 
                 case "smil:div":
@@ -884,6 +889,10 @@
                 // unsupported...
             }
         });
+
+        if( current.text )
+            cues.push(current);
+
         return cues;
     };
 
@@ -997,8 +1006,6 @@
             c.css('position', 'relative');
             c.css('left', '0');
             c.css('top', '0');
-            c.css('width', '100%');
-            c.css('height', '100%');
 
             var p = $(parent);
 
@@ -1006,10 +1013,17 @@
             if( p.is('video') ) {
                 this._video = parent;
                 p.parent().append(c);
+                c.width( p.width() );
+                c.height( p.height() );
+                p.css('width', '100%');
+                p.css('height', '100%');
+                c.append(p);
             }
 
             // else append the wrapper to the target, create video element
             else {
+                c.css('width', '100%');
+                c.css('height', '100%');
                 p.append(c);
                 var video = document.createElement('video');
                 video.autoplay = this.config.autoplay;

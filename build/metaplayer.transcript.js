@@ -58,7 +58,7 @@ all copies or substantial portions of the Software.
 
     Transcript.instances = {};
 
-    if( Ramp )
+    if( window.Ramp )
         Ramp.transcript = Transcript;
 
     Transcript.prototype = {
@@ -111,7 +111,7 @@ all copies or substantial portions of the Software.
         },
 
         clear : function () {
-            $(this.container).empty();
+            $(this.scroller).empty();
             this._captions = {};
         },
 

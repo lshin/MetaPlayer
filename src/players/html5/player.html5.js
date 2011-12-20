@@ -79,8 +79,6 @@
             c.css('position', 'relative');
             c.css('left', '0');
             c.css('top', '0');
-            c.css('width', '100%');
-            c.css('height', '100%');
 
             var p = $(parent);
 
@@ -88,10 +86,17 @@
             if( p.is('video') ) {
                 this._video = parent;
                 p.parent().append(c);
+                c.width( p.width() );
+                c.height( p.height() );
+                p.css('width', '100%');
+                p.css('height', '100%');
+                c.append(p);
             }
 
             // else append the wrapper to the target, create video element
             else {
+                c.css('width', '100%');
+                c.css('height', '100%');
                 p.append(c);
                 var video = document.createElement('video');
                 video.autoplay = this.config.autoplay;

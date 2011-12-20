@@ -43,7 +43,7 @@
 
     Transcript.instances = {};
 
-    if( Ramp )
+    if( window.Ramp )
         Ramp.transcript = Transcript;
 
     Transcript.prototype = {
@@ -96,7 +96,7 @@
         },
 
         clear : function () {
-            $(this.container).empty();
+            $(this.scroller).empty();
             this._captions = {};
         },
 
