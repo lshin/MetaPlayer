@@ -77,9 +77,8 @@
     margin-right: 10px;
     color: blue;
 }
-.mp-search-text:after,
 .mp-search-text:before {
-    /*content: "...";*/
+    content: "...";
 }
 
 .mp-search-result:hover {

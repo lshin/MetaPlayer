@@ -32,6 +32,8 @@
             this.load( url );
     };
 
+    SmilService.msQuotes = true;
+
 
     Ramp.data = function (url, options) {
         return SmilService(url, options);
@@ -186,7 +188,7 @@
                 $(metaq).find('param').each( function (i, val) {
                     var param = $(val);
                     var name =  param.attr('name');
-                    var text =  param.text();
+                    var text =  SmilService.deSmart( param.text() );
                     if( name == "code" ) {
                         var code = $.parseJSON( text );
                         $.extend(true, event, code);
@@ -240,7 +242,7 @@
 
         var terms = node.find('SearchTerms Term');
         terms.each(function() {
-            ret.query.push( $(this).text() );
+            ret.query.push( SmilService.deSmart( $(this).text() ) );
         });
 
         var snippets = node.find('Snippets Snippet');
@@ -256,7 +258,7 @@
                 s.words.push({
                     match : Boolean( el.find('MQ').length ),
                     start : el.attr('s'),
-                    text : el.text()
+                    text : SmilService.deSmart( el.text() )
                 })
             });
             ret.results.push(s);
@@ -309,6 +311,9 @@
         nodes.each( function ( i, node ){
             var text = nodes[i].data;
             if( node.tagName === undefined ){
+                if( SmilService.msQuotes ) {
+                    text = SmilService.deSmart(text);
+                }
                 current.text += text;
                 return;
             }
@@ -364,6 +369,10 @@
             sec += Math.pow(60, i) * parseFloat(p[i]);
         return sec;
     };
+
+    SmilService.deSmart = function (text) {
+       return text.replace(/\xC2\x92/, "\u2019" );
+    }
 
     SmilService.resolveType = function ( url ) {
         var ext = url.substr( url.lastIndexOf('.') + 1 );
