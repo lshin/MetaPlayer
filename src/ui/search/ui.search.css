@@ -75,7 +75,7 @@
     width: 25px;
     text-align: right;
     margin-right: 10px;
-    color: blue;
+    color: orange;
 }
 .mp-search-text:before {
     content: "...";

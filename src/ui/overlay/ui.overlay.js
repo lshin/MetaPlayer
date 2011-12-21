@@ -7,7 +7,9 @@
         target : '',
         autoHide : true,
         cssPrefix : 'metaplayer-overlay',
-        template : 'templates/ui.overlay.tmpl.html'
+        template : 'templates/ui.overlay.tmpl.html',
+        captions : false,
+        seekBeforeSec : 1
     };
 
     var Overlay = function (player, service, options) {
@@ -70,8 +72,24 @@
             this.find('mute').click( function (e) {
                 self.player.muted = true;
             });
+
             this.find('unmute').click( function (e) {
                 self.player.muted = false;
+            });
+
+            this.find('search-btn').click( function (e) {
+                self.doSearch();
+            });
+
+            this.find('search-input').keypress( function (e) {
+                if (e.which == 13 ) {
+                    self.doSearch();
+                }
+            });
+
+            this.find('results-close').click( function (e) {
+                self.find('search-input').val('');
+                self.service.search('');
             });
 
             var volume_bg = this.find('volume-bg');
@@ -107,6 +125,7 @@
                 return;
 
             this.service.onTags(this.onTags, this);
+            this.service.onSearch(this.onSearchResult, this);
             this.nextUp.onMetaData(this._onNextUpMetaData, this);
         },
 
@@ -118,7 +137,6 @@
         },
 
         onTrackChange : function () {
-
             this.nextup = null;
 
             $('.' + this.cssName('tag') ).remove();
@@ -133,11 +151,80 @@
         },
 
         createTag : function ( term ) {
+            var self = this;
             var el = this.create('tag');
             var label = this.create('tag-label');
             label.text(term);
             el.append(label);
+            el.data("term", term);
+            el.click( function (e) {
+                self.onTagClick(e);
+            });
             this.find('tags').prepend(el);
+        },
+
+        onTagClick : function (e) {
+            var term = $(e.currentTarget).data().term;
+            this.find('search-input').val(term);
+            this.doSearch();
+        },
+
+        doSearch : function () {
+            var q = this.find('search-input').val();
+            this.service.search(q);
+        },
+
+        onSearchResult : function (response) {
+            this.clearSearch();
+
+            if( ! response.query.length )
+                return;
+
+            this.find('search-input').val(response.query.join(' '));
+
+            var has_results = (response.results.length == 0);
+            this.find('results-none').toggle( has_results );
+
+            var self = this;
+            $.each(response.results, function (i, result){
+                self.createResult(result);
+            });
+            this.find('tags').hide();
+            this.find('results').show();
+        },
+
+        clearSearch : function () {
+            this.find('result-list').empty();
+            this.find('tags').show();
+            this.find('results').hide();
+        },
+
+        createResult : function (result){
+            var self = this;
+            var el = this.create('result');
+            el.click( function (e) {
+                self.player.currentTime = result.start - self.config.seekBeforeSec;
+            });
+
+            var time = this.create('result-time');
+            time.text( Ramp.Utils.Format.seconds( result.start) );
+            el.append(time);
+
+            var phrase = this.create('result-text');
+            el.append(phrase);
+
+            $.each(result.words, function (i, word){
+                var w = word.text;
+                if( word.match ){
+                    w = $('<span>');
+                    w.addClass( self.cssName('match') );
+                    w.text(word.text);
+                }
+                phrase.append(w);
+                phrase.append(" ");
+            });
+
+            this.find('result-list').append(el);
         },
 
         addPopcornListeners : function () {
@@ -235,7 +322,8 @@
                 context: this,
                 success : function (data){
                     $(this.container).append(data);
-                    this.find().height(0); // start closed
+                    if( this.config.autoHide )
+                        this.find().height(0); // start closed
                     this.init();
                 }
             });
@@ -254,10 +342,11 @@
         find : function (className){
             return $(this.container).find('.' + this.cssName(className) );
         },
-        create : function (className){
-            return $("<div></div>").addClass( this.cssName(className) );
+        create : function (className, tagName){
+            if( ! tagName )
+                tagName = "div";
+            return $("<" + tagName + ">").addClass( this.cssName(className) );
         },
-
         cssName : function (className){
             return this.config.cssPrefix + (  className ?  '-' + className : '' );
         }
