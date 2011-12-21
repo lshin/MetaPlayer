@@ -21,7 +21,6 @@
         if( !(this instanceof Controls) )
             return new Controls(player, service, options);
 
-        this.config = $.extend(true, {}, defaults, options);
 
         // two-argument constructor(player, options)
         if( options == undefined && player.service ) {
@@ -29,6 +28,7 @@
             service = player.service;
         }
 
+        this.config = $.extend(true, {}, defaults, options);
         this.service = service;
 
         var target = $(this.config.container || $(player).parent() );
@@ -122,11 +122,15 @@
             if( this.config.renderMetaq )
                 this.service.onMetaQ(this._onMetaq, this);
 
-            this.service.onMediaChange(this.onMediaChange, this);
+            this.service.onMetaData(this.onMetaData, this);
+
+            this.service.onSearch(this.onSearch, this);
+
 
         },
 
         _onTags : function (tags) {
+
             var self = this;
             $.each(tags, function (i, tag){
                 $.each(tag.timestamps, function (j, time){
@@ -146,8 +150,27 @@
             this.renderAnnotations();
         },
 
-        onMediaChange: function () {
+        onMetaData: function (metadata) {
             this.clearAnnotations();
+        },
+
+        onSearch : function (response) {
+            var self = this;
+            var searchClass = 'query';
+
+            this.removeAnnotations( searchClass );
+
+            $.each(response.results, function (i, result){
+                var start = result.start;
+                var text =  [ ];
+                $.each(result.words, function (i, word){
+                    text.push(word.text);
+                });
+                text = text.join(' ').replace(/[\r\n]/g, ' ');
+                self.addAnnotation(start, null, text, searchClass);
+            });
+
+            this.renderAnnotations();
         },
 
         onClockTimer : function (e) {
@@ -273,9 +296,7 @@
             this.find('play').toggleClass( this.cssName('pause'), ! this.player.paused );
             this.find('time-duration').text(' / ' + this.formatTime( duration ) );
 
-            if( duration ){
-               this.renderAnnotations();
-            }
+            this.renderAnnotations();
 
             var msec = this.config.trackIntervalMsec;
 
@@ -332,7 +353,8 @@
             this.annotations.push({
                 start : start,
                 end : end,
-                el : marker
+                el : marker,
+                cssClass : cssClass
             });
             return marker;
         },
@@ -350,6 +372,17 @@
                 }
                 annotation.el.show();
             });
+        },
+
+        removeAnnotations : function (className) {
+            var i, a;
+            for(i = this.annotations.length - 1; i >= 0 ; i-- ) {
+                a = this.annotations[i];
+                if( a.cssClass == className ){
+                    this.annotations.splice(i, 1);
+                    a.el.remove();
+                }
+            }
         },
 
         clearAnnotations : function () {

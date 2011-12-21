@@ -9,7 +9,8 @@
         cssPrefix : "mp-search",
         tags : true,
         query : "",
-        seekBeforeSec : 1
+        seekBeforeSec : 1,
+        placeholderText : "Search transcript..."
     };
 
     var SearchBox = function (target, player, options) {
@@ -69,6 +70,7 @@
             var ti = $('<input type="text" />');
             ti.addClass( this.cssName('input') );
             ti.val( this.config.query );
+            ti.attr('placeholder', this.config.placeholderText);
             f.append(ti);
 
             var sm = this.create('submit', 'a');
@@ -103,14 +105,20 @@
                     self.player.currentTime = start - self.config.seekBeforeSec;
             });
 
-            this.service.onTags( this.onTags, this);
+            if( this.service ) {
+                this.service.onTags( this.onTags, this);
+                this.service.onSearch( this.onSearchResult, this);
+            }
         },
 
         onTags : function (tags) {
             var all = $(tags).map(function () {
                 return this.term;
             });
-            if( this.config.tags )
+
+            var current = this.find('input').val();
+
+            if( this.config.tags && ! current )
                 this.search( all.toArray().join(' ' ) );
             else
                 this.onSearch();
@@ -125,17 +133,17 @@
             this.clear();
             if(! query)
                 return;
-            this.find('input').val(query);
-            this.service.search(query, this.onSearchResult, this);
+            this.service.search(query);
         },
 
         clear : function () {
             var r = this.find('results');
             r.empty();
-            this.find('input').val('');
         },
 
         onSearchResult : function (response) {
+            this.clear();
+
             var r = this.find('results');
             if( response.results.length == 0 ) {
                 r.text("no results");

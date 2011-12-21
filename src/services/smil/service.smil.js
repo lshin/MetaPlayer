@@ -27,6 +27,7 @@
         this.onMetaQ = dispatcher.observer("metaQ");
         this.onRelated = dispatcher.observer("related");
         this.onMediaChange = dispatcher.observer("mediaChange");
+        this.onSearch = dispatcher.observer("search");
 
         if( url )
             this.load( url );
@@ -218,6 +219,14 @@
                 q : query
             };
 
+            if( ! query ) {
+                this.dispatch("search", {
+                    query : [],
+                    results : []
+                });
+                return;
+            }
+
             $.ajax(url, {
                 dataType : "xml",
                 timeout : 5000,
@@ -228,7 +237,9 @@
                 },
                 success : function (response, textStatus, jqXHR) {
                     var results = SmilService.parseSearch(response);
-                    callback.call(scope, results);
+                    this.dispatch("search", results);
+                    if( callback )
+                        callback.call(scope, results);
                 }
             });
         }

@@ -10,14 +10,6 @@
             width: 600px;
             height: 300px;
             background:  #333;
-            float: left;
-        }
-        #search {
-            margin-left: 610px;
-            width: 300px;
-            height: 300px;
-            background:  #fff;
-            border:  1px solid #aaa;
         }
     </style>
 
@@ -31,11 +23,11 @@
     <script src="../../../ramp.js"></script>
     <script src="../../../models/model.playlist.js"></script>
     <script src="../../../services/smil/service.smil.js"></script>
-    <script src="../../../utils/util.timer.js"></script>
     <script src="../../../utils/util.event.js"></script>
+    <script src="../../../utils/util.timer.js"></script>
     <script src="../../../utils/util.proxy.js"></script>
-    <script src="../../../utils/util.script.js"></script>
     <script src="../../../utils/util.format.js"></script>
+    <script src="../../../utils/util.script.js"></script>
 
     <!-- Media Plugin: HTML5 -->
     <script src="../../../players/html5/player.html5.js"></script>
@@ -43,35 +35,21 @@
     <!--Plugin: ramp popcorn loader-->
     <script src="../../../players/popcorn/ui.popcorn.js"></script>
 
-    <!-- UI Plugin: Search -->
-    <script src="../ui.search.js"></script>
-    <link href="../ui.search.css" rel="stylesheet" type="text/css">
-
     <!-- UI Plugin: Controls -->
-    <script src="../../controls/ui.controls.js"></script>
-    <link href="../../controls/ui.controls.css" rel="stylesheet" type="text/css">
+    <script src="../ui.controls.js"></script>
+    <link href="../ui.controls.css" rel="stylesheet" type="text/css">
     <link href="../../../themes/mp2/theme.controls.css" rel="stylesheet" type="text/css">
 
-    <!-- UI Plugin: Captions -->
-    <script src="../../captions/ui.captions.js"></script>
-    <link href="../../captions/ui.captions.css" rel="stylesheet" type="text/css">
 
 </head>
 <body>
-    <h3>Metaplayer &raquo; SearchBox Plugin</h3>
+    <h3>Metaplayer &raquo; Controls Plugin</h3>
 
     <div id='target'></div>
-    <div id='search'></div>
 
     <script type="text/javascript">
-        var player = Ramp.html5('#target', "ramp:/pca:36234882", {
-            autoplay: true
-        });
-        var search = Ramp.searchbox("#search", player   );
-        var controls = Ramp.controls(player, {
-            renderTags: false
-        });
-        Ramp.metaq(player);
+        var player = Ramp.html5('#target', "ramp:/pca:36234882");
+        var controls = Ramp.controls(player);
     </script>
 </body>
 </html>

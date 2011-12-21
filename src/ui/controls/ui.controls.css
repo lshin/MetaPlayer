@@ -139,13 +139,8 @@
     border-radius: 5px;
 }
 
-/* Captions */
-.metaplayer-captions-cc-content {
-    color: white;
-    margin-top: -3em;
-    text-align: center;
-    font-size: 1.1em;
-    position: relative;
-    z-index: 999;
+.metaplayer-query {
+  background: cyan !important;
+  border-radius: 2px;
 }
 
