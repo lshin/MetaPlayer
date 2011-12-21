@@ -13,6 +13,9 @@
         swfUrl : "flowplayer-3.2.7.swf",
         wmode : "transparent",
         fpConfig : {
+            clip : {
+                scaling : "fit"
+            }
         }
     };
 
