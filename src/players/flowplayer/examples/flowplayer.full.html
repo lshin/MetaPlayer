@@ -11,7 +11,10 @@
     <!--Dependency: Flowplayer-->
     <script src="../../../../external/flowplayer/flowplayer-3.2.6.min.js"></script>
 
-    <!-- Core: Ramp -->
+    <!--Dependency: Popcorn -->
+    <script src="../../../../external/popcorn/popcorn.js" type="text/javascript"></script>
+
+   <!-- Core: Ramp -->
     <script src="../../../ramp.js"></script>
     <script src="../../../models/model.playlist.js"></script>
     <script src="../../../services/smil/service.smil.js"></script>
@@ -19,9 +22,13 @@
     <script src="../../../utils/util.proxy.js"></script>
     <script src="../../../utils/util.script.js"></script>
     <script src="../../../utils/util.timer.js"></script>
+    <script src="../../../utils/util.format.js"></script>
 
     <!-- Media Plugin: Flowplayer -->
     <script src="../player.flowplayer.js"></script>
+
+    <!-- Plugin: popcorn -->
+    <script src="../../popcorn/ui.popcorn.js"></script>
 
     <!-- View: Controls -->
     <script src="../../../ui/controls/ui.controls.js"></script>
@@ -32,6 +39,11 @@
     <script src="../../../ui/overlay/ui.overlay.js"></script>
     <link href="../../../ui/overlay/ui.overlay.css" rel="stylesheet"  type="text/css">
     <link href="../../../themes/mp2/theme.overlay.css" rel="stylesheet"  type="text/css">
+
+    <!-- View: Captions -->
+    <script src="../../../ui/captions/ui.captions.js"></script>
+    <link href="../../../ui/captions/ui.captions.css" rel="stylesheet"  type="text/css">
+    <link href="../../../themes/mp2/theme.captions.css" rel="stylesheet"  type="text/css">
 
     <style>
         #target {
@@ -58,6 +70,8 @@
     });
 
     Ramp.controls(player);
+    Ramp.captions(player);
+    Ramp.metaq(player);
     Ramp.overlay(player);
 
     jQuery.noConflict(true);

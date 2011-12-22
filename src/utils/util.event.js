@@ -57,8 +57,7 @@
         },
 
         dispatch : function (eventType, data, eventObject) {
-            if( ! this._listeners[eventType] )
-                return;
+            var l = this._listeners[eventType];
 
             if( ! eventObject )
                 eventObject = {};
@@ -72,7 +71,6 @@
             if( this._observed[eventType] !== undefined )
                 this._observed[eventType] = data || true;
 
-            var l = this._listeners[eventType];
             if( ! l )
                 return;
 

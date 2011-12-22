@@ -244,8 +244,7 @@
         },
 
         dispatch : function (eventType, data, eventObject) {
-            if( ! this._listeners[eventType] )
-                return;
+            var l = this._listeners[eventType];
 
             if( ! eventObject )
                 eventObject = {};
@@ -259,7 +258,6 @@
             if( this._observed[eventType] !== undefined )
                 this._observed[eventType] = data || true;
 
-            var l = this._listeners[eventType];
             if( ! l )
                 return;
 
@@ -1421,6 +1419,7 @@
             var common = this._flowplayer.getCommonClip();
 
             common.onBeforeBegin( function (clip) {
+
                 if( clip.url && clip.url.indexOf('ramp:') == 0) {
                     if( ! self.preload && ! clip.autoBuffering) {
                         // flowplayer.startBuffering() or flowplayer.play() called,
@@ -1439,14 +1438,13 @@
                 self._flowplayer.setVolume(100);
                 self._flowplayer.unmute();
                 // if not autoplay, then it's not safe to seek until we get a pause
-                if( ! this.autoplay && self._flowplayer.getClip().autoPlay ) {
-                    self._setReady();
-                }
-                else
-                    self._setPlaying(true);
             });
 
             common.onStart( function (clip) {
+                if( self.autoplay ) {
+                    self._setReady();
+                    self._setPlaying(true);
+                }
                 self.dispatch('loadeddata');
                 self.dispatch('loadedmetadata');
                 self.dispatch("durationchange");
@@ -1459,6 +1457,7 @@
 
             common.onFinish( function (clip) {
                 self.ended = true;
+                self.__seeking = null;
                 self._setPlaying(false);
 
                 var pl = self._flowplayer.getPlaylist();
@@ -1518,6 +1517,10 @@
             if( this.readyState != 4 ) {
                 this.readyState = 4;
                 this.dispatch("canplay");
+            }
+            else {
+                this.dispatch("seeking");
+                this.dispatch("seeked");
             }
         },
 
@@ -1581,12 +1584,18 @@
 
         _currentTime : function (val){
             if( val !== undefined ){
+                if( val < 0 )
+                    val = 0
+                if( val > this.duration )
+                    val = this.duration
                 this.__seeking = val;
                 this._flowplayer.seek(val);
             }
             var status = this._flowplayer.getStatus();
+
             if( this.__seeking !== null )
                 return this.__seeking;
+
             return status.time;
         },
 
