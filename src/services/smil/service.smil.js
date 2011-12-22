@@ -220,10 +220,12 @@
             };
 
             if( ! query ) {
-                this.dispatch("search", {
+                var response = {
                     query : [],
                     results : []
-                });
+                };
+                this.dispatch("search", response);
+                callback.call(scope, response);
                 return;
             }
 

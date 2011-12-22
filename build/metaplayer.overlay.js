@@ -69,7 +69,7 @@ all copies or substantial portions of the Software.
             //  render initial state
             this.onVolumeChange();
             this.onPlayStateChange();
-            this.setCaptions(true);
+            this.setCaptions(this.config.captions);
 
         },
 
@@ -104,7 +104,7 @@ all copies or substantial portions of the Software.
 
             this.find('results-close').click( function (e) {
                 self.find('search-input').val('');
-                self.service.search('');
+                self.service.search('', self.onSearchResult, self);
             });
 
             var volume_bg = this.find('volume-bg');
@@ -140,8 +140,7 @@ all copies or substantial portions of the Software.
                 return;
 
             this.service.onTags(this.onTags, this);
-            this.service.onSearch(this.onSearchResult, this);
-            this.nextUp.onMetaData(this._onNextUpMetaData, this);
+//            this.service.onSearch(this.onSearchResult, this);
         },
 
         onTags : function (tags) {
@@ -153,6 +152,7 @@ all copies or substantial portions of the Software.
 
         onTrackChange : function () {
             this.nextup = null;
+            this.clearSearch();
 
             $('.' + this.cssName('tag') ).remove();
             this.find('next').hide();
@@ -180,13 +180,13 @@ all copies or substantial portions of the Software.
 
         onTagClick : function (e) {
             var term = $(e.currentTarget).data().term;
-            this.find('search-input').val(term);
+            this.find('search-input').val("\"" +  term + "\"");
             this.doSearch();
         },
 
         doSearch : function () {
             var q = this.find('search-input').val();
-            this.service.search(q);
+            this.service.search(q, this.onSearchResult, this);
         },
 
         onSearchResult : function (response) {
@@ -195,7 +195,7 @@ all copies or substantial portions of the Software.
             if( ! response.query.length )
                 return;
 
-            this.find('search-input').val(response.query.join(' '));
+//            this.find('search-input').val(response.query.join(' '));
 
             var has_results = (response.results.length == 0);
             this.find('results-none').toggle( has_results );
