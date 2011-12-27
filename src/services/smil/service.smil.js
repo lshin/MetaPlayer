@@ -34,7 +34,9 @@
     };
 
     SmilService.msQuotes = true;
+    SmilService.rebase = true;
 
+    Ramp.Services.SmilService = SmilService;
 
     Ramp.data = function (url, options) {
         return SmilService(url, options);
@@ -213,7 +215,10 @@
         search : function ( query, callback, scope) {
 
             var url = this._data.metadata.searchapi;
-            url = url.replace(/^(.*\/\/[\w.]+)/, ""); // make match local domain root
+
+            if( SmilService.rebase ) {
+                url = url.replace(/^(.*\/\/[\w.]+)/, ""); // make match local domain root
+            }
 
             var params = {
                 q : query
