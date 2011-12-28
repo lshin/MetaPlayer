@@ -140,7 +140,7 @@
 }
 
 .metaplayer-query {
-  background: orange !important;
+  background: orange;
   border-radius: 2px;
 }
 
@@ -545,27 +545,45 @@
     font-family: Verdana, sans-serif;
     font-size: 14px;
     padding: 10px;
-}.metaplayer-box {
+}.metaplayer-controls {
+    background: silver;
+    height: 21px;
+}
+.metaplayer-box {
     background: #aaa;
 }
 
 .metaplayer-time {
     text-shadow: 0 0 2px #666;
+    font-family: verdana, arial, sans-serif;
+    font-size:11px;
+    height:100%;
+    width: 100px;
+    vertical-align: top;
+    margin-top: -4px;
 }
 .metaplayer-time-current {
-    color: #fff;
+    color: black;
+    text-shadow: 0 1px 0 #fff;
 }
 
 .metaplayer-time-duration {
-    color: #ddd;
+    text-shadow: none;
+    color:#777777;
 }
 
 .metaplayer-play {
-    background: url(assets/control/play-28x24.png);
+    width: 17px;
+    height: 17px;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+    background-image: url(assets/control/play-28x24.png);
+    left: 7px;
 }
 
 .metaplayer-pause {
-    background: url(assets/control/pause-28x24.png);
+    background-image: url(assets/control/pause-28x24.png);
 }
 
 .metaplayer-fullscreen {
@@ -573,20 +591,39 @@
 }
 
 .metaplayer-track {
-    background: #333;
-    border-radius: 5px;
+    border: 1px solid dimGray;
+    border-radius: 3px;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    background: #4C4C4C;
+    height: 15px;
+    margin-left: 30px;
+
 }
 
 .metaplayer-track-fill {
-    background: #fff;
-}
+    background: #d3d3d3; /* for non-css3 browsers */
+    /* filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#d3d3d3', endColorstr='#9f9f9f');  for IE but doesn't work in IE9 */
+    background: -webkit-gradient(linear, left top, left bottom, from(#d3d3d3), to(#9f9f9f)); /* for webkit browsers */
+    background: -moz-linear-gradient(top,  #d3d3d3,  #9f9f9f); /* for firefox 3.6+ */
+    border-radius:3px;
+    -moz-border-radius:3px;
+    -webkit-border-radius:3px;
+    }
 
 .metaplayer-track-marker {
-    background: gray;
+    width: 14px;
+    height: 14px;
+    margin-left: -7px;
+    background: url(assets/dot-blue.png) no-repeat;
+}
+
+.metaplayer-query {
+    background: transparent url(assets/dot-orange.png) no-repeat;
 }
 
 .metaplayer-tag {
-    background: cyan;
+    background: url(assets/dot-blue.png) no-repeat;
 }
 
 .metaplayer-metaq {
@@ -594,17 +631,21 @@
 }
 
 .metaplayer-track-knob {
-    background: #eee;
-    border-radius: 3px;
+    background: url(assets/playhead.png) no-repeat;
+    border:  none;
+    width:9px;
+    height:20px;
+    top:-2px;
 }
 
 .metaplayer-track-knob:hover {
-    border: 1px solid blue;
+    border:  none;
+    background: url(assets/playhead.png) no-repeat;
 }
 
 .metaplayer-track-knob:active {
-    background: #aaaaff;
-    border: 1px solid blue;
+    border:  none;
+    background: url(assets/playhead.png) no-repeat;
 }
 
 .metaplayer-track-buffer {
