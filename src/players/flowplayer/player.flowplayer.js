@@ -101,13 +101,10 @@
 
         _pageSetup : function (el) {
 
-            var c = $('<div class="mp-player" style="position:relative;top:0;left:0;width:100%;height:100%"></div>');
-            this.container = c;
 
             // if passed in fp instance
             if( el.getCommonClip ) {
                 this._flowplayer = el;
-                c.append(el);
                 var common  = this._flowplayer.getCommonClip();
                 this.preload = Boolean( common.autoBuffering );
                 this.autoplay = Boolean( common.autoPlay );
@@ -120,14 +117,15 @@
                         autoBuffering: true
                     }
                 },this.config.fpConfig);
-                $(el).append(c);
-                var v = $('<div class="mp-video" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;"></div>');
-                $(c).append(v);
+                var v = $('<div class="mp-video""></div>');
+                $(el).append(v);
                 this._flowplayer = $f( v.get(0), {
                     src: this.config.swfUrl,
                     wmode: this.config.wmode
                 }, config );
             }
+            Ramp.UI.ensureOffsetParent( this._flowplayer.getParent() );
+
         },
 
         _onMetaData : function (metadata) {
@@ -373,7 +371,7 @@
             var parent = this._flowplayer.getParent();
 
             Ramp.Utils.Proxy.proxyProperty("parentNode clientHeight clientWidth offsetHeight" +
-                " clientTop clientLeft scrollTop scrollLeft offsetWidth style className id",
+                " clientTop clientLeft scrollTop scrollLeft offsetWidth offsetParent style className id",
                 parent, this);
 
             Ramp.Utils.Proxy.proxyFunction("getBoundingClientRect getElementsByTagName",
@@ -385,8 +383,9 @@
         },
 
         _addMediaProxy : function () {
-            Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted buffered seeking seekable" +
-                " paused played defaultPlaybackRate playbackRate controls autoplay preload src",
+            Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
+                " paused played defaultPlaybackRate playbackRate controls autoplay preload src children",
+                // buffered
                 this);
         },
 
@@ -403,7 +402,7 @@
                 if( val < 0 )
                     val = 0
                 if( val > this.duration )
-                    val = this.duration
+                    val = this.duration;
                 this.__seeking = val;
                 this._flowplayer.seek(val);
             }
@@ -522,6 +521,18 @@
                 this.__loop = bool;
             }
             return this.__loop;
+        },
+
+        canPlayType : function (type) {
+            return "probably";
+        },
+
+        _children : function () {
+            var sources = [];
+            var src = document.createElement('source');
+            src.setAttribute('type', "video/ramp");
+            src.setAttribute('src', this.src);
+            return [src];
         },
 
         queue : function ( media ) {

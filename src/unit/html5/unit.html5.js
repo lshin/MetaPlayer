@@ -20,6 +20,10 @@ PlayerUnit.prototype = {
         unit.test("media setup",  function () {
             unit.nequal( self.media, undefined, "media instance not null");
             unit.equal( isNaN(self.media.duration), true, "duration at start is NaN");
+
+            unit.assert( self.media.canPlayType instanceof Function, "canPlayType defined" );
+            unit.assert( self.media.children instanceof Array, "children is array" );
+            unit.assert( self.media.children.length, "has children" );
         });
 
         unit.test("load events",  function () {

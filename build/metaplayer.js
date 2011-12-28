@@ -459,6 +459,49 @@
 
 
 })();
+
+(function () {
+
+    var $ = jQuery;
+
+    if( ! window.Ramp )
+        window.Ramp = {};
+
+    Ramp.UI = {
+        /**
+         * Ensures that target's parentNode is it's offsetParent, creating a wrapping div if necessary.
+         *  Returned box can be used to reliably position UI elements absolutely using top,left,etc.
+         * @param target - a DOM node or jquery selector
+         */
+        ensureOffsetParent :  function ( target ) {
+            target = $(target).first();
+            var el = target[0];
+
+            if( el.offsetParent === el.parentNode && el.offsetParent.offsetParent ) {
+                return;
+            }
+
+            var wrap = $('<div></div>');
+            wrap.css('position', 'relative');
+            wrap.css('top', 0);
+            wrap.css('left', 0);
+            wrap.css('width', "100%");
+            wrap.css('height', "100%");
+
+            if( el.width )
+                wrap.width(el.width);
+
+            if( el.height )
+                wrap.height(el.height);
+
+            target.css('width', "100%");
+            target.css('height', "100%");
+
+            target.parent().append(wrap);
+            wrap.append(target);
+        }
+    };
+})();
 (function () {
     var $ = jQuery;
 
@@ -615,7 +658,9 @@
     };
 
     SmilService.msQuotes = true;
+    SmilService.rebase = true;
 
+    Ramp.Services.SmilService = SmilService;
 
     Ramp.data = function (url, options) {
         return SmilService(url, options);
@@ -794,7 +839,10 @@
         search : function ( query, callback, scope) {
 
             var url = this._data.metadata.searchapi;
-            url = url.replace(/^(.*\/\/[\w.]+)/, ""); // make match local domain root
+
+            if( SmilService.rebase ) {
+                url = url.replace(/^(.*\/\/[\w.]+)/, ""); // make match local domain root
+            }
 
             var params = {
                 q : query
@@ -1053,47 +1101,27 @@
 
 
         _createMarkup : function ( parent ) {
-            var c = $('<div class="mp-player"></div>');
-            c.css('position', 'relative');
-            c.css('left', '0');
-            c.css('top', '0');
-
             var p = $(parent);
-
-            // if is video, wrap with div
             if( p.is('video') ) {
                 this._video = parent;
-                p.parent().append(c);
-                c.width( p.width() );
-                c.height( p.height() );
-                p.css('width', '100%');
-                p.css('height', '100%');
-                c.append(p);
             }
-
-            // else append the wrapper to the target, create video element
             else {
-                c.css('width', '100%');
-                c.css('height', '100%');
-                p.append(c);
                 var video = document.createElement('video');
                 video.autoplay = this.config.autoplay;
                 video.preload = this.config.preload;
                 video.controls = this.config.controls;
                 video.muted = this.config.muted;
+                video.style.position = "absolute";
+                video.style.top = 0;
+                video.style.left = 0;
                 video.style.width = "100%";
                 video.style.height = "100%";
                 this._video = video;
+                p.append(video);
             }
 
-            var v = $(this._video);
-            v.css("position", "absolute");
-            v.css('left', '0');
-            v.css('top', '0');
-            // append video to wrapper
-            c.append(v);
+            Ramp.UI.ensureOffsetParent(this._video);
         },
-
 
         _addListeners : function () {
             this.onTrackChange(this._onTrackChange, this);
@@ -1121,6 +1149,32 @@
             this._transcodes = transcodes;
             if( this.config.preload )
                 this.load();
+        },
+
+        _children : function () {
+            if( this._video.children.length )
+                return this._video.children;
+
+            var t = this.track();
+            var src = document.createElement('source');
+            src.setAttribute('type', "video/ramp");
+            src.setAttribute('src', t.url);
+            return [src];
+        },
+
+        canPlayType : function (type) {
+            if( type == "video/ramp" )
+                return "probably";
+            else
+                return this._video.canPlayType(type);
+        },
+
+        _src : function (val) {
+            if( val !== undefined ) {
+                this.playlist.clear();
+                this.playlist.queue(val);
+            }
+            return this.track().src;
         },
 
         _addSources : function () {
@@ -1166,9 +1220,12 @@
             // proxy entire MediaController interface
             // http://dev.w3.org/html5/spec/Overview.html#mediacontroller
             //     .. plus a few unofficial dom extras
+
+            Ramp.Utils.Proxy.mapProperty("children src", this);
+
             Ramp.Utils.Proxy.proxyProperty("duration currentTime volume muted buffered seekable" +
-                " paused played seeking defaultPlaybackRate playbackRate autoplay preload src" +
-                " ended readyState parentNode offsetHeight offsetWidth style className id controls",
+                " paused played seeking defaultPlaybackRate playbackRate autoplay preload " +
+                " ended readyState parentNode offsetHeight offsetWidth offsetParent style className id controls",
                 media, this);
 
             Ramp.Utils.Proxy.proxyFunction("play pause" +
@@ -1287,13 +1344,10 @@
 
         _pageSetup : function (el) {
 
-            var c = $('<div class="mp-player" style="position:relative;top:0;left:0;width:100%;height:100%"></div>');
-            this.container = c;
 
             // if passed in fp instance
             if( el.getCommonClip ) {
                 this._flowplayer = el;
-                c.append(el);
                 var common  = this._flowplayer.getCommonClip();
                 this.preload = Boolean( common.autoBuffering );
                 this.autoplay = Boolean( common.autoPlay );
@@ -1306,14 +1360,15 @@
                         autoBuffering: true
                     }
                 },this.config.fpConfig);
-                $(el).append(c);
-                var v = $('<div class="mp-video" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;"></div>');
-                $(c).append(v);
+                var v = $('<div class="mp-video""></div>');
+                $(el).append(v);
                 this._flowplayer = $f( v.get(0), {
                     src: this.config.swfUrl,
                     wmode: this.config.wmode
                 }, config );
             }
+            Ramp.UI.ensureOffsetParent( this._flowplayer.getParent() );
+
         },
 
         _onMetaData : function (metadata) {
@@ -1559,7 +1614,7 @@
             var parent = this._flowplayer.getParent();
 
             Ramp.Utils.Proxy.proxyProperty("parentNode clientHeight clientWidth offsetHeight" +
-                " clientTop clientLeft scrollTop scrollLeft offsetWidth style className id",
+                " clientTop clientLeft scrollTop scrollLeft offsetWidth offsetParent style className id",
                 parent, this);
 
             Ramp.Utils.Proxy.proxyFunction("getBoundingClientRect getElementsByTagName",
@@ -1571,8 +1626,9 @@
         },
 
         _addMediaProxy : function () {
-            Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted buffered seeking seekable" +
-                " paused played defaultPlaybackRate playbackRate controls autoplay preload src",
+            Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
+                " paused played defaultPlaybackRate playbackRate controls autoplay preload src children",
+                // buffered
                 this);
         },
 
@@ -1589,7 +1645,7 @@
                 if( val < 0 )
                     val = 0
                 if( val > this.duration )
-                    val = this.duration
+                    val = this.duration;
                 this.__seeking = val;
                 this._flowplayer.seek(val);
             }
@@ -1708,6 +1764,18 @@
                 this.__loop = bool;
             }
             return this.__loop;
+        },
+
+        canPlayType : function (type) {
+            return "probably";
+        },
+
+        _children : function () {
+            var sources = [];
+            var src = document.createElement('source');
+            src.setAttribute('type', "video/ramp");
+            src.setAttribute('src', this.src);
+            return [src];
         },
 
         queue : function ( media ) {

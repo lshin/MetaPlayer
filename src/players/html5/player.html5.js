@@ -75,47 +75,27 @@
 
 
         _createMarkup : function ( parent ) {
-            var c = $('<div class="mp-player"></div>');
-            c.css('position', 'relative');
-            c.css('left', '0');
-            c.css('top', '0');
-
             var p = $(parent);
-
-            // if is video, wrap with div
             if( p.is('video') ) {
                 this._video = parent;
-                p.parent().append(c);
-                c.width( p.width() );
-                c.height( p.height() );
-                p.css('width', '100%');
-                p.css('height', '100%');
-                c.append(p);
             }
-
-            // else append the wrapper to the target, create video element
             else {
-                c.css('width', '100%');
-                c.css('height', '100%');
-                p.append(c);
                 var video = document.createElement('video');
                 video.autoplay = this.config.autoplay;
                 video.preload = this.config.preload;
                 video.controls = this.config.controls;
                 video.muted = this.config.muted;
+                video.style.position = "absolute";
+                video.style.top = 0;
+                video.style.left = 0;
                 video.style.width = "100%";
                 video.style.height = "100%";
                 this._video = video;
+                p.append(video);
             }
 
-            var v = $(this._video);
-            v.css("position", "absolute");
-            v.css('left', '0');
-            v.css('top', '0');
-            // append video to wrapper
-            c.append(v);
+            Ramp.UI.ensureOffsetParent(this._video);
         },
-
 
         _addListeners : function () {
             this.onTrackChange(this._onTrackChange, this);
@@ -143,6 +123,32 @@
             this._transcodes = transcodes;
             if( this.config.preload )
                 this.load();
+        },
+
+        _children : function () {
+            if( this._video.children.length )
+                return this._video.children;
+
+            var t = this.track();
+            var src = document.createElement('source');
+            src.setAttribute('type', "video/ramp");
+            src.setAttribute('src', t.url);
+            return [src];
+        },
+
+        canPlayType : function (type) {
+            if( type == "video/ramp" )
+                return "probably";
+            else
+                return this._video.canPlayType(type);
+        },
+
+        _src : function (val) {
+            if( val !== undefined ) {
+                this.playlist.clear();
+                this.playlist.queue(val);
+            }
+            return this.track().src;
         },
 
         _addSources : function () {
@@ -188,9 +194,12 @@
             // proxy entire MediaController interface
             // http://dev.w3.org/html5/spec/Overview.html#mediacontroller
             //     .. plus a few unofficial dom extras
+
+            Ramp.Utils.Proxy.mapProperty("children src", this);
+
             Ramp.Utils.Proxy.proxyProperty("duration currentTime volume muted buffered seekable" +
-                " paused played seeking defaultPlaybackRate playbackRate autoplay preload src" +
-                " ended readyState parentNode offsetHeight offsetWidth style className id controls",
+                " paused played seeking defaultPlaybackRate playbackRate autoplay preload " +
+                " ended readyState parentNode offsetHeight offsetWidth offsetParent style className id controls",
                 media, this);
 
             Ramp.Utils.Proxy.proxyFunction("play pause" +

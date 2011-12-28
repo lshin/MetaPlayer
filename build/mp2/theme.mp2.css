@@ -528,7 +528,15 @@
     font-weight: bold;
 }
 
-.metaplayer-captions {
+.vjs-fullscreen {
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+.video-js-box video {
+    width: 100% !important;
+    height: 100% !important;
+}.metaplayer-captions {
     bottom: 40px;
 }
 .metaplayer-captions-text {
