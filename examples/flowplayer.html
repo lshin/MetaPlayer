@@ -26,13 +26,12 @@
     <script src="../build/metaplayer.controls.min.js"></script>
     <script src="../build/metaplayer.overlay.min.js"></script>
     <script src="../build/metaplayer.captions.min.js"></script>
+    <script src="../build/metaplayer.endcap.min.js"></script>
 
     <!--Theme: mp2 -->
     <link href="../build/mp2/theme.mp2.css" rel="stylesheet"  type="text/css">
 
     <script type="text/javascript">
-        var player, controls, metaq, overlay;
-
         document.addEventListener("DOMContentLoaded", function () {
 
             player = Ramp.flowplayer('#target', "ramp:/pca:36234882", {
@@ -48,6 +47,9 @@
 
             // overlay
             overlay = Ramp.overlay(player);
+
+            // endcap
+            endcap = Ramp.endcap(player);
 
         }, false);
 

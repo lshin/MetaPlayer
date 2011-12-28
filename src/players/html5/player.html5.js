@@ -28,6 +28,9 @@
         this._transcodes = [];
         this._haveRelated = false;
 
+        this.advance = this.config.autoAdvance;
+
+
         // set up playlist, have it use our event dispatcher
         this.service = Ramp.data({
             dispatcher : this._dispatcher
@@ -109,7 +112,7 @@
         },
 
         _onMetaData : function (metadata) {
-
+            $.extend( this.track(), metadata );
         },
 
         _onRelated : function (related) {
@@ -183,7 +186,7 @@
         },
 
         _onEnded : function () {
-            if(! this.config.autoAdvance )
+            if(! this.advance )
                 return;
             this.autoplay = true;
             this.playlist.next();

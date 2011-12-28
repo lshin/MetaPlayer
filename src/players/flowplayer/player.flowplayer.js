@@ -54,6 +54,7 @@
         this.preload  = this.config.preload;
         this.autoplay = this.config.autoplay;
         this.loop = this.config.loop;
+        this.advance = this.config.autoAdvance;
         this.src = url;
 
         this._statepoll = Ramp.Timer(250);
@@ -130,6 +131,15 @@
 
         _onMetaData : function (metadata) {
             // update clip title, desc, etc
+            var clip = this._flowplayer.getClip();
+            if( clip && ! clip.isCommmon ) {
+                $.extend(clip, {
+                    title : metadata.title,
+                    description : metadata.description,
+                    thumbnail : metadata.thumbnail
+                });
+                clip.update(clip);
+            }
         },
 
         _onRelated : function (related) {
@@ -276,7 +286,7 @@
 
                 var pl = self._flowplayer.getPlaylist();
 
-                if( ! self.config.autoAdvance ) {
+                if( ! self.advance ) {
                     self._flowplayer.stop();
                 }
                 else if( clip.index + 1 == pl.length ) {

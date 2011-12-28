@@ -432,8 +432,11 @@
         this._counted = 0;
         this._onTimeout = function () {
             self._counted++;
-            self.dispatch('time');
-            if( self.count > 0 && self.count <= self._counted + 1 ){
+            self.dispatch('time', {
+                count : self._counted,
+                remain : self.count - self._counted
+            });
+            if( self.count > 0 && self.count < self._counted + 1 ){
                 self.reset();
                 self.dispatch('complete');
             }
@@ -449,11 +452,23 @@
         stop : function () {
             clearInterval(this._interval);
             this._interval = null;
+            this.running = null;
+
+        },
+
+        toggle : function () {
+            if( this.running )
+                this.stop();
+            else
+                this.start()
+
         },
 
         start : function () {
-            if(! this._interval )
-                this._interval = setInterval(this._onTimeout, this.delay );
+            if( this._interval )
+                return;
+            this.running = (new Date()).getTime();
+            this._interval = setInterval(this._onTimeout, this.delay );
         }
     };
 
@@ -1054,6 +1069,9 @@
         this._transcodes = [];
         this._haveRelated = false;
 
+        this.advance = this.config.autoAdvance;
+
+
         // set up playlist, have it use our event dispatcher
         this.service = Ramp.data({
             dispatcher : this._dispatcher
@@ -1135,7 +1153,7 @@
         },
 
         _onMetaData : function (metadata) {
-
+            $.extend( this.track(), metadata );
         },
 
         _onRelated : function (related) {
@@ -1209,7 +1227,7 @@
         },
 
         _onEnded : function () {
-            if(! this.config.autoAdvance )
+            if(! this.advance )
                 return;
             this.autoplay = true;
             this.playlist.next();
@@ -1297,6 +1315,7 @@
         this.preload  = this.config.preload;
         this.autoplay = this.config.autoplay;
         this.loop = this.config.loop;
+        this.advance = this.config.autoAdvance;
         this.src = url;
 
         this._statepoll = Ramp.Timer(250);
@@ -1373,6 +1392,15 @@
 
         _onMetaData : function (metadata) {
             // update clip title, desc, etc
+            var clip = this._flowplayer.getClip();
+            if( clip && ! clip.isCommmon ) {
+                $.extend(clip, {
+                    title : metadata.title,
+                    description : metadata.description,
+                    thumbnail : metadata.thumbnail
+                });
+                clip.update(clip);
+            }
         },
 
         _onRelated : function (related) {
@@ -1519,7 +1547,7 @@
 
                 var pl = self._flowplayer.getPlaylist();
 
-                if( ! self.config.autoAdvance ) {
+                if( ! self.advance ) {
                     self._flowplayer.stop();
                 }
                 else if( clip.index + 1 == pl.length ) {

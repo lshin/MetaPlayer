@@ -9,7 +9,8 @@
         cssPrefix : 'metaplayer-overlay',
         template : 'templates/ui.overlay.tmpl.html',
         captions : false,
-        seekBeforeSec : 1
+        seekBeforeSec : 1,
+        hideOnEnded : true
     };
 
     var Overlay = function (player, service, options) {
@@ -108,10 +109,12 @@
             if( this.config.autoHide  && ! this.config.target ) {
                 var container = $(this.container);
                 container.bind('mouseenter', function () {
-                    self.toggle(true)
+                    if( ! self._ended )
+                        self.toggle(true)
                 });
                 container.bind('mouseleave', function () {
-                    self.toggle(false)
+                    if( ! self._ended )
+                        self.toggle(false)
                 })
             }
 
@@ -260,6 +263,9 @@
             $(this.player).bind('pause play seeked seeking canplay', function(e){
                 self.onPlayStateChange();
             });
+            $(this.player).bind('ended', function(e){
+                self.onEnded();
+            });
             $(this.player).bind('volumechange', function(e){
                 self.onVolumeChange();
             });
@@ -310,10 +316,19 @@
         },
 
         onPlayStateChange : function (e) {
+            this._ended = false;
             // manage our timers based on play state
             var paused = this.player.paused;
             this.find('play').toggle( paused );
             this.find('pause').toggle( !paused );
+        },
+
+        onEnded : function () {
+            if( ! this.config.hideOnEnded )
+                return;
+            this._ended = true;
+            var node = this.find().stop();
+            node.height(0);
         },
 
         createMarkup : function () {

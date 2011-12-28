@@ -13,8 +13,11 @@
         this._counted = 0;
         this._onTimeout = function () {
             self._counted++;
-            self.dispatch('time');
-            if( self.count > 0 && self.count <= self._counted + 1 ){
+            self.dispatch('time', {
+                count : self._counted,
+                remain : self.count - self._counted
+            });
+            if( self.count > 0 && self.count < self._counted + 1 ){
                 self.reset();
                 self.dispatch('complete');
             }
@@ -30,11 +33,23 @@
         stop : function () {
             clearInterval(this._interval);
             this._interval = null;
+            this.running = null;
+
+        },
+
+        toggle : function () {
+            if( this.running )
+                this.stop();
+            else
+                this.start()
+
         },
 
         start : function () {
-            if(! this._interval )
-                this._interval = setInterval(this._onTimeout, this.delay );
+            if( this._interval )
+                return;
+            this.running = (new Date()).getTime();
+            this._interval = setInterval(this._onTimeout, this.delay );
         }
     };
 
