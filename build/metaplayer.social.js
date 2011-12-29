@@ -64,14 +64,11 @@ all copies or substantial portions of the Software.
 
         setTwitter : function (t) {
 
-            var cacheBust  = Math.random().toString().substr(2);
-
             var params = {
 //                via : '',
 //                related : '',
                 count : 'horizontal',
-                lang : 'en',
-                '_' : cacheBust // cache
+                lang : 'en'
             };
 
 

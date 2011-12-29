@@ -28,6 +28,15 @@
     <!-- Plugin: popcorn -->
     <script src="../../popcorn/ui.popcorn.js"></script>
 
+    <!-- View: Endcap -->
+    <script src="../../../ui/endcap/ui.endcap.js"></script>
+    <link href="../../../ui/endcap/ui.endcap.css" rel="stylesheet"  type="text/css">
+    <link href="../../../themes/mp2/theme.endcap.css" rel="stylesheet"  type="text/css">
+
+    <!-- View: Social -->
+    <script src="../../../ui/social/ui.social.js"></script>
+    <link href="../../../ui/social/ui.social.css" rel="stylesheet"  type="text/css">
+
     <!-- View: Controls -->
     <script src="../../../ui/controls/ui.controls.js"></script>
     <link href="../../../ui/controls/ui.controls.css" rel="stylesheet"  type="text/css">
@@ -63,6 +72,7 @@
     var player = Ramp.html5('#target', "ramp:/pca:36234882", { autoplay: true } );
     Ramp.controls(player);
     Ramp.overlay(player);
+    Ramp.endcap(player);
     Ramp.metaq(player);
     Ramp.captions(player);
     jQuery.noConflict(true); // test that we we don't have any unsecured jQuery references

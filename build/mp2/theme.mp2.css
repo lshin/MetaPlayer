@@ -228,7 +228,7 @@
     position: relative;
     top: 0; left: 0;
     padding: 5px 0 10px 20px;
-    min-height: 3em;
+    height: 65px;
 }
 .metaplayer-overlay-tag {
     color: cyan;
@@ -366,6 +366,7 @@
     top: 0; left: 0;
     padding: 0 0 0 15px;
     display: none;
+    height: 80px;
 }
 
 .metaplayer-overlay-results-close {
@@ -380,7 +381,6 @@
 
 .metaplayer-overlay-result-list {
     padding-top: 0px;
-    max-height: 80px;
     margin-right: 15px;
     overflow-y: auto;
 }
@@ -733,7 +733,7 @@
     padding: 10px;
 }.metaplayer-controls {
     background: silver;
-    height: 21px;
+    height: 26px;
 }
 .metaplayer-box {
     background: #aaa;
@@ -864,7 +864,7 @@
     text-align: center;
 }
 
-.metaplayer-endcap-again-title,
+.metaplayer-endcap-left-title,
 .metaplayer-endcap-right-title {
     padding-top: 16px;
     padding-left: 50px;

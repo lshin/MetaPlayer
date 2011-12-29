@@ -49,14 +49,11 @@
 
         setTwitter : function (t) {
 
-            var cacheBust  = Math.random().toString().substr(2);
-
             var params = {
 //                via : '',
 //                related : '',
                 count : 'horizontal',
-                lang : 'en',
-                '_' : cacheBust // cache
+                lang : 'en'
             };
 
 

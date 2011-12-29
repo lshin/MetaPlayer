@@ -145,57 +145,6 @@ all copies or substantial portions of the Software.
             var count = this.find('countdown').text( this.config.countDownSec );
             this.toggle(true);
         },
-        setFacebook : function () {
-
-            var t = this.player.track();
-
-            var params = {
-                'href' : '',
-                'layout' : 'button_count',
-                'show_faces' : false,
-                'action' : 'like',
-                'colorscheme' : 'light',
-                'width' : '',
-                'height' : ''
-            };
-
-            var el = this.find('facebook');
-
-            params.href = t.link || t.linkURL || document.location.toString();
-            params.width = el.width();
-            params.height = el.height();
-
-            var src = this.config.fbUrl  + "?" + $.param(params, true);
-            el.attr('src', src);
-        },
-
-        setTwitter : function () {
-            if( ! window.twttr )
-                return;
-
-            var t = this.player.track();
-
-            var old = this.find('twitter');
-            if( ! this._twitter ) {
-                this._twitter = old;
-            }
-            var el = this._twitter.clone();
-
-            var url =   t["twitter:link"] || t.link || t.linkURL;
-            el.attr('data-url', url || '');
-
-            var text =  t["twitter:text"]
-                ?  t["twitter:text"]
-                : el.attr('data-text') + ( t.title || '' );
-            el.attr('data-text', text || '');
-
-            el.attr('data-hashtags', t["twitter:hashtags"] ||  '');
-
-            el.insertAfter(old);
-            old.remove();
-
-            twttr.widgets.load()
-        },
 
         onPlaying : function () {
             this.countdown.reset();
