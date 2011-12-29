@@ -57,6 +57,8 @@
             this.onPlayStateChange();
             this.setCaptions(this.config.captions);
 
+            if( Ramp.social )
+                Ramp.social( this.find('social'), this.service );
         },
 
         addUIListeners : function () {

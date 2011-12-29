@@ -69,6 +69,7 @@
     position: relative;
     top: 0; left: 0;
 }
+.metaplayer-endcap-social,
 .metaplayer-endcap-again,
 .metaplayer-endcap-preview {
     margin: 14px 15px 10px 15px;
@@ -170,3 +171,4 @@
     border-top-right-radius: 3px;
     border-bottom-right-radius: 3px;
 }
+

@@ -1,3 +1,7 @@
+.metaplayer-endcap{
+    background: url('assets/black80.png');
+}
+
 .metaplayer-endcap-again-icon {
     position: absolute;
     width: 20px;

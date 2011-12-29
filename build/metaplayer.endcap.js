@@ -24,6 +24,7 @@ all copies or substantial portions of the Software.
         template : 'templates/ui.endcap.tmpl.html',
         siteSearchUrl : "",
         countDownSec : 20,
+        fbUrl : 'http://www.facebook.com/plugins/like.php',
         fadeMs : 250
     };
 
@@ -43,7 +44,10 @@ all copies or substantial portions of the Software.
         this.player = player;
         this.baseUrl = Ramp.Utils.Script.base('(metaplayer||ui).endcap(.min)?.js');
 
+        var dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
+        dispatcher.attach(this);
 
+        this.onRender = dispatcher.observer("render");
 
         if( this.config.container ) {
             this.container = this.config.container;
@@ -53,6 +57,7 @@ all copies or substantial portions of the Software.
             this.container = player.parentNode;
             this.getTemplate();
         }
+
 
     };
 
@@ -76,18 +81,26 @@ all copies or substantial portions of the Software.
         init : function  (){
             var self = this;
 
-            this.player.onTrackChange( this.onTrackChange, this);
             this.player.onPlaylistChange( this.onTrackChange, this);
+
             $(this.player).bind('play playing seeked loadstart', function () {
                 self.onPlaying();
             });
+
             $(this.player).bind('ended', function () {
                 self.onEnded();
+            });
+
+            $(this.player).bind('loadedmetadata', function () {
+                self.onTrackChange();
             });
 
             this.find('countdown').click( function (e) {
                 self.countdown.toggle();
                 e.stopPropagation();
+            });
+            this.find().click( function (e) {
+                self.countdown.stop();
             });
             this.find('preview').click( function () {
                 self.player.next();
@@ -107,12 +120,15 @@ all copies or substantial portions of the Software.
                 }
             });
 
-
             this.player.advance = false;
 
             this.countdown = Ramp.Timer(1000, this.config.countDownSec);
             this.countdown.listen('time', this.onCountdownTick, this);
             this.countdown.listen('complete', this.onCountdownDone, this);
+
+            if( Ramp.social ){
+                Ramp.social( this.find('social'), this.service );
+            }
 
             this.toggle(false, true);
         },
@@ -129,6 +145,57 @@ all copies or substantial portions of the Software.
             var count = this.find('countdown').text( this.config.countDownSec );
             this.toggle(true);
         },
+        setFacebook : function () {
+
+            var t = this.player.track();
+
+            var params = {
+                'href' : '',
+                'layout' : 'button_count',
+                'show_faces' : false,
+                'action' : 'like',
+                'colorscheme' : 'light',
+                'width' : '',
+                'height' : ''
+            };
+
+            var el = this.find('facebook');
+
+            params.href = t.link || t.linkURL || document.location.toString();
+            params.width = el.width();
+            params.height = el.height();
+
+            var src = this.config.fbUrl  + "?" + $.param(params, true);
+            el.attr('src', src);
+        },
+
+        setTwitter : function () {
+            if( ! window.twttr )
+                return;
+
+            var t = this.player.track();
+
+            var old = this.find('twitter');
+            if( ! this._twitter ) {
+                this._twitter = old;
+            }
+            var el = this._twitter.clone();
+
+            var url =   t["twitter:link"] || t.link || t.linkURL;
+            el.attr('data-url', url || '');
+
+            var text =  t["twitter:text"]
+                ?  t["twitter:text"]
+                : el.attr('data-text') + ( t.title || '' );
+            el.attr('data-text', text || '');
+
+            el.attr('data-hashtags', t["twitter:hashtags"] ||  '');
+
+            el.insertAfter(old);
+            old.remove();
+
+            twttr.widgets.load()
+        },
 
         onPlaying : function () {
             this.countdown.reset();
@@ -137,15 +204,28 @@ all copies or substantial portions of the Software.
 
         toggle : function (bool, now) {
             var el = this.find().stop();
-            var opac = bool ? 1 : 0;
-            if( now ) {
-                el.css('opacity', opac);
+
+            if( bool === undefined )
+                bool = ! ( el.is(":visible") );
+
+            if( now ){
+                el.toggle(bool);
                 return;
             }
-            el.animate({opacity: opac }, this.config.fadeMs);
+
+            if( bool )
+                el.show().animate({ opacity: 1}, this.config.fadeMs);
+            else
+                el.animate({ opacity: 0 }, this.config.fadeMs, function (){
+                    $(this).hide();
+                });
         },
 
         onTrackChange : function () {
+
+            if( ! this.player.readyState > 0 )
+                return;
+
             this.toggle(false);
             var again = this.player.track();
             this.find('again-thumb').attr('src', again.thumbnail);

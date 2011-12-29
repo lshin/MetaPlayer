@@ -607,6 +607,7 @@
     position: relative;
     top: 0; left: 0;
 }
+.metaplayer-endcap-social,
 .metaplayer-endcap-again,
 .metaplayer-endcap-preview {
     margin: 14px 15px 10px 15px;
@@ -708,7 +709,20 @@
     border-top-right-radius: 3px;
     border-bottom-right-radius: 3px;
 }
-.metaplayer-captions {
+
+/* Social */
+.metaplayer-social-twitter,
+.metaplayer-social-facebook {
+    overflow-x: hidden;
+    overflow-y: hidden;
+    width: 90px;
+    height: 21px;
+    border: none;
+    float: left;
+}
+.metaplayer-social-clear {
+    clear: both; line-height: 0; height : 0
+}.metaplayer-captions {
     bottom: 40px;
 }
 .metaplayer-captions-text {
@@ -823,6 +837,10 @@
 .metaplayer-track-buffer {
     background: #666;
     border-radius: 5px;
+}
+
+.metaplayer-endcap{
+    background: url('assets/black80.png');
 }
 
 .metaplayer-endcap-again-icon {
