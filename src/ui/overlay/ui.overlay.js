@@ -320,9 +320,15 @@
         onPlayStateChange : function (e) {
             this._ended = false;
             // manage our timers based on play state
-            var paused = this.player.paused;
-            this.find('play').toggle( paused );
-            this.find('pause').toggle( !paused );
+            // don't use toggle(); triggers layout quirks in chrome
+            if( this.player.paused ) {
+                this.find('pause').hide();
+                this.find('play').show();
+            }
+            else {
+                this.find('play').hide();
+                this.find('pause').show();
+            }
         },
 
         onEnded : function () {

@@ -70,8 +70,8 @@
 
 <script type="text/javascript">
     var player = Ramp.html5('#target', "ramp:/pca:36234882", { autoplay: true } );
-    Ramp.controls(player);
-    Ramp.overlay(player);
+    var controls = Ramp.controls(player);
+    var overlay = Ramp.overlay(player);
     Ramp.endcap(player);
     Ramp.metaq(player);
     Ramp.captions(player);
