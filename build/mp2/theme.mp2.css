@@ -383,6 +383,8 @@
     padding-top: 0px;
     margin-right: 15px;
     overflow-y: auto;
+    height: 80px;
+    overflow-y: auto;
 }
 
 .metaplayer-overlay-result {
