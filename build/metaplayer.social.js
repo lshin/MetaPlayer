@@ -48,17 +48,13 @@ all copies or substantial portions of the Software.
     Social.prototype = {
 
         addDom : function () {
-            var el = this.create().appendTo(this.container);
-            el.hide();
-
-            this.create('twitter', 'iframe').appendTo( el );
-            this.create('facebook', 'iframe').appendTo( el );
+            var el = this.create().hide().appendTo(this.container)
             this.create('clear').appendTo( el );
         },
 
         onMetaData : function (data) {
-            this.setTwitter(data);
             this.setFacebook(data);
+            this.setTwitter(data);
             this.find().show();
         },
 
@@ -71,8 +67,6 @@ all copies or substantial portions of the Software.
                 lang : 'en'
             };
 
-
-
             params.text = this.config.shareText + ( t.title || '');
             params.url =  t.link || t.linkURL;
 
@@ -83,14 +77,13 @@ all copies or substantial portions of the Software.
                 return escape(key) + "=" + escape(val);
             }).join('&');
 
-            var el = this.find('twitter');
-            var src = this.config.twitterApi + "#" + query;
 
-            // force a reload even though the url doesn't change before the hash
-            el.attr('src', '');
-            setTimeout( function () {
-                el.attr('src', src);
-            },0);
+            var el = this.create('twitter', 'iframe');
+            var src = this.config.twitterApi + "#" + query;
+            el.attr('src', src);
+
+            this.find('twitter').remove();
+            this.find().prepend(el);
         },
 
         setFacebook : function (t) {
@@ -105,7 +98,7 @@ all copies or substantial portions of the Software.
                 'height' : ''
             };
 
-            var el = this.find('facebook');
+            var el = this.create('facebook', 'iframe');
 
             params.href = t.link || t.linkURL || document.location.toString();
             params.width = el.width();
@@ -113,6 +106,9 @@ all copies or substantial portions of the Software.
 
             var src = this.config.facebookApi  + "?" + $.param(params, true);
             el.attr('src', src);
+
+            this.find('facebook').remove();
+            this.find().prepend(el);
         },
 
         find : function (className){
