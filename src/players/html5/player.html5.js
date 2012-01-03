@@ -45,12 +45,14 @@
         this.playlist.attach(this);
 
         this._createMarkup( el);
-        this._addMediaProxy();
         this._addListeners();
         this._addMediaListeners();
 
         if( url )
             this.queue(url);
+
+        this.video = $(this.video).get(0);
+        this.decorate(this.video);
     };
 
 
@@ -76,6 +78,12 @@
             media.load();
         },
 
+        decorate : function (el) {
+            var  mapProperty =  Ramp.Utils.Proxy.mapProperty;
+            var proxyFunction =  Ramp.Utils.Proxy.proxyFunction;
+            mapProperty('index service', el, this);
+            proxyFunction('next previous track tracks', this, el);
+        },
 
         _createMarkup : function ( parent ) {
             var p = $(parent);
@@ -193,6 +201,7 @@
         },
 
         _addMediaProxy : function () {
+            console.log("add media proxy");
             var media = $(this._video).get(0);
             // proxy entire MediaController interface
             // http://dev.w3.org/html5/spec/Overview.html#mediacontroller
