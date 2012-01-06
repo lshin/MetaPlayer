@@ -10,7 +10,6 @@
 
         proxyFunction : function (props, source, target ){
             $.each(props.split(/\s+/g), function (i, prop) {
-                console.log(["proxyFunction", prop, target])
                 target[prop] = function () {
                     return source[prop].apply(source, arguments);
                 };
@@ -19,9 +18,9 @@
 
         proxyEvent : function (types, source, target ){
             $.each(types.split(/\s+/g), function (i, type) {
-                Proxy.proxyFunction("on" + type, source, target);
-                source.addEventListener(type, function (e) {
-                    target.dispatchEvent(e);
+//                Proxy.proxyFunction("on" + type, source, target);
+                $(source).bind(type, function (e) {
+                    $(target).trigger(e);
                 });
             });
         },
@@ -42,7 +41,6 @@
                 var fn;
 
                 if( source[sProp] instanceof Function ){
-                    console.log(["is fn", source, sProp])
                     fn = function () {
                         return source[sProp].apply(source, arguments);
                     };
@@ -60,22 +58,45 @@
         },
 
         define : function (obj, prop, descriptor) {
-            try {
-                // modern browsers
-                return Object.defineProperty(obj, prop, descriptor);
-            }
-            catch(e){
-                // ie8 exception if not DOM element
+
+            if( Object.defineProperty ){
+                try {
+                    // modern browsers
+                    return Object.defineProperty(obj, prop, descriptor);
+                }
+                catch(e){
+                    // ie8 exception if not DOM element
+                    console.log(["IE8? " , obj, e]);
+                }
             }
 
-            // older, pre-standard implementations
-            if( obj.__defineGetter && descriptor.get )
-                obj.__defineGetter__( prop, descriptor.get);
-            if( descriptor.set && obj.__defineSetter__ )
-                obj.__defineSetter__( prop, descriptor.set);
+            if( obj.__defineGetter ){
+                // old FF, webkit
+                if( descriptor.get )
+                    obj.__defineGetter__( prop, descriptor.get);
+                if( descriptor.set && obj.__defineSetter__ )
+                    obj.__defineSetter__( prop, descriptor.set);
+                return;
+            }
+
+
+            // ie7 support, no getter/setter, but we know when the property changes
+            // (on dom elements only)
+
+            if( ! obj.__definedProperties__ )
+                obj.__definedProperties__ = {};
+
+            obj.__definedProperties__[prop] = descriptor;
+
+            if( ! obj.onpropertychange ) {
+                obj.onpropertychange = function () {
+                    var p = event.propertyName;
+                    var desc = obj.__definedProperties__[p];
+                    if( desc && desc.set )
+                        desc.set(obj[p]);
+                };
+            }
         }
-
-        // ie7 and other old browsers fail silently
     };
 
     if( ! window.Ramp )
