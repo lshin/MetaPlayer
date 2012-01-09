@@ -46,6 +46,92 @@
         dispatcher : null
     };
 
+    var MediaController = function () {
+
+    };
+
+    MediaController.prototype = {
+
+        // Media extenstions:
+        /*
+
+       z! error
+        F src
+       z! currentSrc
+       z! networkState
+          preload
+       z! buffered[]
+        f load()
+        ! readyState
+        ! seeking
+        F currentTime
+       z! initalTime
+        ! duration
+       z! startOffsetTime
+        ! paused
+        z defaultPlaybackRate
+        z playbackRate
+        z played[]
+        ! seekable[]
+        ! ended
+          autoplay
+          loop
+        F play()
+        F pause()
+        z mediaGroup
+        z controller
+          controls
+        f volume
+        f muted
+        z defaultMuted
+        z audioTracks[]
+        z videoTracks[]
+        z textTracks[]
+        z addTextTrack
+
+
+
+        F index
+        F next()
+        F previous()
+        F nextTrack()
+        F nextTrackIndex()
+        F clear()
+        F queue()
+
+         */
+
+        // MediaController
+        duration :  function () {},
+        currentTime : function () {},
+        paused : function () {},
+        play : function () {},
+        pause : function () {},
+        volume : function () {},
+        muted : function () {},
+        buffered : function () {},
+
+        played : function () {},
+        defaultPlaybackRate : function () {},
+        playbackRate : function () {},
+        seekable :  function () {}
+
+
+    };
+
+})();
+
+(function () {
+
+    var $ = jQuery;
+
+    var defaults = {
+        autoLoad : true,
+        related: true,
+        loop : false,
+        dispatcher : null
+    };
+
     var Playlist = function (urls, options) {
         if( ! (this instanceof Playlist) )
             return new Playlist(urls, options);
@@ -346,28 +432,52 @@
         },
 
         proxyEvent : function (types, source, target ){
+
+            // emulate if old non-standard event model
+            if( ! target.addEventListener ) {
+                var d = Ramp.Utils.EventDispatcher();
+                d.attach(target);
+            }
             $.each(types.split(/\s+/g), function (i, type) {
-                Proxy.proxyFunction("on" + type, source, target);
-                source.addEventListener(type, function (e) {
-                    target.dispatchEvent(e);
+                $(source).bind(type, function (e) {
+                    // if emulated, just use type
+                    if( target.dispatch ) {
+                        target.dispatch(e.type);
+                        return;
+                    }
+                    // else use standard model
+                    var evt = document.createEvent("Event");
+                    evt.initEvent(e.type, false, false);
+                    target.dispatchEvent(evt);
                 });
             });
         },
 
-        mapProperty : function (props, target, scope){
+        mapProperty : function (props, target, source, method){
             // example :   map("name" myObject, myObject._name);
             //             map("name" myObject);
+            if( ! source )
+                source = target;
 
             $.each(props.split(/\s+/g), function (i, prop) {
+
+                // support _propName
+                var sProp = (source[prop] == undefined)
+                    ?  "_" + prop
+                    : prop;
+
                 var fn;
-                if( ! scope || scope === target ){
-                    fn = function () { return target["_" + prop].apply(target, arguments)  };
+
+                if( source[sProp] instanceof Function ){
+                    fn = function () {
+                        return source[sProp].apply(source, arguments);
+                    };
                 }
                 else {
                     fn = function (val) {
                         if( val !== undefined )
-                            scope[prop] = val;
-                        return scope[prop];
+                            source[sProp] = val;
+                        return source[sProp];
                     };
                 }
 
@@ -376,13 +486,30 @@
         },
 
         define : function (obj, prop, descriptor) {
-            if( Object.defineProperty )
+            try {
+                // modern browsers
                 return Object.defineProperty(obj, prop, descriptor);
-            descriptor.get && obj.__defineGetter__( prop, options.get);
-            descriptor.set && obj.__defineSetter__( prop, options.set);
+            }
+            catch(e){
+                // ie8 exception if not DOM element
+            }
+
+            // older, pre-standard implementations
+            if( obj.__defineGetter && descriptor.get )
+                obj.__defineGetter__( prop, descriptor.get);
+            if( descriptor.set && obj.__defineSetter__ )
+                obj.__defineSetter__( prop, descriptor.set);
+
+            // ie7 and other old browsers fail silently
         }
 
     };
+
+    if( ! window.Ramp )
+        window.Ramp = {};
+
+    if( ! Ramp.Utils )
+        Ramp.Utils = {};
 
     Ramp.Utils.Proxy = Proxy;
 
@@ -754,11 +881,11 @@
                     data.metadata.host = host;
                     this._data = data;
                     this.dispatch('metaData', data.metadata);
-                    this.dispatch('related', data.related);
                     this.dispatch('transcodes', data.transcodes);
                     this.dispatch('captions', data.captions);
                     this.dispatch('tags', data.tags);
                     this.dispatch('metaQ', data.metaq);
+                    this.dispatch('related', data.related);
                 }
             });
         },
@@ -1086,17 +1213,19 @@
         this.playlist.attach(this);
 
         this._createMarkup( el);
-        this._addMediaProxy();
         this._addListeners();
         this._addMediaListeners();
 
         if( url )
-            this.queue(url);
+            this.playlist.queue(url);
+
     };
 
 
     Ramp.html5 = function (el, url, options) {
-        return Html5Player(el, url, options);
+        var player = Html5Player(el, url, options);
+        player.video._player = player;
+        return player.video;
     };
 
     Ramp.metaplayer = Ramp.html5;
@@ -1113,15 +1242,20 @@
 
             this.config.preload = true; // can be called before transcodes available
 
-            var media = $(this._video).get(0);
-            media.load();
+            this.video.load();
         },
 
+        decorate : function (el) {
+            var  mapProperty =  Ramp.Utils.Proxy.mapProperty;
+            var proxyFunction =  Ramp.Utils.Proxy.proxyFunction;
+            mapProperty('index service', el, this);
+            proxyFunction('next previous track tracks', this, el);
+        },
 
         _createMarkup : function ( parent ) {
             var p = $(parent);
             if( p.is('video') ) {
-                this._video = parent;
+                this.video = p.get(0);
             }
             else {
                 var video = document.createElement('video');
@@ -1134,11 +1268,12 @@
                 video.style.left = 0;
                 video.style.width = "100%";
                 video.style.height = "100%";
-                this._video = video;
+                this.video = video;
                 p.append(video);
             }
 
-            Ramp.UI.ensureOffsetParent(this._video);
+            this.decorate(this.video);
+            Ramp.UI.ensureOffsetParent( this.video );
         },
 
         _addListeners : function () {
@@ -1170,8 +1305,8 @@
         },
 
         _children : function () {
-            if( this._video.children.length )
-                return this._video.children;
+            if( this.video.children.length )
+                return this.video.children;
 
             var t = this.track();
             var src = document.createElement('source');
@@ -1184,7 +1319,7 @@
             if( type == "video/ramp" )
                 return "probably";
             else
-                return this._video.canPlayType(type);
+                return this.video.canPlayType(type);
         },
 
         _src : function (val) {
@@ -1196,7 +1331,7 @@
         },
 
         _addSources : function () {
-            var media = $(this._video);
+            var media = $(this.video);
             media.find('source').remove();
             $.each(this._transcodes, function (i, source) {
                 var src = document.createElement('source');
@@ -1207,7 +1342,7 @@
         },
 
         _selectSource : function () {
-            var media = $(this._video).get(0);
+            var media = this.video;
             $.each(this._transcodes, function (i, source) {
                 if( media.canPlayType(source.type) ){
                     media.src = source.url;
@@ -1218,10 +1353,10 @@
 
         _addMediaListeners : function () {
             var self = this;
-            $(this._video).bind('ended', function(){
+            $(this.video).bind('ended', function(){
                 self._onEnded()
             });
-            $(this._video).bind('playing', function(){
+            $(this.video).bind('playing', function(){
                 self.autoplay = true;
             });
         },
@@ -1233,27 +1368,15 @@
             this.playlist.next();
         },
 
-        _addMediaProxy : function () {
-            var media = $(this._video).get(0);
-            // proxy entire MediaController interface
-            // http://dev.w3.org/html5/spec/Overview.html#mediacontroller
-            //     .. plus a few unofficial dom extras
 
-            Ramp.Utils.Proxy.mapProperty("children src", this);
+        decorate : function (obj) {
+            Ramp.Utils.Proxy.mapProperty("index advance service",
+                this.video, this);
 
-            Ramp.Utils.Proxy.proxyProperty("duration currentTime volume muted buffered seekable" +
-                " paused played seeking defaultPlaybackRate playbackRate autoplay preload " +
-                " ended readyState parentNode offsetHeight offsetWidth offsetParent style className id controls",
-                media, this);
+            Ramp.Utils.Proxy.proxyFunction("next previous track tracks queue clear " +
+                "nextTrack nextTrackIndex onPlaylistChange onTrackChange",this, this.video);
 
-            Ramp.Utils.Proxy.proxyFunction("play pause" +
-                " getBoundingClientRect getElementsByTagName",
-                media, this);
-
-            Ramp.Utils.Proxy.proxyEvent("loadstart progress suspend emptied stalled play pause " +
-                "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
-                "seeking seeked timeupdate ended ratechange durationchange volumechange",
-                media, this);
+            Ramp.Utils.Proxy.proxyEvent("trackChange playlistChange ",this, this.video);
         }
 
 
@@ -1267,7 +1390,7 @@
     var defaults = {
         autoplay : false,
         preload : true,
-        autoAdvance : true,
+        advance : true,
         related: true,
         loop : false,
         controls : true,
@@ -1299,77 +1422,46 @@
         this.onTrackChange = this.dispatcher.observer("trackChange");
 
         this.__seeking = null;
-        this.readyState = 0;
-        this.ended = false;
-        this._loading = true;
-        this.__playing = false;
+        this.__readyState = 0;
+        this.__ended = false;
+        this.__paused = true;
 
-        Ramp.Utils.Proxy.mapProperty("index loop", this);
-
-        this._addMediaProxy();
         this._pageSetup(el);
-        this._addPlayerListeners();
         this._addServiceListeners();
-        this._addContainerProxy();
 
-        this.preload  = this.config.preload;
-        this.autoplay = this.config.autoplay;
-        this.loop = this.config.loop;
-        this.advance = this.config.autoAdvance;
-        this.src = url;
+        this.__preload = this.config.preload;
+        this.__autoplay = this.config.autoplay;
+        this.__loop = this.config.loop;
+        this.__advance = this.config.advance;
+        this.__src = url;
 
         this._statepoll = Ramp.Timer(250);
         this._statepoll.listen('time', this._onPlayStatePoll, this);
 
         this._timeupdater = Ramp.Timer(250);
         this._timeupdater.listen('time', this._onTimeUpdate, this);
+
+        var self = this;
+        this._flowplayer.onLoad( function () {
+            self._onLoad();
+        });
     };
 
     Ramp.flowplayer = function (el, url, options) {
-        return FlowPlayer(el, url, options);
+        var player = FlowPlayer(el, url, options);
+        player.video._player = player;
+        return player.video;
     };
-
-    Ramp.metaplayer = Ramp.flowplayer;
-
-    if( $f ) {
-        $f.addPlugin("ramp", function (url, options) {
-            this._ramp = FlowPlayer(this, url, options);
-            return this;
-        });
-    }
 
     FlowPlayer.prototype = {
 
-        load : function () {
-            this.preload = true;
-            if( this._flowplayer.isLoaded() && this._flowplayer.getClip() ) {
-                this.dispatch('loadstart');
-                if( this.autoplay )
-                    this._flowplayer.play();
-                else
-                    this._flowplayer.startBuffering();
-            }
-        },
-
-        play : function () {
-            this.autoplay = true;
-            this.__playing = true; // helps onBeforeBegin() know to ignore clip.autoPlay == false
-            this.load();
-        },
-
-        pause : function () {
-            this._flowplayer.pause();
-        },
-
         _pageSetup : function (el) {
-
-
             // if passed in fp instance
             if( el.getCommonClip ) {
                 this._flowplayer = el;
                 var common  = this._flowplayer.getCommonClip();
-                this.preload = Boolean( common.autoBuffering );
-                this.autoplay = Boolean( common.autoPlay );
+                this.preload( Boolean(common.autoBuffering) );
+                this.autoplay( Boolean(common.autoPlay) );
             }
             // otherwise start one up
             else {
@@ -1386,21 +1478,21 @@
                     wmode: this.config.wmode
                 }, config );
             }
-            Ramp.UI.ensureOffsetParent( this._flowplayer.getParent() );
-
+            this.video = this._flowplayer.getParent();
+            this.decorate(this.video);
+            Ramp.UI.ensureOffsetParent( this.video );
         },
+
+        _addServiceListeners : function () {
+            this.service.onMetaData(this._onMetaData, this);
+            this.service.onTranscodes(this._onTranscodes, this);
+            this.service.onRelated(this._onRelated, this);
+        },
+
 
         _onMetaData : function (metadata) {
             // update clip title, desc, etc
-            var clip = this._flowplayer.getClip();
-            if( clip && ! clip.isCommmon ) {
-                $.extend(clip, {
-                    title : metadata.title,
-                    description : metadata.description,
-                    thumbnail : metadata.thumbnail
-                });
-                clip.update(clip);
-            }
+            this._metadata = metadata;
         },
 
         _onRelated : function (related) {
@@ -1409,7 +1501,6 @@
 
             this._hasPlaylist = true;
             var fp = this._flowplayer;
-
             $.each(related, function (i, rel) {
                 fp.addClip({
                     autoBuffering : true,
@@ -1423,9 +1514,12 @@
         },
 
         _onTranscodes : function (transcodes) {
-            var clip = this._flowplayer.getClip();
             var obj = {
-                autoBuffering: true
+                autoBuffering: true,
+                url : this.src(),
+                title : this._metadata.title,
+                description : this._metadata.description,
+                thumbnail : this._metadata.thumbnail
             };
 
             $.each(transcodes, function (i, t) {
@@ -1435,40 +1529,27 @@
                     obj.iosUrl = t.url;
             });
 
-            if( clip && ! clip.isCommon )
-                clip.update(obj);
 
-            if( this.autoplay ) {
-                this.play();
+            var clip = this._flowplayer.getClip();
+            if( clip ) {
+                clip.update(obj);
             }
             else {
-                this.load();
+                this._flowplayer.setPlaylist([
+                    obj
+                ]);
             }
+
+            if( this.autoplay() )
+                this.play();
+            else if ( this.preload() )
+                this.load();
         },
 
-        _addPlayerListeners : function () {
-            var self = this;
-
-            this._flowplayer.onBeforeLoad( function () {
-            });
-
-            this._flowplayer.onLoad( function () {
-                self._onLoad();
-            });
-        },
-
-        _addServiceListeners : function () {
-            this.onTrackChange(this._onTrackChange, this);
-            this.onMetaData(this._onMetaData, this);
-            this.onTranscodes(this._onTranscodes, this);
-            this.onRelated(this._onRelated, this);
-        },
-        _onTrackChange : function () {
-//            console.log("_onTrackChange");
-        },
         _onLoad : function () {
             var self = this;
 
+            // Player listeners
             this._flowplayer.onVolume( function (level) {
                 self.dispatch("volumechange");
             });
@@ -1481,43 +1562,36 @@
                 self.dispatch("volumechange");
             });
 
-            this._flowplayer.onError( function () {
-            });
             this._flowplayer.onPlaylistReplace( function () {
                 self.dispatch("playlistChange");
             });
+
             this._flowplayer.onClipAdd( function () {
-            });
-            this._flowplayer.onBufferFull( function () {
-//                self.dispatch("canplaythrough");
+                self.dispatch("playlistChange");
             });
 
-            this._flowplayer.onBufferEmpty( function () {
-//                console.log("onBufferEmpty")
-            });
-            this._flowplayer.onBufferStop( function () {
-//                console.log("onBufferStop")
-            });
-            this._flowplayer.onClipAdd( function (clip) {
-            });
-
+            // Common Clip listeners
             var common = this._flowplayer.getCommonClip();
 
             common.onBeforeBegin( function (clip) {
-
                 if( clip.url && clip.url.indexOf('ramp:') == 0) {
-                    if( ! self.preload && ! clip.autoBuffering) {
+                    if( ! self.preload() && ! clip.autoBuffering ) {
                         // flowplayer.startBuffering() or flowplayer.play() called,
                         // we don't know which, so assume play()
-                        self.autoplay = true;
-                        self.preload = true;
+                        self.autoplay(true);
+                        self.preload(true);
                     }
                     self.service.load(clip.url);
                     return false;
                 }
-                self.dispatch("trackChange");
+                else if( ! clip.url && this.src() ) {
+                    return false;
+                }
+                self.dispatch('trackChange');
+                self.dispatch('loadstart');
                 return true;
             });
+
 
             common.onBegin( function (clip) {
                 self._flowplayer.setVolume(100);
@@ -1526,13 +1600,13 @@
             });
 
             common.onStart( function (clip) {
-                if( self.autoplay ) {
-                    self._setReady();
-                    self._setPlaying(true);
-                }
+                self._setReady();
+                self._setPlaying(true);
+
                 self.dispatch('loadeddata');
-                self.dispatch('loadedmetadata');
+                self.__duration = clip.duration;
                 self.dispatch("durationchange");
+                self.dispatch('loadedmetadata');
             });
 
             common.onStop( function (clip) {
@@ -1541,33 +1615,36 @@
             });
 
             common.onFinish( function (clip) {
-                self.ended = true;
+                self.__ended = true;
                 self.__seeking = null;
                 self._setPlaying(false);
-
                 var pl = self._flowplayer.getPlaylist();
 
-                if( ! self.advance ) {
+                if( ! self.advance() ) {
                     self._flowplayer.stop();
                 }
                 else if( clip.index + 1 == pl.length ) {
-
                     self.dispatch("playlistComplete");
-                    if( self.loop ) {
+                    if( self.loop() ) {
                         self._flowplayer.play(0);
                     }
                     else {
                         self._flowplayer.stop();
                     }
                 }
+
                 self.dispatch("ended");
 
+                // force advance the player, since pause() or seek()
+                // in the ended handlers can prevent default advance
+                self._flowplayer.play(clip.index+1);
             });
 
             common.onPause( function (clip) {
                 self._setPlaying(false);
                 self._setReady();
             });
+
             common.onResume( function (clip) {
                 self._setPlaying(true);
                 self.dispatch("play");
@@ -1578,7 +1655,7 @@
                 self.dispatch("timeupdate");
 
                 // fp doesn't do seeks while paused until it plays again, so we fake
-                if( self.paused )  {
+                if( self.paused() )  {
                     self.dispatch("seeked");
                     self.__seeking = null;
                 }
@@ -1586,21 +1663,20 @@
 
             common.onSeek( function (clip) {
                 self.__seeking = null;
-                if( ! self.paused  )
+                if( ! self.paused() )
                     self.dispatch("seeked");
             });
 
-            this.controls = this.config.controls;
+            this.controls( this.config.controls );
 
-            if( this.src ) {
-                this._flowplayer.setPlaylist([{ url : this.src }]);
-                this.service.load(this.src);
+            if( this.src() ) {
+                this.service.load( this.src() ); // loads related
             }
         },
 
         _setReady : function (){
-            if( this.readyState != 4 ) {
-                this.readyState = 4;
+            if( this.__readyState != 4 ) {
+                this.__readyState = 4;
                 this.dispatch("canplay");
             }
             else {
@@ -1610,65 +1686,58 @@
         },
 
         _setPlaying : function ( bool ){
-            this.__playing = bool;
+            this.__paused = ! bool;
             // the play and pause events fire before isPlaying() and isPaused() update
             this._statepoll.start();
         },
 
-        _onPlayStatePoll : function () {
-            if( this._flowplayer.isPlaying() != this.__playing )
-                return;
+        /* Media Interface */
 
-            this._statepoll.reset();
-
-            if( this.__playing ) {
-                this.autoplay = true;
-                this.dispatch("playing");
-                this.dispatch("play");
-                this._timeupdater.start();
+        load : function () {
+            this.preload(true);
+            if( this._flowplayer.isLoaded() ) {
+                if( this.autoplay() ){
+                    this._flowplayer.play();
+                }
+                else {
+                    this._flowplayer.startBuffering();
+                }
             }
             else {
-                this.dispatch("pause");
-                this._timeupdater.reset();
             }
         },
 
-        _onTimeUpdate : function  () {
-            this.dispatch("timeupdate");
+        play : function () {
+            this.autoplay(true);
+            this.__paused = false; // helps onBeforeBegin() know to ignore clip.autoPlay == false
+            this.load();
         },
 
-        _addContainerProxy : function () {
-            var container = $(this.container).get(0);
-            var parent = this._flowplayer.getParent();
-
-            Ramp.Utils.Proxy.proxyProperty("parentNode clientHeight clientWidth offsetHeight" +
-                " clientTop clientLeft scrollTop scrollLeft offsetWidth offsetParent style className id",
-                parent, this);
-
-            Ramp.Utils.Proxy.proxyFunction("getBoundingClientRect getElementsByTagName",
-                parent, this);
-
-            Ramp.Utils.Proxy.proxyEvent("click mousedown mouseup mouseover mouseoout" +
-                " touchstart touchend touchmove",
-                parent, this);
+        pause : function () {
+            this._flowplayer.pause();
         },
 
-        _addMediaProxy : function () {
-            Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
-                " paused played defaultPlaybackRate playbackRate controls autoplay preload src children",
-                // buffered
-                this);
+        canPlayType : function (type) {
+            return "probably";
         },
 
-        /* Properties */
-        _duration : function (){
-            if(! this._flowplayer.isLoaded() )
-                return NaN;
-            var clip = this._flowplayer.getClip();
-            return clip ? clip.duration : NaN;
+        paused : function (){
+            return this.__paused;
         },
 
-        _currentTime : function (val){
+        duration : function () {
+            return this.__duration;
+        },
+
+        seeking : function () {
+            return (this.__seeking !== null );
+        },
+
+        ended : function () {
+            return this.__ended;
+        },
+
+        currentTime : function (val){
             if( val !== undefined ){
                 if( val < 0 )
                     val = 0
@@ -1677,6 +1746,9 @@
                 this.__seeking = val;
                 this._flowplayer.seek(val);
             }
+
+            console.log("get status");
+            // todo: throttle
             var status = this._flowplayer.getStatus();
 
             if( this.__seeking !== null )
@@ -1685,13 +1757,7 @@
             return status.time;
         },
 
-        _volume : function (val){
-            if( val !== undefined )
-                this._flowplayer.setVolume(val * 100);
-            return this._flowplayer.getVolume() / 100;
-        },
-
-        _muted : function (val){
+        muted : function (val){
             if( val !== undefined ){
                 if( val )
                     this._flowplayer.mute();
@@ -1702,33 +1768,13 @@
             return status.muted;
         },
 
-        _paused : function (){
-            /// use local --flowplayer.isPaused() is still false during onPause()!
-            return ! this.__playing;
-        },
-
-        _src : function (val) {
-            if( val !== undefined ) {
-                this.__src = val;
-                if( this._flowplayer.isLoaded() )
-                    this._flowplayer.setPlaylist([src]);
-            }
-            return this.__src;
-        },
-
-        _preload : function (val) {
+        volume : function (val){
             if( val !== undefined )
-                this.__preload = val;
-            return this.__preload;
+                this._flowplayer.setVolume(val * 100);
+            return this._flowplayer.getVolume() / 100;
         },
 
-        _autoplay : function (val) {
-            if( val !== undefined )
-                this.__autoplay = val;
-            return this.__autoplay;
-        },
-
-        _controls : function (val) {
+        controls : function (val) {
             if( ! this._flowplayer.isLoaded() ) {
                 if( val !== undefined )
                     this.config.controls = val;
@@ -1736,66 +1782,51 @@
             }
 
             if( val !== undefined ){
-                if( val )
+                if( val ) {
                     this._flowplayer.getControls().show();
-                else
+                    this._flowplayer.getPlugin("play").show();
+                }
+                else {
                     this._flowplayer.getControls().hide();
+                    this._flowplayer.getPlugin("play").hide();
+                }
             }
             return this._flowplayer.getControls().opacity != 1;
         },
 
-        _seeking : function (val) {
-            return Boolean( this.__seeking !== null );
+        preload : function (val) {
+            if( val !== undefined )
+                this.__preload = val;
+            return this.__preload;
         },
 
-//        _seekable : function (){},
-//        _played : function (){},
-//        _defaultPlaybackRate : function (){},
-//        _playbackRate : function (){},
-
-        /* Playlist */
-
-        _index : function (i) {
-            var clip =  this._flowplayer.getClip();
-            if( ! clip ) {
-                return 0;
-            }
-
-            var index = clip.index; // getIndex() is buggy
-            if( i !== undefined ) {
-                i = this._resolveIndex(i);
-                var paused = this.paused;
-                this._flowplayer.play(i);
-                if( paused ) {
-                    this._flowplayer.pause();
-                }
-
-            }
-
-            return index;
+        autoplay : function (val) {
+            if( val !== undefined )
+                this.__autoplay = val;
+            return this.__autoplay;
         },
 
-        _resolveIndex : function (i) {
-            var pl = this._flowplayer.getPlaylist();
-            if( i < 0  )
-                i = pl.length + i;
-            if( this.loop )
-                i = i % pl.length;
-            if( i >= pl.length || i < 0) {
-                return;
-            }
-            return i;
-        },
-
-        _loop : function (bool) {
+        loop : function (bool) {
             if( bool !== undefined ) {
                 this.__loop = bool;
             }
             return this.__loop;
         },
 
-        canPlayType : function (type) {
-            return "probably";
+        src : function (val) {
+            if( val !== undefined ) {
+                this.__src = val;
+                if( this._flowplayer.isLoaded() ) {
+                    this._flowplayer.setPlaylist([src]);
+                }
+            }
+            return this.__src;
+        },
+
+        readyState : function (val) {
+            if( val !== undefined )
+                this.__readyState = val;
+            return this.__readyState;
         },
 
         _children : function () {
@@ -1806,49 +1837,120 @@
             return [src];
         },
 
-        queue : function ( media ) {
-            this._flowplayer.addClip(media);
+        /* Playlist Interface */
+
+        index : function (i) {
+            var clip =  this._flowplayer.getClip();
+            if( ! clip )
+                return 0;
+
+            if( i == undefined )
+                return clip.index; // Player.getIndex() is buggy
+
+            var paused = this.paused();
+
+            i = this._resolveIndex(i);
+            this._flowplayer.play(i);
+
+            if( paused )
+                this._flowplayer.pause();
+
+            return i;
         },
+
+        _resolveIndex : function (i) {
+            var pl = this._flowplayer.getPlaylist();
+            if( i < 0  )
+                i = pl.length + i;
+            if( this.loop() )
+                i = i % pl.length;
+            if( i >= pl.length || i < 0) {
+                return;
+            }
+            return i;
+        },
+
+        advance : function (bool) {
+            if( bool !== undefined ) {
+                this.__advance = bool;
+            }
+            return this.__advance;
+        },
+
+        queue : function ( media ) {
+            this._flowplayer.addClip( media );
+        },
+
         clear: function (){
             this._flowplayer.play([]);
         },
+
         next : function () {
-            this.index++;
+            this.index( this.index() + 1);
         },
+
         previous : function () {
-            this.index--;
+            this.index( this.index() - 1);
         },
+
         nextTrack : function () {
             return this.track( this.nextTrackIndex() );
         },
+
         nextTrackIndex : function () {
-            return this._resolveIndex( this.index + 1);
+            return this._resolveIndex(this.index() + 1);
         },
+
         track : function (i) {
             if( i == undefined )
-                i = this.index;
+                i = this.index();
             var pl = this._flowplayer.getPlaylist();
             return pl[ this._resolveIndex(i) ];
         },
+
         tracks : function () {
             return this._flowplayer.getPlaylist();
         },
 
-        _toMediaRss : function (clip) {
-            var item = {
-                title : clip.title,
-                description : '',
-                content : [{
-                    isDefault : true,
-                    type : '',
-                    bitRate : '',
-                    url : ''
-                }],
-                text : [] // transcript
-            }
-        }
-    };
+        decorate : function (obj) {
+            Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
+                " paused played controls autoplay preload src ended index advance readyState" +
+                " children service",
+                this.video, this);
 
+            Ramp.Utils.Proxy.proxyFunction("load play pause canPlayType " +
+                "next previous track tracks queue clear " +
+                "nextTrack nextTrackIndex onPlaylistChange onTrackChange",this, this.video);
+
+            Ramp.Utils.Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
+                "loadeddata loadedmetadata canplay loadstart durationchange volumechange ended " +
+                "trackChange playlistChange ",this, this.video);
+        },
+
+        /* Timer Handlers */
+
+        _onPlayStatePoll : function () {
+            if( this._flowplayer.isPlaying() === this.paused() )
+                return;
+
+            this._statepoll.reset();
+            if( this.paused()  ) {
+                this.dispatch("pause");
+                this._timeupdater.reset();
+            }
+            else {
+                this.autoplay(true);
+                this.dispatch("playing");
+                this.dispatch("play");
+                this._timeupdater.start();
+            }
+        },
+
+        _onTimeUpdate : function  () {
+            this.dispatch("timeupdate");
+        }
+
+    };
 })();
 (function () {
 
@@ -1863,6 +1965,10 @@
 
         if( !(this instanceof PopcornLoader) )
             return new PopcornLoader(player, service, options);
+
+        if( ! (window.Popcorn && Popcorn instanceof Function) )
+            return;
+
         if( player.getTrackEvent )
             this.popcorn = player;
         else if( player.popcorn )

@@ -41,7 +41,7 @@
 <script type="text/javascript">
     var player, vjs;
     player = Ramp.html5('#target', "ramp:/pca:36234882");
-    player.onTranscodes( function(){
+    player.addEventListener("loadstart", function(){
         vjs = VideoJS.setup([player], {
             controlsHiding : false
         });

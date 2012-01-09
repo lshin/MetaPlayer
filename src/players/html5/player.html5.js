@@ -49,15 +49,15 @@
         this._addMediaListeners();
 
         if( url )
-            this.queue(url);
+            this.playlist.queue(url);
 
-        this.video = $(this.video).get(0);
-        this.decorate(this.video);
     };
 
 
     Ramp.html5 = function (el, url, options) {
-        return Html5Player(el, url, options);
+        var player = Html5Player(el, url, options);
+        player.video._player = player;
+        return player.video;
     };
 
     Ramp.metaplayer = Ramp.html5;
@@ -74,8 +74,7 @@
 
             this.config.preload = true; // can be called before transcodes available
 
-            var media = $(this._video).get(0);
-            media.load();
+            this.video.load();
         },
 
         decorate : function (el) {
@@ -88,7 +87,7 @@
         _createMarkup : function ( parent ) {
             var p = $(parent);
             if( p.is('video') ) {
-                this._video = parent;
+                this.video = p.get(0);
             }
             else {
                 var video = document.createElement('video');
@@ -101,11 +100,12 @@
                 video.style.left = 0;
                 video.style.width = "100%";
                 video.style.height = "100%";
-                this._video = video;
+                this.video = video;
                 p.append(video);
             }
 
-            Ramp.UI.ensureOffsetParent(this._video);
+            this.decorate(this.video);
+            Ramp.UI.ensureOffsetParent( this.video );
         },
 
         _addListeners : function () {
@@ -137,8 +137,8 @@
         },
 
         _children : function () {
-            if( this._video.children.length )
-                return this._video.children;
+            if( this.video.children.length )
+                return this.video.children;
 
             var t = this.track();
             var src = document.createElement('source');
@@ -151,7 +151,7 @@
             if( type == "video/ramp" )
                 return "probably";
             else
-                return this._video.canPlayType(type);
+                return this.video.canPlayType(type);
         },
 
         _src : function (val) {
@@ -163,7 +163,7 @@
         },
 
         _addSources : function () {
-            var media = $(this._video);
+            var media = $(this.video);
             media.find('source').remove();
             $.each(this._transcodes, function (i, source) {
                 var src = document.createElement('source');
@@ -174,7 +174,7 @@
         },
 
         _selectSource : function () {
-            var media = $(this._video).get(0);
+            var media = this.video;
             $.each(this._transcodes, function (i, source) {
                 if( media.canPlayType(source.type) ){
                     media.src = source.url;
@@ -185,10 +185,10 @@
 
         _addMediaListeners : function () {
             var self = this;
-            $(this._video).bind('ended', function(){
+            $(this.video).bind('ended', function(){
                 self._onEnded()
             });
-            $(this._video).bind('playing', function(){
+            $(this.video).bind('playing', function(){
                 self.autoplay = true;
             });
         },
@@ -200,28 +200,15 @@
             this.playlist.next();
         },
 
-        _addMediaProxy : function () {
-            console.log("add media proxy");
-            var media = $(this._video).get(0);
-            // proxy entire MediaController interface
-            // http://dev.w3.org/html5/spec/Overview.html#mediacontroller
-            //     .. plus a few unofficial dom extras
 
-            Ramp.Utils.Proxy.mapProperty("children src", this);
+        decorate : function (obj) {
+            Ramp.Utils.Proxy.mapProperty("index advance service",
+                this.video, this);
 
-            Ramp.Utils.Proxy.proxyProperty("duration currentTime volume muted buffered seekable" +
-                " paused played seeking defaultPlaybackRate playbackRate autoplay preload " +
-                " ended readyState parentNode offsetHeight offsetWidth offsetParent style className id controls",
-                media, this);
+            Ramp.Utils.Proxy.proxyFunction("next previous track tracks queue clear " +
+                "nextTrack nextTrackIndex onPlaylistChange onTrackChange",this, this.video);
 
-            Ramp.Utils.Proxy.proxyFunction("play pause" +
-                " getBoundingClientRect getElementsByTagName",
-                media, this);
-
-            Ramp.Utils.Proxy.proxyEvent("loadstart progress suspend emptied stalled play pause " +
-                "loadedmetadata loadeddata waiting playing canplay canplaythrough " +
-                "seeking seeked timeupdate ended ratechange durationchange volumechange",
-                media, this);
+            Ramp.Utils.Proxy.proxyEvent("trackChange playlistChange ",this, this.video);
         }
 
 

@@ -248,8 +248,12 @@
                         self._flowplayer.stop();
                     }
                 }
+
                 self.dispatch("ended");
 
+                // force advance the player, since pause() or seek()
+                // in the ended handlers can prevent default advance
+                self._flowplayer.play(clip.index+1);
             });
 
             common.onPause( function (clip) {
@@ -359,6 +363,8 @@
                 this._flowplayer.seek(val);
             }
 
+            console.log("get status");
+            // todo: throttle
             var status = this._flowplayer.getStatus();
 
             if( this.__seeking !== null )
@@ -392,10 +398,14 @@
             }
 
             if( val !== undefined ){
-                if( val )
+                if( val ) {
                     this._flowplayer.getControls().show();
-                else
+                    this._flowplayer.getPlugin("play").show();
+                }
+                else {
                     this._flowplayer.getControls().hide();
+                    this._flowplayer.getPlugin("play").hide();
+                }
             }
             return this._flowplayer.getControls().opacity != 1;
         },
