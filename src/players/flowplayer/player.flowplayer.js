@@ -12,6 +12,7 @@
         controls : true,
         swfUrl : "flowplayer-3.2.7.swf",
         wmode : "transparent",
+        statusThrottleMSec : 500,
         fpConfig : {
             clip : {
                 scaling : "fit"
@@ -363,14 +364,23 @@
                 this._flowplayer.seek(val);
             }
 
-            console.log("get status");
-            // todo: throttle
-            var status = this._flowplayer.getStatus();
-
             if( this.__seeking !== null )
                 return this.__seeking;
 
-            return status.time;
+            // throttle the calls so we don't affect playback quality
+            var now = (new Date()).getTime();
+            var then = this.__currentTimeCache;
+            var diff = now - then;
+
+            if(then && diff< this.config.statusThrottleMSec )
+                return this.__currentTime + (diff / 1000); // approx our position
+            else
+                this.__currentTimeCache = now;
+
+            var status = this._flowplayer.getStatus(); // expensive
+
+            this.__currentTime = status.time;
+            return this.__currentTime;
         },
 
         muted : function (val){

@@ -46,92 +46,6 @@
         dispatcher : null
     };
 
-    var MediaController = function () {
-
-    };
-
-    MediaController.prototype = {
-
-        // Media extenstions:
-        /*
-
-       z! error
-        F src
-       z! currentSrc
-       z! networkState
-          preload
-       z! buffered[]
-        f load()
-        ! readyState
-        ! seeking
-        F currentTime
-       z! initalTime
-        ! duration
-       z! startOffsetTime
-        ! paused
-        z defaultPlaybackRate
-        z playbackRate
-        z played[]
-        ! seekable[]
-        ! ended
-          autoplay
-          loop
-        F play()
-        F pause()
-        z mediaGroup
-        z controller
-          controls
-        f volume
-        f muted
-        z defaultMuted
-        z audioTracks[]
-        z videoTracks[]
-        z textTracks[]
-        z addTextTrack
-
-
-
-        F index
-        F next()
-        F previous()
-        F nextTrack()
-        F nextTrackIndex()
-        F clear()
-        F queue()
-
-         */
-
-        // MediaController
-        duration :  function () {},
-        currentTime : function () {},
-        paused : function () {},
-        play : function () {},
-        pause : function () {},
-        volume : function () {},
-        muted : function () {},
-        buffered : function () {},
-
-        played : function () {},
-        defaultPlaybackRate : function () {},
-        playbackRate : function () {},
-        seekable :  function () {}
-
-
-    };
-
-})();
-
-(function () {
-
-    var $ = jQuery;
-
-    var defaults = {
-        autoLoad : true,
-        related: true,
-        loop : false,
-        dispatcher : null
-    };
-
     var Playlist = function (urls, options) {
         if( ! (this instanceof Playlist) )
             return new Playlist(urls, options);
@@ -1396,6 +1310,7 @@
         controls : true,
         swfUrl : "flowplayer-3.2.7.swf",
         wmode : "transparent",
+        statusThrottleMSec : 500,
         fpConfig : {
             clip : {
                 scaling : "fit"
@@ -1747,14 +1662,23 @@
                 this._flowplayer.seek(val);
             }
 
-            console.log("get status");
-            // todo: throttle
-            var status = this._flowplayer.getStatus();
-
             if( this.__seeking !== null )
                 return this.__seeking;
 
-            return status.time;
+            // throttle the calls so we don't affect playback quality
+            var now = (new Date()).getTime();
+            var then = this.__currentTimeCache;
+            var diff = now - then;
+
+            if(then && diff< this.config.statusThrottleMSec )
+                return this.__currentTime + (diff / 1000); // approx our position
+            else
+                this.__currentTimeCache = now;
+
+            var status = this._flowplayer.getStatus(); // expensive
+
+            this.__currentTime = status.time;
+            return this.__currentTime;
         },
 
         muted : function (val){
