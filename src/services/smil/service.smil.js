@@ -115,11 +115,11 @@
                     data.metadata.host = host;
                     this._data = data;
                     this.dispatch('metaData', data.metadata);
-                    this.dispatch('related', data.related);
                     this.dispatch('transcodes', data.transcodes);
                     this.dispatch('captions', data.captions);
                     this.dispatch('tags', data.tags);
                     this.dispatch('metaQ', data.metaq);
+                    this.dispatch('related', data.related);
                 }
             });
         },

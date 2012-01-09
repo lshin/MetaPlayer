@@ -11,6 +11,7 @@ var PlayerUnit = function (){
 PlayerUnit.prototype = {
 
     isNearTime : function (sec) {
+        console.log("this.media.currentTime " + this.media.currentTime );
         return Math.abs(this.media.currentTime - sec) < this.nearTimeSec;
     },
 
@@ -47,12 +48,11 @@ PlayerUnit.prototype = {
             unit.equal( self.media.paused, true, "media instance paused");
 
             self.media.load();
-        }, {postDelay : 0 });
+        }, {postDelay : 1000 });
 
         unit.test("currentTime",  function () {
             var seekTarget = Math.floor(self.media.duration / 2);
             unit.log("Seek target: " + seekTarget);
-            unit.equal( self.media.paused, true, "media instance paused");
             unit.equal( self.isNearTime(0), true, "initial self.media.currentTime is 0");
             unit.equal( self.media.seeking, false, "initial self.media.seeking is false");
             unit.event("seeking", self.media, "seeking event", function (e) {

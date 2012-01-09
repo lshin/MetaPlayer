@@ -43,8 +43,20 @@
 <script type="text/javascript">
     var player = Ramp.flowplayer('#target', "ramp:/pca:36234882", {
         autoplay: false,
+        preload: false,
+        advance : false,
         swfUrl : "../../../../external/flowplayer/flowplayer-3.2.7.swf"
     });
+
+    console.log("player? " , player)
+    player.addEventListener("loadstart", function (){
+        console.log("*** player yup");
+    });
+
+
+    $(player).bind("loadstart", function (){
+        console.log("*** player bind");
+    })
 </script>
 
 </body>

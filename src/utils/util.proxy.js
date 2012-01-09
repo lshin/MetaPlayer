@@ -17,15 +17,28 @@
         },
 
         proxyEvent : function (types, source, target ){
+
+            // emulate if old non-standard event model
+            if( ! target.addEventListener ) {
+                var d = Ramp.Utils.EventDispatcher();
+                d.attach(target);
+            }
             $.each(types.split(/\s+/g), function (i, type) {
-//                Proxy.proxyFunction("on" + type, source, target);
                 $(source).bind(type, function (e) {
-                    $(target).trigger(e);
+                    // if emulated, just use type
+                    if( target.dispatch ) {
+                        target.dispatch(e.type);
+                        return;
+                    }
+                    // else use standard model
+                    var evt = document.createEvent("Event");
+                    evt.initEvent(e.type, false, false);
+                    target.dispatchEvent(evt);
                 });
             });
         },
 
-        mapProperty : function (props, target, source){
+        mapProperty : function (props, target, source, method){
             // example :   map("name" myObject, myObject._name);
             //             map("name" myObject);
             if( ! source )
@@ -58,45 +71,23 @@
         },
 
         define : function (obj, prop, descriptor) {
-
-            if( Object.defineProperty ){
-                try {
-                    // modern browsers
-                    return Object.defineProperty(obj, prop, descriptor);
-                }
-                catch(e){
-                    // ie8 exception if not DOM element
-                    console.log(["IE8? " , obj, e]);
-                }
+            try {
+                // modern browsers
+                return Object.defineProperty(obj, prop, descriptor);
+            }
+            catch(e){
+                // ie8 exception if not DOM element
             }
 
-            if( obj.__defineGetter ){
-                // old FF, webkit
-                if( descriptor.get )
-                    obj.__defineGetter__( prop, descriptor.get);
-                if( descriptor.set && obj.__defineSetter__ )
-                    obj.__defineSetter__( prop, descriptor.set);
-                return;
-            }
+            // older, pre-standard implementations
+            if( obj.__defineGetter && descriptor.get )
+                obj.__defineGetter__( prop, descriptor.get);
+            if( descriptor.set && obj.__defineSetter__ )
+                obj.__defineSetter__( prop, descriptor.set);
 
-
-            // ie7 support, no getter/setter, but we know when the property changes
-            // (on dom elements only)
-
-            if( ! obj.__definedProperties__ )
-                obj.__definedProperties__ = {};
-
-            obj.__definedProperties__[prop] = descriptor;
-
-            if( ! obj.onpropertychange ) {
-                obj.onpropertychange = function () {
-                    var p = event.propertyName;
-                    var desc = obj.__definedProperties__[p];
-                    if( desc && desc.set )
-                        desc.set(obj[p]);
-                };
-            }
+            // ie7 and other old browsers fail silently
         }
+
     };
 
     if( ! window.Ramp )

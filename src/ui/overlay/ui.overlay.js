@@ -140,6 +140,19 @@
             });
         },
 
+        renderNextUp : function (){
+            var nextup = this.player.nextTrack();
+            if( nextup ){
+                this.find('preview-thumb').attr('src', nextup.thumbnail);
+                this.find('preview-title').text(nextup.title);
+                this.find('next').show();
+            }
+        },
+
+        onPlaylistChange : function () {
+            this.renderNextUp()
+        },
+
         onTrackChange : function () {
             this.nextup = null;
             this.clearSearch();
@@ -147,12 +160,7 @@
             $('.' + this.cssName('tag') ).remove();
             this.find('next').hide();
 
-            var nextup = this.player.nextTrack();
-            if( nextup ){
-                this.find('preview-thumb').attr('src', nextup.thumbnail);
-                this.find('preview-title').text(nextup.title);
-                this.find('next').show();
-            }
+            this.renderNextUp()
         },
 
         createTag : function ( term ) {
@@ -278,7 +286,7 @@
             if( ! this.player.onTrackChange )
                 return;
             this.player.onTrackChange( this.onTrackChange, this);
-            this.player.onPlaylistChange( this.onTrackChange, this);
+            this.player.onPlaylistChange( this.onPlaylistChange, this);
         },
 
         onVolumeDragStart : function (e) {

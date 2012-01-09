@@ -70,13 +70,13 @@
 <script type="text/javascript">
     var player = Ramp.flowplayer('#target', "ramp:/pca:36234882", {
         swfUrl : "../../../../external/flowplayer/flowplayer-3.2.7.swf",
-        autoplay: true
+        autoplay: false
     });
 
-    Ramp.controls(player);
+    var controls = Ramp.controls(player);
     Ramp.captions(player);
     Ramp.metaq(player);
-    Ramp.overlay(player);
+    var overlay = Ramp.overlay(player);
     Ramp.endcap(player);
 
     jQuery.noConflict(true);

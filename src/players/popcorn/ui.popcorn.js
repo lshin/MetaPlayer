@@ -12,6 +12,10 @@
 
         if( !(this instanceof PopcornLoader) )
             return new PopcornLoader(player, service, options);
+
+        if( ! (window.Popcorn && Popcorn instanceof Function) )
+            return;
+
         if( player.getTrackEvent )
             this.popcorn = player;
         else if( player.popcorn )
