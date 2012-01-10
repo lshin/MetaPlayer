@@ -389,6 +389,9 @@ all copies or substantial portions of the Software.
                 });
             else
                 node.animate({height: 0}, 500);
+
+            if( this.embed )
+                this.embed.close(0);
         },
 
         /* core */

@@ -50,9 +50,7 @@
 <script type="text/javascript">
 //    var player = Ramp.html5('#target', "ramp:/advisor:48920875");
     var service = Ramp.data();
-    var embed = Ramp.embed('#embed', service, {
-        embedUrl : "http://gkindel.podzinger.local/widgets{{host}}/1854/?episode={{rampId}}}&width={{width}}&height={{height}}"
-    });
+    var embed = Ramp.embed('#embed', service);
 
     $('button').click( function () {
         service.load( $(this).data('src') );

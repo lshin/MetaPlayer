@@ -12,7 +12,7 @@
             {name: 'small', width: 400, height: 245}
         ],
 
-        embedUrl : "/widgets{{host}}/1854/?episode={{rampId}}}&width={{width}}&height={{height}}",
+        embedUrl : "{{embedURL}}&width={{width}}&height={{height}}",
 
         embedCode : '<iframe src="{{src}}" height="{{height}}px" width="{{width}}px" ' +
             'frameborder="0" scrolling="no" marginheight="0" marginwidth="0" ' +
@@ -106,6 +106,9 @@
 
             // {{var}} substituation with anything in size config
             var dict = $.extend({}, this._metadata, embed);
+
+            console.log([this.config.embedUrl,  Embed.templateReplace( this.config.embedUrl, dict) ]);
+
             dict.src = encodeURI( Embed.templateReplace( this.config.embedUrl, dict) );
 
             var code = Embed.templateReplace( this.config.embedCode, dict);
