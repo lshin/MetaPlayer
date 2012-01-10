@@ -57,6 +57,11 @@
             this.onPlayStateChange();
             this.setCaptions(this.config.captions);
 
+            if( Ramp.embed ) {
+                this.embed = Ramp.embed( this.find('embed'), this.service );
+                this.find('embed').show();
+            }
+
             if( Ramp.social )
                 Ramp.social( this.find('social'), this.service );
         },
@@ -364,9 +369,14 @@
             var node = this.find().stop();
             var height = this.find('container').height();
             if( bool )
-                node.animate({height: height}, 500);
+                node.animate({height: height}, 500, function () {
+                    node.height('')
+                });
             else
                 node.animate({height: 0}, 500);
+
+            if( this.embed )
+                this.embed.close(0);
         },
 
         /* core */

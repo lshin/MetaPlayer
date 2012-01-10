@@ -1,4 +1,8 @@
 
+.metaplayer-embed {
+    position: relative;
+    top: 0; left: 0;
+}
 .metaplayer-embed-button {
     margin: 2px;
     float: left;
@@ -20,8 +24,8 @@
 .metaplayer-embed-close {
     width: 10px;
     position: absolute;
-    right: 5px;
-    top: 0px;
+    right: 7px;
+    top: 2px;
     color: white;
     cursor: pointer;
     font-size: 14px;
@@ -30,16 +34,15 @@
     font-family: monospace sans-serif;
 }
 .metaplayer-embed-textbox {
-    position:absolute;
+    position: relative;
+    top: 0;
+    left: 0;
     background:#888;
-    width:400px;
-    height:70px;
+    padding: 5px 24px 2px 5px;
 }
 .metaplayer-embed-text {
-	position:absolute;
 	resize:none;
-    bottom: 0;
-    top:  0;
-    right: 17px;
-    left: 0px;
+    height: 65px;
+    width: 100%;
+    margin: 0; padding:  0;
 }

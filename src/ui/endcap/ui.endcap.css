@@ -14,7 +14,7 @@
     background: gray;
     width: 1px;
     position: absolute;
-    right: 10px;
+    right: 0px;
     top: 10px;
     bottom: 10px;
 }
@@ -95,31 +95,8 @@
 
 /* Embed */
 .metaplayer-endcap-embed {
-    position: relative;
-    top: 0; left: 0;
-    height: 10px;
-    width: 50%;
-    float: left;
-    padding:  5px 0;
-}
-.metaplayer-endcap-embed-label {
-    float: left;
-    font-size: 14px;
-    margin: 0 5px 0 10px;
-    font-weight: bold;
-
-}
-.metaplayer-endcap-embed-small,
-.metaplayer-endcap-embed-medium,
-.metaplayer-endcap-embed-large {
-    width: 20px;
-    height: 12px;
-    background: white;
-    color: #888;
-    font-size: 8px;
-    float: left;
-    margin: 0 5px;
-    cursor: pointer;
+    padding:  0 15px 0 15px;
+    display: none;
 }
 
 /* Search */
@@ -171,4 +148,5 @@
     border-top-right-radius: 3px;
     border-bottom-right-radius: 3px;
 }
+
 

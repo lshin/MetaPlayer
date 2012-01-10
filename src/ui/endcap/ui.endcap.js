@@ -111,6 +111,12 @@
             this.countdown.listen('time', this.onCountdownTick, this);
             this.countdown.listen('complete', this.onCountdownDone, this);
 
+
+            if( Ramp.embed ) {
+                this.embed = Ramp.embed( this.find('embed'), this.service );
+                this.find('embed').show();
+            }
+
             if( Ramp.social ){
                 Ramp.social( this.find('social'), this.service );
             }

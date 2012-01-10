@@ -176,14 +176,16 @@
     padding-bottom: 5px;
 }
 
-/* Embed */
+.metaplayer-overlay-embed  .metaplayer-embed {
+    padding:  15px;
+}
+
 .metaplayer-overlay-embed {
     position: relative;
     top: 0; left: 0;
-    height: 10px;
     width: 50%;
     float: left;
-    padding:  5px 0;
+    display: none;
 }
 .metaplayer-overlay-embed-label {
     float: left;

@@ -75,27 +75,3 @@
     width: 79px;
     height: 24px;
 }
-
-.metaplayer-overlay-embed-small,
-.metaplayer-overlay-embed-medium,
-.metaplayer-overlay-embed-large {
-    margin: 2px;
-}
-
-
-.metaplayer-overlay-embed-small {
-    background: url('assets/control/embed-small.png');
-    width: 12px;
-    height: 12px;
-}
-.metaplayer-overlay-embed-medium {
-    background: url('assets/control/embed-medium.png');
-    width: 16px;
-    height: 12px;
-}
-.metaplayer-overlay-embed-large {
-    background: url('assets/control/embed-big.png');
-    width: 20px;
-    height: 12px;
-}
-
