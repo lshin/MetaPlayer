@@ -27,7 +27,7 @@ all copies or substantial portions of the Software.
             {name: 'small', width: 400, height: 245}
         ],
 
-        embedUrl : "/widgets{{host}}/1854/?episode={{rampId}}}&width={{width}}&height={{height}}",
+        embedUrl : "{{embedURL}}&width={{width}}&height={{height}}",
 
         embedCode : '<iframe src="{{src}}" height="{{height}}px" width="{{width}}px" ' +
             'frameborder="0" scrolling="no" marginheight="0" marginwidth="0" ' +
