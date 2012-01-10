@@ -1,0 +1,45 @@
+
+.metaplayer-embed-button {
+    margin: 2px;
+    float: left;
+    background: #aaa;
+    border:  1px solid #aaa;
+    cursor: pointer;
+}
+
+.metaplayer-embed-selected {
+    border:  1px solid white;
+}
+
+
+.metaplayer-embed-label {
+    color: white;
+    padding: 2px 5px;
+}
+
+.metaplayer-embed-close {
+    width: 10px;
+    position: absolute;
+    right: 5px;
+    top: 0px;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    vertical-align: top;
+    text-align: center;
+    font-family: monospace sans-serif;
+}
+.metaplayer-embed-textbox {
+    position:absolute;
+    background:#888;
+    width:400px;
+    height:70px;
+}
+.metaplayer-embed-text {
+	position:absolute;
+	resize:none;
+    bottom: 0;
+    top:  0;
+    right: 17px;
+    left: 0px;
+}

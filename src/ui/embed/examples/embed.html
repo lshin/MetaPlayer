@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+
+    <style>
+        body {
+            background:  #eee;
+        }
+        #embed {
+            margin: 20px 0;
+            background:  black;
+            padding:  5px;
+        }
+
+
+
+    </style>
+
+    <!--Dependency: Twitter -->
+    <script src="http://platform.twitter.com/widgets.js" type="text/javascript"></script>
+
+    <!-- Dependency: jQuery -->
+    <script src="../../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
+
+    <!--Dependency: Popcorn -->
+    <script src="../../../../external/popcorn/popcorn.js" type="text/javascript"></script>
+
+    <!-- Dependency: Metaplayer -->
+    <script src="../../../../build/metaplayer.js" type="text/javascript"></script>
+
+    <!-- UI Plugin: Embed -->
+    <script src="../ui.embed.js" type="text/javascript"></script>
+    <link href="../ui.embed.css" rel="stylesheet"  type="text/css">
+    <link href="../../../themes/mp2/theme.embed.css" rel="stylesheet"  type="text/css">
+
+
+
+</head>
+<body>
+<h3>Metaplayer &raquo; Embed Plugin</h3>
+
+<button data-src="ramp:/pca:36234882">Clip 1</button>
+<button data-src="ramp:/advisor:48920875">Clip 2</button>
+
+<div id="embed"></div>
+
+
+
+<script type="text/javascript">
+//    var player = Ramp.html5('#target', "ramp:/advisor:48920875");
+    var service = Ramp.data();
+    var embed = Ramp.embed('#embed', service, {
+        embedUrl : "http://gkindel.podzinger.local/widgets{{host}}/1854/?episode={{rampId}}}&width={{width}}&height={{height}}"
+    });
+
+    $('button').click( function () {
+        service.load( $(this).data('src') );
+    });
+</script>
+
+</body>
+</html>
