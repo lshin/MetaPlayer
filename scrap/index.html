@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+
+    <title>Full Demo | Metaplayer</title>
+
+    <style>
+        #outer {
+            width: 600px;
+            height: 300px;
+            position: relative;
+            top: 0; left: 0;
+            background:  green;
+        }
+        #inner {
+            position: absolute;
+            top: 10px;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background:  red;
+        }
+    </style>
+
+</head>
+
+<body>
+
+
+<div id='outer'>
+    <div id='inner'>
+        inner
+    </div>
+</div>
+
+<script>
+
+    var manifest = {
+//        get : function () {
+//            console.log("get " + 123)
+//            return 123;
+//        },
+//        set : function (val) {
+//            console.log("set " + val)
+//            return val;
+//        }
+    };
+
+    function defineTest () {
+        var target = {};
+        try {
+            Object.defineProperty(target, "__proptest", manifest )
+            console.log("OK obj decorate")
+            return target;
+        }
+        catch(e){
+//            console.log("Failed obj decorate")
+        }
+
+        var dom = document.createElement('div');
+        try {
+            Object.defineProperty(dom, "__proptest", manifest )
+            console.log("OK dom decorate")
+            return dom;
+        }
+        catch(e){
+//            console.log("Failed dom decorate")
+        }
+    }
+
+    foo = defineTest()
+
+
+</script>
+
+    <button onclick="javascript:defineTest()">defineTest</button>
+    <button onclick="javascript:alert(foo.test)">get</button>
+    <button onclick="javascript:alert(foo.test = 999)">set</button>
+
+</body>
+</html>

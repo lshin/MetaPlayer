@@ -38,8 +38,6 @@
             this.add(urls);
     };
 
-    Ramp.playlist = Playlist;
-    Ramp.Models.Playlist = Playlist;
 
     Playlist.prototype = {
         _interface : "empty queue next previous track tracks nextTrack nextTrackIndex onPlaylistChange onTrackChange",

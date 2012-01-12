@@ -104,7 +104,7 @@
             $.ajax(url, {
                 dataType : "xml",
 //                jsonp : "jsoncallback",
-                timeout : 5000,
+                timeout : 15000,
                 context: this,
                 data : params,
                 error : function (jqXHR, textStatus, errorThrown) {
@@ -236,7 +236,7 @@
 
             $.ajax(url, {
                 dataType : "xml",
-                timeout : 5000,
+                timeout : 15000,
                 context: this,
                 data : params,
                 error : function (jqXHR, textStatus, errorThrown) {

@@ -27,6 +27,7 @@
         }
         this.service = service;
         this.player = player;
+        this.playlist = player.playlist;
         this.baseUrl = Ramp.Utils.Script.base('(metaplayer||ui).overlay(.min)?.js');
         this.nextUp = Ramp.data();
 
@@ -107,7 +108,7 @@
             $(document).bind('mouseup touchend', function (e) {
                 self.onVolumeDragEnd(e);
             });
-            $(document).bind('mousemove touchemove', function (e) {
+            $(document).bind('mousemove touchmove', function (e) {
                 if( ! self.volumeDragging )
                     return;
                 self.onVolumeDrag(e);
@@ -126,7 +127,7 @@
             }
 
             this.find('preview').click( function () {
-                self.player.next();
+                self.playlist.next();
             });
         },
 
@@ -146,7 +147,7 @@
         },
 
         renderNextUp : function (){
-            var nextup = this.player.nextTrack();
+            var nextup = this.playlist.nextTrack();
             if( nextup ){
                 this.find('preview-thumb').attr('src', nextup.thumbnail);
                 this.find('preview-title').text(nextup.title);
@@ -288,10 +289,10 @@
         },
 
         addPlaylistListeners : function (){
-            if( ! this.player.onTrackChange )
+            if( ! this.playlist )
                 return;
-            this.player.onTrackChange( this.onTrackChange, this);
-            this.player.onPlaylistChange( this.onPlaylistChange, this);
+            this.playlist.onTrackChange( this.onTrackChange, this);
+            this.playlist.onPlaylistChange( this.onPlaylistChange, this);
         },
 
         onVolumeDragStart : function (e) {
@@ -308,13 +309,26 @@
         },
 
         onVolumeDrag : function (e) {
+            var oe = e.originalEvent;
+            var pageX = e.pageX;
+
+            if( oe.targetTouches ) {
+                if( ! oe.targetTouches.length ) {
+                    return;
+                }
+                pageX = oe.targetTouches[0].pageX;
+            }
+
             var bg = this.find('volume-bg');
-            var x =  e.pageX - bg.offset().left;
+            var x =  pageX - bg.offset().left;
             var ratio = x / bg.width();
+
+
             if( ratio < 0 )
                 ratio = 0;
             if( ratio > 1 )
                 ratio = 1;
+
             // todo, throttle the mousemove
             this.player.muted = false;
             this.player.volume = ratio;

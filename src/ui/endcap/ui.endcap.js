@@ -66,7 +66,8 @@
         init : function  (){
             var self = this;
 
-            this.player.onPlaylistChange( this.onTrackChange, this);
+            if( this.player.playlist )
+                this.player.playlist.onPlaylistChange( this.onTrackChange, this);
 
             $(this.player).bind('play playing seeked loadstart', function () {
                 self.onPlaying();
@@ -88,7 +89,7 @@
                 self.countdown.stop();
             });
             this.find('preview').click( function () {
-                self.player.next();
+                self.player.playlist.next();
             });
             this.find('repeat').click( function () {
                 self.player.currentTime = 0;
@@ -105,7 +106,7 @@
                 }
             });
 
-            this.player.advance = false;
+            this.player.playlist.advance = false;
 
             this.countdown = Ramp.Timer(1000, this.config.countDownSec);
             this.countdown.listen('time', this.onCountdownTick, this);
@@ -162,12 +163,11 @@
         },
 
         onTrackChange : function () {
-
             if( ! this.player.readyState > 0 )
                 return;
 
             this.toggle(false);
-            var again = this.player.track();
+            var again = this.player.playlist.track();
             this.find('again-thumb').attr('src', again.thumbnail);
             this.find('again-title').text(again.title);
             this.find('again').show();
@@ -175,7 +175,7 @@
             this.siteSearchUrl = again.siteSearchURL;
 
             this.find('next').hide();
-            var nextup = this.player.nextTrack();
+            var nextup = this.player.playlist.nextTrack();
             if( nextup ){
                 this.find('preview-thumb').attr('src', nextup.thumbnail);
                 this.find('preview-title').text(nextup.title);
@@ -189,7 +189,7 @@
         },
 
         onCountdownDone : function (e) {
-            this.player.next();
+            this.player.playlist.next();
         },
 
         find : function (className){

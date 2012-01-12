@@ -6,9 +6,6 @@
     var defaults = {
         autoplay : false,
         preload : true,
-        advance : true,
-        related: true,
-        loop : false,
         controls : true,
         swfUrl : "flowplayer-3.2.7.swf",
         wmode : "transparent",
@@ -30,27 +27,17 @@
         this.dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
         this.dispatcher.attach(this);
 
-        // set up service, have it use our event dispatcher
-        this.service = Ramp.data({
-            dispatcher : this.dispatcher
-        });
-        this.service.attach(this);
-        this.onPlaylistChange = this.dispatcher.observer("playlistChange");
-        this.onTrackChange = this.dispatcher.observer("trackChange");
-
+        this._ipad = window.flashembed.__replaced;
         this.__seeking = null;
         this.__readyState = 0;
         this.__ended = false;
         this.__paused = true;
 
         this._pageSetup(el);
-        this._addServiceListeners();
 
         this.__preload = this.config.preload;
         this.__autoplay = this.config.autoplay;
-        this.__loop = this.config.loop;
-        this.__advance = this.config.advance;
-        this.__src = url;
+        this.__src = null;
 
         this._statepoll = Ramp.Timer(250);
         this._statepoll.listen('time', this._onPlayStatePoll, this);
@@ -62,6 +49,14 @@
         this._flowplayer.onLoad( function () {
             self._onLoad();
         });
+
+        this.video = this.getInterface();
+
+        if( Ramp.playlist )
+            Ramp.playlist(this.video, url);
+        else
+            this.src(url);
+
     };
 
     Ramp.flowplayer = function (el, url, options) {
@@ -71,6 +66,7 @@
     };
 
     FlowPlayer.prototype = {
+
 
         _pageSetup : function (el) {
             // if passed in fp instance
@@ -95,75 +91,15 @@
                     wmode: this.config.wmode
                 }, config );
             }
-            this.video = this._flowplayer.getParent();
-            this.decorate(this.video);
-            Ramp.UI.ensureOffsetParent( this.video );
-        },
-
-        _addServiceListeners : function () {
-            this.service.onMetaData(this._onMetaData, this);
-            this.service.onTranscodes(this._onTranscodes, this);
-            this.service.onRelated(this._onRelated, this);
-        },
-
-
-        _onMetaData : function (metadata) {
-            // update clip title, desc, etc
-            this._metadata = metadata;
-        },
-
-        _onRelated : function (related) {
-            if( this._hasPlaylist || ! this.config.related )
-                return;
-
-            this._hasPlaylist = true;
-            var fp = this._flowplayer;
-            $.each(related, function (i, rel) {
-                fp.addClip({
-                    autoBuffering : true,
-                    autoPlay : true,
-                    title : rel.title,
-                    description : rel.description,
-                    thumbnail : rel.thumbnail,
-                    url : "ramp::"+rel.rampId
-                });
-            });
-        },
-
-        _onTranscodes : function (transcodes) {
-            var obj = {
-                autoBuffering: true,
-                url : this.src(),
-                title : this._metadata.title,
-                description : this._metadata.description,
-                thumbnail : this._metadata.thumbnail
-            };
-
-            $.each(transcodes, function (i, t) {
-                if( t.name == "default")
-                    obj.url = t.url;
-                if( t.name == "ios.stream")
-                    obj.iosUrl = t.url;
-            });
-
-
-            var clip = this._flowplayer.getClip();
-            if( clip ) {
-                clip.update(obj);
-            }
-            else {
-                this._flowplayer.setPlaylist([
-                    obj
-                ]);
-            }
-
-            if( this.autoplay() )
-                this.play();
-            else if ( this.preload() )
-                this.load();
         },
 
         _onLoad : function () {
+
+            // fires twice on ipad
+            if( this._onLoadFired )
+                return;
+            this._onLoadFired = true;
+
             var self = this;
 
             // Player listeners
@@ -187,38 +123,42 @@
                 self.dispatch("playlistChange");
             });
 
-            // Common Clip listeners
-            var common = this._flowplayer.getCommonClip();
+            this.controls( this.config.controls );
 
-            common.onBeforeBegin( function (clip) {
-                if( clip.url && clip.url.indexOf('ramp:') == 0) {
-                    if( ! self.preload() && ! clip.autoBuffering ) {
-                        // flowplayer.startBuffering() or flowplayer.play() called,
-                        // we don't know which, so assume play()
-                        self.autoplay(true);
-                        self.preload(true);
-                    }
-                    self.service.load(clip.url);
-                    return false;
-                }
-                else if( ! clip.url && this.src() ) {
-                    return false;
-                }
-                self.dispatch('trackChange');
-                self.dispatch('loadstart');
+//            if( ! this._ipad )
+//                this._addClipListeners( this._flowplayer.getCommonClip() );
+
+            self.dispatch('loadstart');
+
+            // apply src from before we were loaded, if any
+            if( this.__src )
+                this.src( this.__src );
+
+            if( this.preload() || this.autoplay()  )
+                this.load();
+        },
+
+        _addClipListeners : function (clip) {
+            var self = this;
+
+            clip.onBeforeBegin( function (clip) {
                 return true;
             });
 
-
-            common.onBegin( function (clip) {
+            clip.onBegin( function (clip) {
                 self._flowplayer.setVolume(100);
                 self._flowplayer.unmute();
                 // if not autoplay, then it's not safe to seek until we get a pause
             });
 
-            common.onStart( function (clip) {
+            clip.onStart( function (clip) {
                 self._setReady();
                 self._setPlaying(true);
+
+                // ipad controls can't be hidden until after playing
+                if( self._ipad && ! self.__controls ) {
+                    $(self._flowplayer.getParent() ).find('video').get(0).controls = false;
+                }
 
                 self.dispatch('loadeddata');
                 self.__duration = clip.duration;
@@ -226,48 +166,30 @@
                 self.dispatch('loadedmetadata');
             });
 
-            common.onStop( function (clip) {
+            clip.onStop( function (clip) {
                 // this fires some times while play-seeking, not useful.
                 // self._setPlaying(false);
             });
 
-            common.onFinish( function (clip) {
+            clip.onFinish( function (clip) {
                 self.__ended = true;
                 self.__seeking = null;
                 self._setPlaying(false);
-                var pl = self._flowplayer.getPlaylist();
-
-                if( ! self.advance() ) {
-                    self._flowplayer.stop();
-                }
-                else if( clip.index + 1 == pl.length ) {
-                    self.dispatch("playlistComplete");
-                    if( self.loop() ) {
-                        self._flowplayer.play(0);
-                    }
-                    else {
-                        self._flowplayer.stop();
-                    }
-                }
-
+                self._flowplayer.stop();
                 self.dispatch("ended");
-
-                // force advance the player, since pause() or seek()
-                // in the ended handlers can prevent default advance
-                self._flowplayer.play(clip.index+1);
             });
 
-            common.onPause( function (clip) {
+            clip.onPause( function (clip) {
                 self._setPlaying(false);
                 self._setReady();
             });
 
-            common.onResume( function (clip) {
+            clip.onResume( function (clip) {
                 self._setPlaying(true);
                 self.dispatch("play");
             });
 
-            common.onBeforeSeek( function (clip) {
+            clip.onBeforeSeek( function (clip) {
                 self.dispatch("seeking");
                 self.dispatch("timeupdate");
 
@@ -278,17 +200,11 @@
                 }
             });
 
-            common.onSeek( function (clip) {
+            clip.onSeek( function (clip) {
                 self.__seeking = null;
                 if( ! self.paused() )
                     self.dispatch("seeked");
             });
-
-            this.controls( this.config.controls );
-
-            if( this.src() ) {
-                this.service.load( this.src() ); // loads related
-            }
         },
 
         _setReady : function (){
@@ -308,19 +224,39 @@
             this._statepoll.start();
         },
 
+
         /* Media Interface */
 
         load : function () {
             this.preload(true);
-            if( this._flowplayer.isLoaded() ) {
-                if( this.autoplay() ){
+            if( this.src() && this._flowplayer.isLoaded()  ) {
+                var c =  this._flowplayer.getClip(0);
+
+                c.update({
+                    autoPlay : this.autoplay(),
+                    autoBuffer : true
+                });
+
+                // if ipad()
+                if( this._ipad  && ! this.__loaded ) {
+                    // ipad() play method respects autoPlay and autoBuffering
+                    // but requires an argument to update video.src correctly
+                    this._flowplayer.play(0);
+
+                    // also has regexp bug which breaks every other play() (related: http://stackoverflow.com/a/2630538/369724)
+                    if( this.autoplay() ) {
+                        this._flowplayer.play(0);
+                    }
+                    this.__loaded = true;
+                    return;
+                }
+
+                if( this.autoplay() ) {
                     this._flowplayer.play();
                 }
                 else {
                     this._flowplayer.startBuffering();
                 }
-            }
-            else {
             }
         },
 
@@ -335,7 +271,10 @@
         },
 
         canPlayType : function (type) {
-            return "probably";
+            if( this._ipad && type.match( /m3u8$/ ) )
+                return "probably";
+            if( type.match( /mov|m4v|mp4|avi$/ ) )
+                return "maybe";
         },
 
         paused : function (){
@@ -367,6 +306,9 @@
             if( this.__seeking !== null )
                 return this.__seeking;
 
+            if( ! this._flowplayer.isLoaded() )
+                return 0;
+
             // throttle the calls so we don't affect playback quality
             var now = (new Date()).getTime();
             var then = this.__currentTimeCache;
@@ -395,8 +337,9 @@
         },
 
         volume : function (val){
-            if( val !== undefined )
+            if( val !== undefined ) {
                 this._flowplayer.setVolume(val * 100);
+            }
             return this._flowplayer.getVolume() / 100;
         },
 
@@ -407,17 +350,19 @@
                 return this.config.controls;
             }
 
-            if( val !== undefined ){
+            var controls = this._flowplayer.getControls();
+            if( controls && val !== undefined ){
+                this.__controls = val;
                 if( val ) {
-                    this._flowplayer.getControls().show();
+                    controls.show();
                     this._flowplayer.getPlugin("play").show();
                 }
                 else {
-                    this._flowplayer.getControls().hide();
+                    controls.hide();
                     this._flowplayer.getPlugin("play").hide();
                 }
             }
-            return this._flowplayer.getControls().opacity != 1;
+            return this.__controls
         },
 
         preload : function (val) {
@@ -442,12 +387,22 @@
         src : function (val) {
             if( val !== undefined ) {
                 this.__src = val;
-                if( this._flowplayer.isLoaded() ) {
-                    this._flowplayer.setPlaylist([src]);
+                this.__loaded  = false;
+                var fp = this._flowplayer;
+                if( fp.isLoaded() ) {
+                    fp.setClip({
+                        autoPlay : false,
+                        autoBuffering : false,
+                        url : this.__src
+                    });
+                    var c = fp.getClip(0);
+                    this._addClipListeners(c);
                 }
             }
             return this.__src;
         },
+
+
 
         readyState : function (val) {
             if( val !== undefined )
@@ -463,94 +418,22 @@
             return [src];
         },
 
-        /* Playlist Interface */
 
-        index : function (i) {
-            var clip =  this._flowplayer.getClip();
-            if( ! clip )
-                return 0;
+        getInterface : function () {
 
-            if( i == undefined )
-                return clip.index; // Player.getIndex() is buggy
+            var target = Ramp.Utils.Proxy.getProxyObject( this._flowplayer.getParent() );
 
-            var paused = this.paused();
-
-            i = this._resolveIndex(i);
-            this._flowplayer.play(i);
-
-            if( paused )
-                this._flowplayer.pause();
-
-            return i;
-        },
-
-        _resolveIndex : function (i) {
-            var pl = this._flowplayer.getPlaylist();
-            if( i < 0  )
-                i = pl.length + i;
-            if( this.loop() )
-                i = i % pl.length;
-            if( i >= pl.length || i < 0) {
-                return;
-            }
-            return i;
-        },
-
-        advance : function (bool) {
-            if( bool !== undefined ) {
-                this.__advance = bool;
-            }
-            return this.__advance;
-        },
-
-        queue : function ( media ) {
-            this._flowplayer.addClip( media );
-        },
-
-        clear: function (){
-            this._flowplayer.play([]);
-        },
-
-        next : function () {
-            this.index( this.index() + 1);
-        },
-
-        previous : function () {
-            this.index( this.index() - 1);
-        },
-
-        nextTrack : function () {
-            return this.track( this.nextTrackIndex() );
-        },
-
-        nextTrackIndex : function () {
-            return this._resolveIndex(this.index() + 1);
-        },
-
-        track : function (i) {
-            if( i == undefined )
-                i = this.index();
-            var pl = this._flowplayer.getPlaylist();
-            return pl[ this._resolveIndex(i) ];
-        },
-
-        tracks : function () {
-            return this._flowplayer.getPlaylist();
-        },
-
-        decorate : function (obj) {
             Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
-                " paused played controls autoplay preload src ended index advance readyState" +
-                " children service",
-                this.video, this);
+                " paused played controls autoplay preload src ended readyState" +
+                " children",
+                target, this);
 
-            Ramp.Utils.Proxy.proxyFunction("load play pause canPlayType " +
-                "next previous track tracks queue clear " +
-                "nextTrack nextTrackIndex onPlaylistChange onTrackChange",this, this.video);
+            Ramp.Utils.Proxy.proxyFunction("load play pause canPlayType" ,this, target);
 
             Ramp.Utils.Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
-                "loadeddata loadedmetadata canplay loadstart durationchange volumechange ended " +
-                "trackChange playlistChange ",this, this.video);
+                "loadeddata loadedmetadata canplay loadstart durationchange volumechange ended ",this, target);
+
+            return target;
         },
 
         /* Timer Handlers */

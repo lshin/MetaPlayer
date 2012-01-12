@@ -88,6 +88,7 @@
             var p = $(parent);
             if( p.is('video') ) {
                 this.video = p.get(0);
+                Ramp.UI.ensureOffsetParent( this.video, true);
             }
             else {
                 var video = document.createElement('video');
@@ -102,10 +103,10 @@
                 video.style.height = "100%";
                 this.video = video;
                 p.append(video);
+                Ramp.UI.ensureOffsetParent( this.video);
             }
-
+            this.video.style.position = "absolute";
             this.decorate(this.video);
-            Ramp.UI.ensureOffsetParent( this.video );
         },
 
         _addListeners : function () {

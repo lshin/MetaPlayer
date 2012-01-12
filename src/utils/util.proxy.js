@@ -86,9 +86,37 @@
                 obj.__defineSetter__( prop, descriptor.set);
 
             // ie7 and other old browsers fail silently
+        },
+
+        // returns an object which can safely used with Object.defineProperty
+        // IE8: can't do javascript objects
+        // iOS: can't do DOM objects
+        // use DOM where possible
+        getProxyObject : function ( dom ) {
+            try {
+                Object.defineProperty(dom, "__proptest", {} );
+                return dom;
+            }
+            catch(e){
+            }
+
+            var target = {
+                parentNode : dom.parentNode
+            };
+
+            try {
+                Object.defineProperty(target, "__proptest", {} );
+                return target;
+            }
+            catch(e){
+            }
+
+
         }
 
     };
+
+
 
     if( ! window.Ramp )
         window.Ramp = {};

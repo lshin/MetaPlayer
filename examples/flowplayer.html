@@ -20,6 +20,7 @@
 
     <!--Dependency: Flowplayer-->
     <script src="../external/flowplayer/flowplayer-3.2.6.min.js" type="text/javascript"></script>
+    <script src="../external/flowplayer/flowplayer.ipad-3.2.2.min.js" type="text/javascript"></script>
 
     <!--Metaplayer -->
     <script src="../build/metaplayer.js"></script>
@@ -28,6 +29,7 @@
     <script src="../build/metaplayer.captions.min.js"></script>
     <script src="../build/metaplayer.social.min.js"></script>
     <script src="../build/metaplayer.endcap.min.js"></script>
+    <script src="../build/metaplayer.embed.min.js"></script>
 
     <!--Theme: mp2 -->
     <link href="../build/mp2/theme.mp2.css" rel="stylesheet"  type="text/css">
@@ -35,22 +37,31 @@
     <script type="text/javascript">
         document.addEventListener("DOMContentLoaded", function () {
 
-            player = Ramp.flowplayer('#target', "ramp:/pca:36234882", {
-                swfUrl : "../external/flowplayer/flowplayer-3.2.7.swf",
-                autoplay: true
-            } );
+            var fp = $f( 'target',
+                    {
+                        src: "../external/flowplayer/flowplayer-3.2.7.swf",
+                        wmode: "transparent"
+                    },
+                    {
+                        clip : {
+                            scaling : "fit"
+                        }
+                    });
+            fp.ipad();
+
+            var player = Ramp.flowplayer(fp, "ramp:/pca:36234882");
 
             // initialize popcorn & events
-            metaq = Ramp.metaq(player);
+            var metaq = Ramp.metaq(player);
 
             // controls & timeline
-            controls = Ramp.controls(player);
+            var controls = Ramp.controls(player);
 
             // overlay
-            overlay = Ramp.overlay(player);
+            var overlay = Ramp.overlay(player);
 
             // endcap
-            endcap = Ramp.endcap(player);
+            var endcap = Ramp.endcap(player);
 
         }, false);
 
