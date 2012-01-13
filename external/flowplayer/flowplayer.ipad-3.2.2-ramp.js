@@ -103,7 +103,7 @@ $f.addPlugin("ipad", function(options) {
 		controlsSizeRatio: 1.5,
 		controls: true,
 		debug: false,
-		validExtensions: /m3u8,mov|m4v|mp4|avi/gi
+		validExtensions: /m3u8,mov|m4v|mp4|avi|m3u8$/i   // RAMP: fix global regex bug breaking every other play
 	};
 
 	extend(opts, options);
@@ -177,7 +177,6 @@ $f.addPlugin("ipad", function(options) {
 		if ( _playTimeTracker )
 			return;
 			
-		console.log("starting tracker");
 		_playTimeTracker = setInterval(onTimeTracked, 100);
 		onTimeTracked();
 	}
@@ -290,14 +289,14 @@ $f.addPlugin("ipad", function(options) {
 				}
 				
 
-//				if ( ! opts.validExtensions.test(activePlaylist[activeIndex].extension)) {
-//					if ( activePlaylist.length > 1 && activeIndex < (activePlaylist.length - 1) ) {
-//						// not the last clip in the playlist
-//						log("Not last clip in the playlist, moving to next one");
-//						video.fp_play(++activeIndex, false, true);
-//					}
-//					return;
-//				}
+				if ( ! opts.validExtensions.test(activePlaylist[activeIndex].extension)) {
+					if ( activePlaylist.length > 1 && activeIndex < (activePlaylist.length - 1) ) {
+						// not the last clip in the playlist
+						log("Not last clip in the playlist, moving to next one");
+						video.fp_play(++activeIndex, false, true);
+					}
+					return;
+				}
 
 				clip = activePlaylist[activeIndex];
 				url = clip.completeUrl;
@@ -773,7 +772,6 @@ $f.addPlugin("ipad", function(options) {
 
 		var onVolumeChange = function(e) {
 			// add onBeforeQwe here
-            console.log("FP volume change");
 			$f.fireEvent(self.id(), 'onVolume', video.fp_getVolume());
 		};
 		video.addEventListener('volumechange', onVolumeChange, false);
@@ -818,7 +816,6 @@ $f.addPlugin("ipad", function(options) {
 	// Here we are getting serious. If we're on an iDevice, we don't care about Flash embed.
 	// replace it by ours so we can install a video html5 tag instead when FP's init will be called.
 	if ( isiDevice || opts.simulateiDevice ) {
-
 		if ( ! window.flashembed.__replaced ) {
 
 			var realFlashembed = window.flashembed;
@@ -906,7 +903,7 @@ $f.addPlugin("ipad", function(options) {
 
 				// we are loaded
 				onPlayerLoaded();
-				
+
 				__fireEvent.apply(self, [a]);
 			}
 

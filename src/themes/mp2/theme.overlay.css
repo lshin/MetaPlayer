@@ -75,3 +75,10 @@
     width: 79px;
     height: 24px;
 }
+/* Close */
+.metaplayer-overlay-close-btn {
+    background: url(assets/close-button-arrow.png) no-repeat;
+    width: 25px;
+    height: 25px;
+}
+

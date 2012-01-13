@@ -9,6 +9,7 @@
         cssPrefix : 'metaplayer-overlay',
         template : 'templates/ui.overlay.tmpl.html',
         captions : false,
+        mouseDelayMsec : 500,
         seekBeforeSec : 1,
         hideOnEnded : true
     };
@@ -30,6 +31,8 @@
         this.playlist = player.playlist;
         this.baseUrl = Ramp.Utils.Script.base('(metaplayer||ui).overlay(.min)?.js');
         this.nextUp = Ramp.data();
+        this._touchDevice = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+
 
         if( this.config.container ) {
             this.container = this.config.container;
@@ -57,6 +60,9 @@
             this.onVolumeChange();
             this.onPlayStateChange();
             this.setCaptions(this.config.captions);
+
+            if( this._touchDevice )
+                this.find('close-btn').show();
 
             if( Ramp.embed ) {
                 this.embed = Ramp.embed( this.find('embed'), this.service );
@@ -96,6 +102,10 @@
                 }
             });
 
+            this.find('close-btn').click( function (e) {
+                self.toggle(false);
+            });
+
             this.find('results-close').click( function (e) {
                 self.find('search-input').val('');
                 self.service.search('', self.onSearchResult, self);
@@ -115,15 +125,26 @@
             });
 
             if( this.config.autoHide  && ! this.config.target ) {
-                var container = $(this.container);
-                container.bind('mouseenter', function () {
-                    if( ! self._ended )
-                        self.toggle(true)
-                });
-                container.bind('mouseleave', function () {
-                    if( ! self._ended )
-                        self.toggle(false)
-                })
+                var node = this.find().get(0);
+
+                if( this._touchDevice ) {
+                    var video = $(this.container ).find( 'video'  );
+                    video.bind('touchstart', function () {
+                        if( ! self._ended )
+                            self.delayedToggle(true)
+                    });
+                }
+                else {
+                    var container = $( this.container  );
+                    container.bind('mouseenter', function (e) {
+                        if( ! self._ended )
+                            self.delayedToggle(true)
+                    });
+                    container.bind('mouseleave', function (e) {
+                        if( ! self._ended )
+                            self.delayedToggle(false)
+                    });
+                }
             }
 
             this.find('preview').click( function () {
@@ -276,6 +297,17 @@
 
         addPlayerListeners : function () {
             var self = this;
+
+            $(this.player).bind('canplay', function(e){
+                // check if volume adjustment is not supported (eg. iOS)
+                var hold = self.player.volume;
+                var test =  .5;
+                self.player.volume = test;
+                if(self.player.volume !=  test)
+                    self.hideVolumeControls();
+                self.player.volume = hold;
+            });
+
             $(this.player).bind('pause play seeked seeking canplay', function(e){
                 self.onPlayStateChange();
             });
@@ -334,7 +366,15 @@
             this.player.volume = ratio;
         },
 
+        hideVolumeControls : function () {
+            this.find('mute').hide();
+            this.find('unmute').hide();
+            this.find('volume-bg').hide();
+
+        },
+
         onVolumeChange : function () {
+
             var muted = this.player.muted;
             this.find('mute').toggle( !muted );
             this.find('unmute').toggle( muted );
@@ -379,7 +419,18 @@
             });
         },
 
+        delayedToggle : function ( bool) {
+            this._delayed = bool;
+            var self = this;
+            setTimeout( function () {
+                if( this.__opened != self._delayed )
+                    self.toggle(self._delayed);
+            }, this.config.mouseDelayMsec)
+        },
+
         toggle : function ( bool ) {
+            this.__opened = bool;
+
             var node = this.find().stop();
             var height = this.find('container').height();
             if( bool )

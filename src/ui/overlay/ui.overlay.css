@@ -272,3 +272,14 @@
 .metaplayer-overlay-results-none {
     display: none;
 }
+/* Close */
+.metaplayer-overlay-close-btn {
+    display: none;
+    background: blue;
+    width: 25px;
+    height: 25px;
+    position: absolute;
+    cursor: pointer;
+    right: 4px;
+    bottom: 4px;
+}

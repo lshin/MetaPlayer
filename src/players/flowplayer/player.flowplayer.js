@@ -94,7 +94,6 @@
         },
 
         _onLoad : function () {
-
             // fires twice on ipad
             if( this._onLoadFired )
                 return;
@@ -124,9 +123,6 @@
             });
 
             this.controls( this.config.controls );
-
-//            if( ! this._ipad )
-//                this._addClipListeners( this._flowplayer.getCommonClip() );
 
             self.dispatch('loadstart');
 
