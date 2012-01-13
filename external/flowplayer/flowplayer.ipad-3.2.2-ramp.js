@@ -21,6 +21,11 @@
  *
  * Date: 2011-01-10 07:50:57 -0500 (Mon, 10 Jan 2011)
  * Revision: 4901
+ *
+ * RAMP:
+ * - added m3u8 support
+ * - fixed bug causing play() to fail every other call
+ * - added html5 failover for flash not installed
  */
 
 
@@ -76,7 +81,7 @@ $f.addPlugin("ipad", function(options) {
 	var previousState= STATE_UNLOADED;
 
 	var isiDevice = /iPad|iPhone|iPod/i.test(navigator.userAgent);
-	
+
 	var video = null;
 	
 	function extend(to, from, includeFuncs) {
@@ -107,6 +112,10 @@ $f.addPlugin("ipad", function(options) {
 	};
 
 	extend(opts, options);
+
+    var params = this.getFlashParams();
+    var supportsHTML5Video = document.createElement("video").canPlayType instanceof Function;
+    var hasFlash = flashembed.isSupported(params.version);
 
 	// some util funcs
 	function log() {
@@ -815,7 +824,8 @@ $f.addPlugin("ipad", function(options) {
 
 	// Here we are getting serious. If we're on an iDevice, we don't care about Flash embed.
 	// replace it by ours so we can install a video html5 tag instead when FP's init will be called.
-	if ( isiDevice || opts.simulateiDevice ) {
+
+	if ( isiDevice || opts.simulateiDevice || (! hasFlash &&  supportsHTML5Video) ) {
 		if ( ! window.flashembed.__replaced ) {
 
 			var realFlashembed = window.flashembed;

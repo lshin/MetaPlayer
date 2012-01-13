@@ -27,7 +27,7 @@
         this.dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
         this.dispatcher.attach(this);
 
-        this._ipad = window.flashembed.__replaced;
+        this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
         this.__seeking = null;
         this.__readyState = 0;
         this.__ended = false;
@@ -152,7 +152,7 @@
                 self._setPlaying(true);
 
                 // ipad controls can't be hidden until after playing
-                if( self._ipad && ! self.__controls ) {
+                if( self._iOS && ! self.__controls ) {
                     $(self._flowplayer.getParent() ).find('video').get(0).controls = false;
                 }
 
@@ -234,7 +234,7 @@
                 });
 
                 // if ipad()
-                if( this._ipad  && ! this.__loaded ) {
+                if(  window.flashembed.__replaced && ! this.__loaded ) {
                     // ipad() play method respects autoPlay and autoBuffering
                     // but requires an argument to update video.src correctly
                     this._flowplayer.play(0);
@@ -267,7 +267,7 @@
         },
 
         canPlayType : function (type) {
-            if( this._ipad && type.match( /m3u8$/ ) )
+            if( this._iOS && type.match( /m3u8$/ ) )
                 return "probably";
             if( type.match( /mov|m4v|mp4|avi$/ ) )
                 return "maybe";
@@ -347,15 +347,21 @@
             }
 
             var controls = this._flowplayer.getControls();
-            if( controls && val !== undefined ){
+            var playBtn =  this._flowplayer.getPlugin("play");
+            // ipad() doesn't support disabling controls through the api
+            var video = $(this._flowplayer.getParent() ).find('video').get(0);
+
+            if( val !== undefined ){
                 this.__controls = val;
                 if( val ) {
-                    controls.show();
-                    this._flowplayer.getPlugin("play").show();
+                    controls && ( controls.show() );
+                    playBtn && playBtn.show();
+                    video && (video.controls = true);
                 }
                 else {
-                    controls.hide();
-                    this._flowplayer.getPlugin("play").hide();
+                    controls && ( controls.hide() );
+                    playBtn && playBtn.hide();
+                    video && (video.controls = false);
                 }
             }
             return this.__controls
