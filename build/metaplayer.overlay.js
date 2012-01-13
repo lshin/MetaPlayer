@@ -24,6 +24,7 @@ all copies or substantial portions of the Software.
         cssPrefix : 'metaplayer-overlay',
         template : 'templates/ui.overlay.tmpl.html',
         captions : false,
+        mouseDelayMsec : 500,
         seekBeforeSec : 1,
         hideOnEnded : true
     };
@@ -42,8 +43,11 @@ all copies or substantial portions of the Software.
         }
         this.service = service;
         this.player = player;
+        this.playlist = player.playlist;
         this.baseUrl = Ramp.Utils.Script.base('(metaplayer||ui).overlay(.min)?.js');
         this.nextUp = Ramp.data();
+        this._touchDevice = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+
 
         if( this.config.container ) {
             this.container = this.config.container;
@@ -71,6 +75,9 @@ all copies or substantial portions of the Software.
             this.onVolumeChange();
             this.onPlayStateChange();
             this.setCaptions(this.config.captions);
+
+            if( this._touchDevice )
+                this.find('close-btn').show();
 
             if( Ramp.embed ) {
                 this.embed = Ramp.embed( this.find('embed'), this.service );
@@ -110,6 +117,10 @@ all copies or substantial portions of the Software.
                 }
             });
 
+            this.find('close-btn').click( function (e) {
+                self.toggle(false);
+            });
+
             this.find('results-close').click( function (e) {
                 self.find('search-input').val('');
                 self.service.search('', self.onSearchResult, self);
@@ -122,26 +133,37 @@ all copies or substantial portions of the Software.
             $(document).bind('mouseup touchend', function (e) {
                 self.onVolumeDragEnd(e);
             });
-            $(document).bind('mousemove touchemove', function (e) {
+            $(document).bind('mousemove touchmove', function (e) {
                 if( ! self.volumeDragging )
                     return;
                 self.onVolumeDrag(e);
             });
 
             if( this.config.autoHide  && ! this.config.target ) {
-                var container = $(this.container);
-                container.bind('mouseenter', function () {
-                    if( ! self._ended )
-                        self.toggle(true)
-                });
-                container.bind('mouseleave', function () {
-                    if( ! self._ended )
-                        self.toggle(false)
-                })
+                var node = this.find().get(0);
+
+                if( this._touchDevice ) {
+                    var video = $(this.container ).find( 'video'  );
+                    video.bind('touchstart', function () {
+                        if( ! self._ended )
+                            self.delayedToggle(true)
+                    });
+                }
+                else {
+                    var container = $( this.container  );
+                    container.bind('mouseenter', function (e) {
+                        if( ! self._ended )
+                            self.delayedToggle(true)
+                    });
+                    container.bind('mouseleave', function (e) {
+                        if( ! self._ended )
+                            self.delayedToggle(false)
+                    });
+                }
             }
 
             this.find('preview').click( function () {
-                self.player.next();
+                self.playlist.next();
             });
         },
 
@@ -161,7 +183,7 @@ all copies or substantial portions of the Software.
         },
 
         renderNextUp : function (){
-            var nextup = this.player.nextTrack();
+            var nextup = this.playlist.nextTrack();
             if( nextup ){
                 this.find('preview-thumb').attr('src', nextup.thumbnail);
                 this.find('preview-title').text(nextup.title);
@@ -290,6 +312,17 @@ all copies or substantial portions of the Software.
 
         addPlayerListeners : function () {
             var self = this;
+
+            $(this.player).bind('canplay', function(e){
+                // check if volume adjustment is not supported (eg. iOS)
+                var hold = self.player.volume;
+                var test =  .5;
+                self.player.volume = test;
+                if(self.player.volume !=  test)
+                    self.hideVolumeControls();
+                self.player.volume = hold;
+            });
+
             $(this.player).bind('pause play seeked seeking canplay', function(e){
                 self.onPlayStateChange();
             });
@@ -303,10 +336,10 @@ all copies or substantial portions of the Software.
         },
 
         addPlaylistListeners : function (){
-            if( ! this.player.onTrackChange )
+            if( ! this.playlist )
                 return;
-            this.player.onTrackChange( this.onTrackChange, this);
-            this.player.onPlaylistChange( this.onPlaylistChange, this);
+            this.playlist.onTrackChange( this.onTrackChange, this);
+            this.playlist.onPlaylistChange( this.onPlaylistChange, this);
         },
 
         onVolumeDragStart : function (e) {
@@ -323,19 +356,40 @@ all copies or substantial portions of the Software.
         },
 
         onVolumeDrag : function (e) {
+            var oe = e.originalEvent;
+            var pageX = e.pageX;
+
+            if( oe.targetTouches ) {
+                if( ! oe.targetTouches.length ) {
+                    return;
+                }
+                pageX = oe.targetTouches[0].pageX;
+            }
+
             var bg = this.find('volume-bg');
-            var x =  e.pageX - bg.offset().left;
+            var x =  pageX - bg.offset().left;
             var ratio = x / bg.width();
+
+
             if( ratio < 0 )
                 ratio = 0;
             if( ratio > 1 )
                 ratio = 1;
+
             // todo, throttle the mousemove
             this.player.muted = false;
             this.player.volume = ratio;
         },
 
+        hideVolumeControls : function () {
+            this.find('mute').hide();
+            this.find('unmute').hide();
+            this.find('volume-bg').hide();
+
+        },
+
         onVolumeChange : function () {
+
             var muted = this.player.muted;
             this.find('mute').toggle( !muted );
             this.find('unmute').toggle( muted );
@@ -380,7 +434,18 @@ all copies or substantial portions of the Software.
             });
         },
 
+        delayedToggle : function ( bool) {
+            this._delayed = bool;
+            var self = this;
+            setTimeout( function () {
+                if( this.__opened != self._delayed )
+                    self.toggle(self._delayed);
+            }, this.config.mouseDelayMsec)
+        },
+
         toggle : function ( bool ) {
+            this.__opened = bool;
+
             var node = this.find().stop();
             var height = this.find('container').height();
             if( bool )

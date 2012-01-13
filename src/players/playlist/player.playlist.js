@@ -28,12 +28,9 @@
         if( video.service )
             this.config.service = video.service;
 
-        if( video.dispatcher )
-            this.config.dispatcher = video.dispatcher;
-
         this.video = $(video).get(0);
 
-        this.dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
+        this.dispatcher = video.dispatcher || this.config.dispatcher || Ramp.Utils.EventDispatcher();
         this.dispatcher.attach(this);
 
         this._haveRelated = false;
@@ -44,12 +41,16 @@
         this.preload = this.config.autoBuffer;
         this.advance = this.config.autoAdvance;
 
-        if( this.config.service )
+        if( this.config.service ) {
+            console.log("recycle service")
             this.service = this.config.service;
-        else
+        }
+        else {
+            console.log("new service")
             this.service = Ramp.data({
                 dispatcher : this._dispatcher
             });
+        }
         this.video.service = this.service;
 
         this.onPlaylistChange = this.dispatcher.observer("playlistChange");

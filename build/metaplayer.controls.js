@@ -102,27 +102,27 @@ all copies or substantial portions of the Software.
                 self.onPlayToggle(e);
             });
 
-            this.find('track-knob').mousedown( function (e) {
+            this.find('track-knob').bind("mousedown touchstart", function (e) {
                 return self.onKnobMouseDown(e);
             });
 
-            this.find('track-fill').mousedown( function (e) {
+            this.find('track-fill').bind("mousedown touchstart", function (e) {
                 return self.onKnobMouseDown(e);
             });
 
-            this.find('track-buffer').mousedown( function (e) {
+            this.find('track-buffer').bind("mousedown touchstart", function (e) {
                 return self.onKnobMouseDown(e);
             });
 
-            this.find('track').mousedown( function (e) {
+            this.find('track').bind("mousedown touchstart", function (e) {
                 return self.onKnobMouseDown(e);
             });
 
-            $(document).mouseup( function (e) {
+            $(document).bind("mouseup touchend", function (e) {
                 return self.onKnobMouseUp(e);
             });
 
-            $(document).mousemove( function (e) {
+            $(document).bind("mousemove touchmove", function (e) {
                 return self.onKnobMouseMove(e);
             });
 
@@ -140,8 +140,6 @@ all copies or substantial portions of the Software.
             this.service.onMetaData(this.onMetaData, this);
 
             this.service.onSearch(this.onSearch, this);
-
-
         },
 
         _onTags : function (tags) {
@@ -309,7 +307,7 @@ all copies or substantial portions of the Software.
             var time = this.player.currentTime // render seek target if present
 
             this.find('play').toggleClass( this.cssName('pause'), ! this.player.paused );
-            this.find('time-duration').text(' / ' + this.formatTime( duration ) );
+            this.find('time-duration').html(' / ' + this.formatTime( duration ) );
 
             this.renderAnnotations();
 
@@ -431,6 +429,9 @@ all copies or substantial portions of the Software.
 
         // display seconds in hh:mm:ss format
         formatTime : function (time) {
+            if( isNaN(time) )
+                return "&mdash;:&mdash;";
+
             var zpad = function (val, len) {
                 var r = String(val);
                 while( r.length < len ) {

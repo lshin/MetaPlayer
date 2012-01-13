@@ -417,7 +417,19 @@
 }
 .metaplayer-overlay-results-none {
     display: none;
-}.transcript {
+}
+/* Close */
+.metaplayer-overlay-close-btn {
+    display: none;
+    background: blue;
+    width: 25px;
+    height: 25px;
+    position: absolute;
+    cursor: pointer;
+    right: 4px;
+    bottom: 4px;
+}
+.transcript {
     overflow: auto;
     height: 100%;
     width: 100%;
@@ -1064,3 +1076,10 @@
     width: 79px;
     height: 24px;
 }
+/* Close */
+.metaplayer-overlay-close-btn {
+    background: url(assets/close-button-arrow.png) no-repeat;
+    width: 25px;
+    height: 25px;
+}
+

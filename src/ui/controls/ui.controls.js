@@ -292,7 +292,7 @@
             var time = this.player.currentTime // render seek target if present
 
             this.find('play').toggleClass( this.cssName('pause'), ! this.player.paused );
-            this.find('time-duration').text(' / ' + this.formatTime( duration ) );
+            this.find('time-duration').html(' / ' + this.formatTime( duration ) );
 
             this.renderAnnotations();
 
@@ -414,6 +414,9 @@
 
         // display seconds in hh:mm:ss format
         formatTime : function (time) {
+            if( isNaN(time) )
+                return "&mdash;:&mdash;";
+
             var zpad = function (val, len) {
                 var r = String(val);
                 while( r.length < len ) {
