@@ -6,9 +6,16 @@
 
     <style>
         #target {
+            position: relative;
+            top: 0; left: 0;
             width: 600px;
             height: 300px;
             background:  #333;
+        }
+        #video {
+            position: absolute;
+            top: 0; left: 0;
+            bottom: 0; right: 0;
         }
     </style>
 
@@ -16,11 +23,11 @@
     <script src="../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
 
     <!--Dependency: Popcorn-->
-    <script src="../external/popcorn/popcorn.js" type="text/javascript"></script>
+    <script src="../external/popcorn-ie8/popcorn-ie8.js" type="text/javascript"></script>
 
     <!--Dependency: Flowplayer-->
     <script src="../external/flowplayer/flowplayer-3.2.6.min.js" type="text/javascript"></script>
-    <script src="../external/flowplayer/flowplayer.ipad-3.2.2.min.js" type="text/javascript"></script>
+    <script src="../external/flowplayer/flowplayer.ipad-3.2.2-ramp.js" type="text/javascript"></script>
 
     <!--Metaplayer -->
     <script src="../build/metaplayer.js"></script>
@@ -35,9 +42,9 @@
     <link href="../build/mp2/theme.mp2.css" rel="stylesheet"  type="text/css">
 
     <script type="text/javascript">
-        document.addEventListener("DOMContentLoaded", function () {
+        $( function () {
 
-            var fp = $f( 'target',
+            var fp = $f( 'video',
                     {
                         src: "../external/flowplayer/flowplayer-3.2.7.swf",
                         wmode: "transparent"
@@ -45,9 +52,12 @@
                     {
                         clip : {
                             scaling : "fit"
-                        }
+                        },
+                        playlist: []
                     });
-            fp.ipad();
+            fp.ipad(
+
+            );
 
             var player = Ramp.flowplayer(fp, "ramp:/pca:36234882");
 
@@ -63,7 +73,7 @@
             // endcap
             var endcap = Ramp.endcap(player);
 
-        }, false);
+        });
 
     </script>
 
@@ -74,6 +84,7 @@
 
 
 <div id='target'>
+    <div id='video'> </div>
 </div>
 
 

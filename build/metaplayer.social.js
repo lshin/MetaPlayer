@@ -78,7 +78,10 @@ all copies or substantial portions of the Software.
             }).join('&');
 
 
-            var el = this.create('twitter', 'iframe');
+            var el = this.create('twitter', 'iframe')
+                .attr('allowtransparency', 'true')
+                .attr('frameborder', '0');
+
             var src = this.config.twitterApi + "#" + query;
             el.attr('src', src);
 
@@ -98,7 +101,9 @@ all copies or substantial portions of the Software.
                 'height' : ''
             };
 
-            var el = this.create('facebook', 'iframe');
+            var el = this.create('facebook', 'iframe')
+                .attr('allowtransparency', 'true')
+                .attr('frameborder', '0');
 
             params.href = t.link || t.linkURL || document.location.toString();
             params.width = el.width();

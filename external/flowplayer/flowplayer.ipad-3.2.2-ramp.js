@@ -241,7 +241,8 @@ $f.addPlugin("ipad", function(options) {
 			extend(extendedClip, clipDefaults);
 			extend(extendedClip, self.getCommonClip());
 			extend(extendedClip, clip);
-			
+
+            var url;
 			if ( extendedClip.ipadUrl )
                 url = decodeURIComponent(extendedClip.ipadUrl);
 			else if ( extendedClip.url )

@@ -10,7 +10,7 @@ BUILD_DIR=build
 CORE=$(BUILD_DIR)/metaplayer.js
 CSS=$(BUILD_DIR)/metaplayer.css
 
-CORE_SRC=src/ramp.js src/models/*.js src/utils/*.js
+CORE_SRC=src/ramp.js src/models/*.js src/utils/*.js  src/players/playlist/player.playlist.js
 CORE_MIN=$(CORE:.js=.min.js)
 
 ALL_SERVICES=service.json service.smil 

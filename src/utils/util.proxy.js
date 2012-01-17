@@ -112,6 +112,7 @@
             }
 
 
+            throw "Object.defineProperty not defined";
         }
 
     };

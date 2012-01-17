@@ -67,7 +67,6 @@
 
     FlowPlayer.prototype = {
 
-
         _pageSetup : function (el) {
             // if passed in fp instance
             if( el.getCommonClip ) {
@@ -422,7 +421,6 @@
 
 
         getInterface : function () {
-
             var target = Ramp.Utils.Proxy.getProxyObject( this._flowplayer.getParent() );
 
             Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted seeking seekable" +

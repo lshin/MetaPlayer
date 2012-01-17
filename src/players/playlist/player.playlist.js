@@ -42,11 +42,9 @@
         this.advance = this.config.autoAdvance;
 
         if( this.config.service ) {
-            console.log("recycle service")
             this.service = this.config.service;
         }
         else {
-            console.log("new service")
             this.service = Ramp.data({
                 dispatcher : this._dispatcher
             });
