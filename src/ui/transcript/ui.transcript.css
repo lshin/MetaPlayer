@@ -7,6 +7,21 @@
     position: relative;
     top: 0; left: 0;
 }
+.transcript-time {
+    padding-right: 10px;
+}
 .transcript-caption {
     cursor: pointer;
+}
+
+.transcript {
+    background:  #fff;
+}
+.transcript-caption:hover {
+    text-decoration: underline;
+}
+.transcript-text {
+}
+.transcript-focus {
+    text-decoration: underline;
 }
