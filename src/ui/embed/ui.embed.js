@@ -142,6 +142,4 @@
             });
     };
 
-    window.repl = Embed.templateReplace;
-
 })();
