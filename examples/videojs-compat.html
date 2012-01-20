@@ -45,7 +45,7 @@
 
 <div style="width: 300px; margin-left: 20px; float: left">
     <h4>VideoJS Skins:</h4>
-    <select id="css-select" size="4" >
+    <select id="css-select" size="6" style='width: 100%'>
         <option selected value="">Default</option>
         <option value="hu-css">Hulu</option>
         <option value="tube-css">YouTube</option>
@@ -59,9 +59,9 @@
     player = Ramp.flowplayer('#target', "ramp:/pca:36234882", {
         swfUrl : "../external/flowplayer/flowplayer-3.2.7.swf"
     });
-//    player = Ramp.html5('#target', "ramp:/pca:36234882");
+    player.controls = false;
 
-    player.addEventListener("loadstart", function(){
+    player.addEventListener("loadeddata", function(){
         vjs = VideoJS.setup([player], {
             controlsHiding : false
         });

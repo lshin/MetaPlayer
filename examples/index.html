@@ -3,41 +3,141 @@
 <head>
 
     <style>
-        a { display: block; }
+        body {
+            font-family: helvetica, arial, sans-serif;
+        }
+        a {
+            /*text-decoration: none;*/
+        }
+        .section {
+            font-weight: bold;;
+            font-size: 1.1em;
+            margin:  10px 0 15px 0;
+        }
+        .item {
+            margin-bottom: 10px;
+            margin-left: 15px;
+            font-size: .9em;
+        }
+        .links  {
+            margin-left: 10px;
+        }
+        .item a {
+            margin-right: 5px;
+            font-size: .8em;
+        }
+        .title {
+            font-style: italic;
+            margin-right: 15px;
+        }
+
     </style>
 </head>
 <body>
 
-<h3>Metaplayer &raquo; Demo</h3>
+<h3>Metaplayer &raquo; Contents</h3>
 
 
-    <h4>players</h4>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/players/html5/examples/simple.html5.html"> html5 simple</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/unit/html5/unit.html5.html"> html5 unit</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/players/flowplayer/examples/flowplayer.native.html"> flowplayer simple</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/players/flowplayer/unit/unit.html5.flowplayer.html"> flowplayer unit</a>
+<div class="section">
+    Demos
+</div>
 
-    <h4>plugins</h4>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/ui/controls/examples/controls.html"> controls</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/ui/social/examples/social.html"> social</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/ui/endcap/examples/endcap.html"> endcap</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/ui/overlay/examples/overlay.html"> overlay </a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/ui/captions/examples/captions.simple.html"> captions</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/ui/transcript/examples/transcript.html"> transcript</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/ui/search/examples/search.with-captions.html"> side search</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/ui/social/examples/social.html"> social buttons </a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/src/ui/embed/examples/embed.html"> embed buttons </a>
+<div class='item'>
+    <span class='title'>
+       Player UI
+    </span>
+    <a href="../examples/html5.html">html5 demo</a>
+    <a href="../examples/flowplayer.html">flowplayer demo</a>
+</div>
 
-    <h4>full demos</h4>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/examples/flowplayer.html"> flowplayer full</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/examples/html5.html"> html5 full</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/examples/plugins.html">plugins full</a>
+<div class='item'>
+    <span class='title'>
+        Widgets
+    </span>
+    <a href="../examples/plugins.html">flowplayer demo</a>
+</div>
+<div class='item'>
+    <span class='title'>
+        VideoJS Compatability
+    </span>
+    <a href="../examples/videojs-compat.html">flowplayer demo</a>
+</div>
 
-    <h4>build</h4>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/Makefile"> closure compiler</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/build/metaplayer.captions.min.js"> compression</a>
-    <a href="http://gkindel.podzinger.local/FileResource/workspace/metaplayer3/build/mp2/">themes</a>
 
+
+<div class="section">
+    Playback
+</div>
+
+<div class='item'>
+    <span class='title'>
+        HTML5
+    </span>
+    <a href="../src/players/html5/examples/simple.html5.html">simple example</a>
+    <a href="../src/players/html5/examples/html5.full.html">UI example</a>
+    <a href="../src/players/html5/unit/unit.player.html5.html">unit test</a>
+</div>
+
+<div class='item'>
+    <span class='title'>
+        Flowplayer
+    </span>
+    <a href="../src/players/flowplayer/examples/flowplayer.native.html">simple example</a>
+    <a href="../src/players/flowplayer/examples/flowplayer.full.html">UI example</a>
+    <a href="../src/players/flowplayer/unit/unit.html5.flowplayer.html">unit test</a>
+</div>
+
+
+
+<div class="section">
+    Player UI
+</div>
+
+<div class='item'>
+    <span class="title"> Controls / Timeline </span>
+    <a href="../src/ui/controls/examples/controls.html">example</a>
+</div>
+
+<div class='item'>
+    <span class="title"> Video Overlay </span>
+    <a href="../src/ui/overlay/examples/overlay.html">example</a>
+</div>
+
+<div class='item'>
+    <span class="title"> Video EndCap </span>
+    - <a href="../src/ui/endcap/examples/endcap.html">video endcap</a>
+</div>
+
+<div class='item'>
+    <span class="title"> Subtitles </span>
+    <a href="../src/ui/captions/examples/captions.html">example</a>
+</div>
+
+
+
+<div class="section">
+    Page Widgets
+</div>
+
+<div class='item'>
+    <span class="title"> Social Buttons </span>
+    <a href="../src/ui/social/examples/social.html">example</a>
+</div>
+
+<div class='item'>
+    <span class="title"> Embed Buttons </span>
+    <a href="../src/ui/embed/examples/embed.html">example</a>
+</div>
+
+<div class='item'>
+    <span class="title"> Search Panel  </span>
+    - <a href="../src/ui/search/examples/search.html">example</a>
+</div>
+
+<div class='item'>
+    <span class="title"> Scrolling Transcript </span>
+    - <a href="../src/ui/transcript/examples/transcript.html">example</a>
+</div>
 
 
 </body>
