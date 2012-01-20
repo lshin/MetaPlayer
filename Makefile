@@ -35,6 +35,7 @@ $(CORE): $(BUILD_DIR)
 	@cat $(CORE_SRC) > $@
 
 $(CSS): $(BUILD_DIR) $(ALL_UI)
+	@cat src/ui/base/*css >> $(CSS)
 	@echo $@ 
 
 service.%: $(BUILD_DIR)
