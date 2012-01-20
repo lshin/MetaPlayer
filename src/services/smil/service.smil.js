@@ -390,12 +390,20 @@
 
     SmilService.deSmart = function (text) {
        return text.replace(/\xC2\x92/, "\u2019" );
-    }
+    };
 
     SmilService.resolveType = function ( url ) {
         var ext = url.substr( url.lastIndexOf('.') + 1 );
+
         if( ext == "ogv")
-            ext = "ogg";
+            return "video/ogg";
+
+        // none of these seem to work on ipad4
+        if( ext == "m3u8" )
+            // return  "application.vnd.apple.mpegurl";
+            // return  "vnd.apple.mpegURL";
+            return  "application/application.vnd.apple.mpegurl";
+
         return "video/"+ext;
     };
 
