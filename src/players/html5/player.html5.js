@@ -25,15 +25,13 @@
         this._createMarkup( el);
 
         // set up playlist, have it use our event dispatcher
-        this.service = Ramp.data({});
-        this.service.attach(this);
+        this.service = this.config.service || Ramp.data({});
         this.video.service = this.service;
 
         if( Ramp.playlist )
             Ramp.playlist(this.video, url);
         else
             this.video.src = url;
-
     };
 
 
@@ -43,8 +41,6 @@
         return player.video;
     };
 
-    Ramp.metaplayer = Ramp.html5;
-    Ramp.Players.Html5Player = Html5Player;
 
     Html5Player.prototype = {
 
@@ -52,7 +48,6 @@
             var p = $(parent);
             if( p.is('video') ) {
                 this.video = p.get(0);
-                Ramp.UI.ensureOffsetParent( this.video, true);
             }
             else {
                 var video = document.createElement('video');
@@ -60,16 +55,9 @@
                 video.preload = this.config.preload;
                 video.controls = this.config.controls;
                 video.muted = this.config.muted;
-                video.style.position = "absolute";
-                video.style.top = 0;
-                video.style.left = 0;
-                video.style.width = "100%";
-                video.style.height = "100%";
                 this.video = video;
                 p.append(video);
-                Ramp.UI.ensureOffsetParent( this.video);
             }
-            this.video.style.position = "absolute";
         }
 
     };
