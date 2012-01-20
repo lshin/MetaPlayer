@@ -1,7 +1,7 @@
 (function(global, document) {
 
   // Popcorn.js does not support archaic browsers
-  if ( !document.addEventListener ) {
+  if ( !Object.defineProperty ) {
     global.Popcorn = {
       isSupported: false
     };
@@ -16,7 +16,7 @@
     return;
   }
 
-  var
+    var
 
   AP = Array.prototype,
   OP = Object.prototype,
@@ -81,7 +81,7 @@
           ( !!registryByName[ type ] || !!obj[ type ] ) ) {
 
         if ( ( byStart.start <= currentTime && byStart.end > currentTime ) &&
-                disabled.indexOf( type ) === -1 ) {
+                Popcorn.indexOf( disabled, type ) === -1 ) {
 
           if ( !byStart._running ) {
             byStart._running = true;
@@ -101,7 +101,7 @@
           natives.end.call( obj, null, byStart );
 
           if ( animation && byStart._natives.frame ) {
-            animIndex = animating.indexOf( byStart );
+            animIndex = Popcorn.indexOf( animating, byStart );
             if ( animIndex >= 0 ) {
               animating.splice( animIndex, 1 );
             }
@@ -304,6 +304,36 @@
   //  Allows chaining methods to instances
   Popcorn.p.init.prototype = Popcorn.p;
 
+  Popcorn.indexOf = function ( arr, searchElement, fromIndex ) {
+      if( arr.indexOf instanceof Function )
+          return arr.indexOf(searchElement, fromIndex);
+
+      for ( var i = fromIndex || 0; i < arr.length; i++ ) {
+          if( arr[i] === searchElement )
+              return i;
+      }
+      return -1;
+  };
+
+
+  Popcorn.createEvent = function (type) {
+      if( document.createEvent )
+        return document.createEvent(type);
+
+      return {
+          type : null,
+          target : null,
+          currentTarget : null,
+          cancelable : false,
+          bubbles : false,
+          initEvent : function (type, bubbles, cancelable)  {
+              this.type = type;
+          },
+          stopPropagation : function () {},
+          stopImmediatePropagation : function () {}
+      }
+  };
+
   Popcorn.forEach = function( obj, fn, context ) {
 
     if ( !obj || !fn ) {
@@ -360,6 +390,7 @@
     error: function( msg ) {
       throw new Error( msg );
     },
+
     guid: function( prefix ) {
       Popcorn.guid.counter++;
       return  ( prefix ? prefix : "" ) + ( +new Date() + Popcorn.guid.counter );
@@ -411,7 +442,7 @@
 
       var disabled = instance.data.disabled;
 
-      if ( disabled.indexOf( plugin ) === -1 ) {
+      if ( Popcorn.indexOf( disabled, plugin ) === -1 ) {
         disabled.push( plugin );
       }
 
@@ -422,7 +453,7 @@
     enable: function( instance, plugin ) {
 
       var disabled = instance.data.disabled,
-          index = disabled.indexOf( plugin );
+          index = Popcorn.indexOf( disabled, plugin );
 
       if ( index > -1 ) {
         disabled.splice( index, 1 );
@@ -571,7 +602,7 @@
 
     // Toggle a plugin's playback behaviour (on or off) per instance
     toggle: function( plugin ) {
-      return Popcorn[ this.data.disabled.indexOf( plugin ) > -1 ? "enable" : "disable" ]( this, plugin );
+      return Popcorn[ Popcorn.indexOf( this.data.disabled, plugin) > -1 ? "enable" : "disable" ]( this, plugin );
     },
 
     // Set default values for plugin options objects per instance
@@ -629,7 +660,7 @@
       data.hash[ eventsList[idx] ] = true;
     }
 
-    apis.forEach(function( val, idx ) {
+    Popcorn.forEach(apis, function( val, idx ) {
 
       data.apis[ val ] = {};
 
@@ -683,7 +714,7 @@
 
           if ( eventInterface ) {
 
-            evt = document.createEvent( eventInterface );
+            evt = Popcorn.createEvent( eventInterface );
             evt.initEvent( type, true, true, global, 1 );
 
             this.media.dispatchEvent( evt );
@@ -752,7 +783,7 @@
         this.data.events[ type ][ fn.name || ( fn.toString() + Popcorn.guid() ) ] = fn;
 
         // only attach one event of any type
-        if ( !hasEvents && Popcorn.events.all.indexOf( type ) > -1 ) {
+        if ( !hasEvents && Popcorn.indexOf( Popcorn.events.all, type ) > -1 ) {
 
           this.media.addEventListener( type, function( event ) {
 
@@ -868,7 +899,7 @@
       currentTime = obj.media.currentTime;
       if ( track.end > currentTime &&
         track.start <= currentTime &&
-        obj.data.disabled.indexOf( track._natives.type ) === -1 ) {
+        Popcorn.indexOf( obj.data.disabled, track._natives.type ) === -1 ) {
 
         track._running = true;
         track._natives.start.call( obj, null, track );
@@ -1086,7 +1117,7 @@
 
           if ( byStart.end > currentTime &&
                 byStart._running === false &&
-                  obj.data.disabled.indexOf( type ) === -1 ) {
+                  Popcorn.indexOf( obj.data.disabled, type ) === -1 ) {
 
             byStart._running = true;
             natives.start.call( obj, event, byStart );
@@ -1162,7 +1193,7 @@
 
           if ( byEnd.start <= currentTime &&
                 byEnd._running === false  &&
-                  obj.data.disabled.indexOf( type ) === -1 ) {
+                  Popcorn.indexOf( obj.data.disabled, type ) === -1 ) {
 
             byEnd._running = true;
             natives.start.call( obj, event, byEnd );
@@ -1252,7 +1283,7 @@
   //  with plugin functionality
   Popcorn.plugin = function( name, definition, manifest ) {
 
-    if ( Popcorn.protect.natives.indexOf( name.toLowerCase() ) >= 0 ) {
+    if ( Popcorn.indexOf( Popcorn.protect.natives, name.toLowerCase() ) >= 0 ) {
       Popcorn.error( "'" + name + "' is a protected function name" );
       return;
     }
@@ -1282,7 +1313,7 @@
     Popcorn.manifest[ name ] = manifest = manifest || definition.manifest || {};
 
     // apply safe, and empty default functions
-    methods.forEach(function( method ) {
+    Popcorn.forEach( methods, function( method ) {
       definition[ method ] = safeTry( definition[ method ] || Popcorn.nop, name );
     });
 
@@ -1329,13 +1360,13 @@
       // join the two arrays together
       options.compose = options.compose.concat( options.effect );
 
-      options.compose.forEach(function( composeOption ) {
+      Popcorn.forEach( options.compose, function( composeOption ) {
 
         // if the requested compose is garbage, throw it away
         compose = Popcorn.compositions[ composeOption ] || {};
 
         // extends previous functions with compose function
-        methods.forEach(function( method ) {
+        Popcorn.forEach( methods, function( method ) {
           natives[ method ] = combineFn( natives[ method ], compose[ method ] );
         });
       });
@@ -1378,7 +1409,7 @@
 
         if ( type !== "type" ) {
 
-          if ( reserved.indexOf( type ) === -1 ) {
+          if ( Popcorn.indexOf( reserved, type ) === -1 ) {
 
             this.listen( type, callback );
           }
@@ -1460,7 +1491,7 @@
       name = obj;
       obj = Popcorn.p;
 
-      if ( Popcorn.protect.natives.indexOf( name.toLowerCase() ) >= 0 ) {
+      if ( Popcorn.indexOf( Popcorn.protect.natives, name.toLowerCase() ) >= 0 ) {
         Popcorn.error( "'" + name + "' is a protected function name" );
         return;
       }
@@ -1546,7 +1577,7 @@
   // with parser functionality
   Popcorn.parser = function( name, type, definition ) {
 
-    if ( Popcorn.protect.natives.indexOf( name.toLowerCase() ) >= 0 ) {
+    if ( Popcorn.indexOf( Popcorn.protect.natives, name.toLowerCase() ) >= 0 ) {
       Popcorn.error( "'" + name + "' is a protected function name" );
       return;
     }
@@ -1630,6 +1661,7 @@
     return parser;
   };
 
+
   Popcorn.player = function( name, player ) {
 
     player = player || {};
@@ -1642,6 +1674,7 @@
       var date = new Date() / 1000,
           baselineTime = date,
           currentTime = 0,
+          readyState = 0,
           volume = 1,
           muted = false,
           events = {},
@@ -1654,8 +1687,14 @@
           timeout,
           popcorn;
 
+      if( document.attachEvent )
+        basePlayer = container || document.createElement('div');
+
       // copies a div into the media object
       for( var val in container ) {
+
+        if( basePlayer === container )
+            break;
 
         if ( typeof container[ val ] === "object" ) {
 
@@ -1708,7 +1747,6 @@
       };
 
       basePlayer.play = function() {
-
         this.paused = false;
 
         if ( basePlayer.readyState >= 4 ) {
@@ -1724,6 +1762,18 @@
         this.paused = true;
         basePlayer.dispatchEvent( "pause" );
       };
+
+      Popcorn.player.defineProperty( basePlayer, "readyState", {
+        get: function() {
+
+          return readyState;
+        },
+        set: function( val ) {
+          readyState = val;
+          return readyState;
+        },
+        configurable: true
+      });
 
       Popcorn.player.defineProperty( basePlayer, "currentTime", {
         get: function() {
@@ -1798,7 +1848,7 @@
 
           if ( eventInterface ) {
 
-            evt = document.createEvent( eventInterface );
+            evt = Popcorn.createEvent( eventInterface );
             evt.initEvent( eventName, true, true, window, 1 );
           }
         }
@@ -2065,7 +2115,7 @@
       lastPair = digitPairs[ lastIndex ];
 
       // Fix last element:
-      if ( lastPair.indexOf( ";" ) > -1 ) {
+      if ( Popcorn.indexOf( lastPair, ";" ) > -1 ) {
 
         frameInfo = lastPair.split( ";" );
         frameTime = 0;

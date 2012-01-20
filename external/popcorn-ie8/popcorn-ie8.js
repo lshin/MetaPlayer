@@ -1847,7 +1847,6 @@
           eventInterface  = Popcorn.events.getInterface( eventName );
 
           if ( eventInterface ) {
-
             evt = Popcorn.createEvent( eventInterface );
             evt.initEvent( eventName, true, true, window, 1 );
           }
