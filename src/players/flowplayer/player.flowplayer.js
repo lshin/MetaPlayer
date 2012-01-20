@@ -83,7 +83,7 @@
                         autoBuffering: true
                     }
                 },this.config.fpConfig);
-                var v = $('<div class="mp-video""></div>');
+                var v = $('<div class="metaplayer-video""></div>');
                 $(el).append(v);
                 this._flowplayer = $f( v.get(0), {
                     src: this.config.swfUrl,
@@ -123,11 +123,12 @@
 
             this.controls( this.config.controls );
 
-            self.dispatch('loadstart');
 
             // apply src from before we were loaded, if any
             if( this.__src )
                 this.src( this.__src );
+
+            self.dispatch('loadstart');
 
             if( this.preload() || this.autoplay()  )
                 this.load();
@@ -266,10 +267,27 @@
         },
 
         canPlayType : function (type) {
-            if( this._iOS && type.match( /m3u8$/ ) )
-                return "probably";
-            if( type.match( /mov|m4v|mp4|avi$/ ) )
-                return "maybe";
+            var canPlay = null;
+
+            // html5 / ipad
+            if( window.flashembed.__replaced ){
+                if( ! this._video )
+                    this._video = document.createElement('video');
+
+                // just accept m3u8
+                if( this._iOS  && type.match(/mpegurl|m3u8/i)  ){
+                    canPlay = "probably";
+                }
+                else if( this._video.canPlayType )
+                    canPlay = this._video.canPlayType(type)
+            }
+
+            // fall through to flash
+            else if( type.match( /mp4|flv|jpg$/ ) ) {
+                canPlay = "probably";
+            }
+
+            return canPlay
         },
 
         paused : function (){
@@ -411,21 +429,11 @@
             return this.__readyState;
         },
 
-        _children : function () {
-            var sources = [];
-            var src = document.createElement('source');
-            src.setAttribute('type', "video/ramp");
-            src.setAttribute('src', this.src);
-            return [src];
-        },
-
-
         getInterface : function () {
             var target = Ramp.Utils.Proxy.getProxyObject( this._flowplayer.getParent() );
 
             Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
-                " paused played controls autoplay preload src ended readyState" +
-                " children",
+                " paused played controls autoplay preload src ended readyState",
                 target, this);
 
             Ramp.Utils.Proxy.proxyFunction("load play pause canPlayType" ,this, target);
