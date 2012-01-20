@@ -167,12 +167,17 @@
         },
 
         _onTranscodes : function (transcodes) {
+            var self = this;
             var video = this.video;
+            this.transcodes = transcodes;
 
             var probably = [];
             var maybe = [];
+            var sources = [];
 
             $.each(transcodes, function (i, source) {
+                video.appendChild( self._createSource(source.url, source.type) );
+
                 var canPlay = video.canPlayType(source.type);
                 if( ! canPlay )
                     return;
@@ -196,6 +201,13 @@
             else if( video.preload ) {
                 video.load()
             }
+        },
+
+        _createSource : function (url, type) {
+            var src = $('<source>')
+                .attr('type', type || '')
+                .attr('src', url) ;
+            return src[0];
         },
 
         _onEnded : function () {
