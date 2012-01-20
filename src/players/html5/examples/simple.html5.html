@@ -5,14 +5,10 @@
     <title>HTML5 Plugin | Metaplayer</title>
 
     <style>
-        #target {
+        #video {
             width: 600px;
             height: 300px;
             background:  #333;
-        }
-        video {
-            width: 100%;
-            height: 100%;
         }
     </style>
 
@@ -21,7 +17,6 @@
 
     <!-- Core: Ramp -->
     <script src="../../../ramp.js"></script>
-    <script src="../../../models/model.playlist.js"></script>
     <script src="../../../services/smil/service.smil.js"></script>
     <script src="../../../utils/util.event.js"></script>
     <script src="../../../utils/util.proxy.js"></script>
@@ -34,15 +29,15 @@
 
 </head>
 <body>
-    <h3>Metaplayer &raquo; HTML5Player Plugin</h3>
 
-    <div id='target'>
-        <video id="video" controls="controls" preload="true" autoplay="false">
-        </video>
-    </div>
+<h3>Metaplayer &raquo; HTML5Player Plugin</h3>
 
-    <script type="text/javascript">
-        var player = Ramp.html5('#video', "ramp:/pca:36234882");
-    </script>
+<video id="video" controls="controls" preload="true" autoplay="false">
+</video>
+
+<script type="text/javascript">
+    var player = Ramp.html5('#video', "ramp:/pca:36234882");
+</script>
+
 </body>
 </html>
