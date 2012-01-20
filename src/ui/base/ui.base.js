@@ -29,8 +29,8 @@
     };
 
     var Layout = function (video, options) {
-        if( !(this instanceof MetaPlayer) )
-            return new MetaPlayer(video, options);
+        if( !(this instanceof Layout) )
+            return new Layout(video, options);
 
         this.config = $.extend(true, {}, defaults, options);
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
@@ -39,65 +39,41 @@
     };
 
     if(! window.Ramp )
-        window.Ramp = {};
+        window.Ramp = function () {};
 
     Ramp.layout = Layout;
 
-    Ramp.prototype.layout = function (options) {
-        Layout(this.video, options);
-    };
-
     Layout.prototype = {
-        decorate : function (video) {
+        decorate : function (target) {
 
-            var v = $(video);
-            video = v.get(0);
+            var t = $(target);
 
-
-            var id = v.attr('id');
-
-            console.log("readystate " +  video.readyState );
-
-
-            var p = v.parent();
-
-            var mp = v.parents('.metaplayer');
-            if(! mp .length ) {
-                mp = $('<div></div>')
-                    .addClass('metaplayer')
-                    .appendTo(v.parent() );
+            if(! t.is('.metaplayer') ) {
+                t.addClass('metaplayer');
             }
 
+            var mpv = t.find('.metaplayer-video');
+            var v = t.find('video');
 
-            var mpv = v.parents('.metaplayer-video');
-            if( ! mpv.length ) {
-                if( v.is('video')  ){
-                    // video elements need a wrapper to observe top/left/bottom/right
-                    mp.width( v.width() );
-                    mp.height( v.height() );
+            if(! mpv.length ) {
+                mpv = $('<div></div>')
+                    .addClass('metaplayer-video')
+                    .appendTo(t)
+                    .append(v);
 
+                if( v.length  ){
                     if( this._iOS ) {
                         // ipad video breaks upon reparenting, so needs resetting
-                        var c = v.clone(true, true)
-                            .width('100%')
-                            .height('100%');
+                        // jquery listeners will be preserved, but not video.addEventListener
+                        v.clone(true, true).appendTo( v.parent() );
                         v.remove();
-                        v = c;
                     }
-
-                    mpv = $('<div></div>')
-                        .addClass('metaplayer-video')
-                        .appendTo(mp)
-                        .append(v);
-                }
-                else {
-                    // already has a wrapper
-                    v.addClass('metaplayer-video');
                 }
             }
+
+            v.width('100%').height('100%');
         }
 
     };
-
 
 })();

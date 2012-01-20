@@ -41,13 +41,22 @@
         return player.video;
     };
 
+    Ramp.prototype.html5 = function (url, options) {
+        this.video = Html5Player(this.target, url, options).video;
+        return this;
+    };
 
     Html5Player.prototype = {
-
         _createMarkup : function ( parent ) {
             var p = $(parent);
+            var v = p.find('video');
+            var container = p.find('.metaplayer-video') || p;
+
             if( p.is('video') ) {
                 this.video = p.get(0);
+            }
+            else if( v.length ){
+                this.video = v.get(0)
             }
             else {
                 var video = document.createElement('video');
@@ -56,7 +65,7 @@
                 video.controls = this.config.controls;
                 video.muted = this.config.muted;
                 this.video = video;
-                p.append(video);
+                container.append(video);
             }
         }
 

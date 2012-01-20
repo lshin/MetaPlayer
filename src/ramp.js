@@ -20,12 +20,11 @@
     Dependencies: jQuery
 */
 (function () {
-    window.Ramp = {
-        wrap : function (method, object) {
-            return function () {
-                method.apply(object || this, arguments);
-            };
-        }
+    var Ramp = function (target) {
+        if(! (this instanceof Ramp) )
+            return new Ramp(target);
+        this.target = target;
+        Ramp.layout(target);
     };
     Ramp.Players = {};
     Ramp.Services = {};
@@ -33,4 +32,7 @@
     Ramp.UI = {};
     Ramp.Utils = {};
     Ramp.Models = {};
+
+    window.Ramp = Ramp;
 })();
+

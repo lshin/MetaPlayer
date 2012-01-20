@@ -6,6 +6,9 @@
     <!-- Dependency: jQuery -->
     <script src="../../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
 
+    <!-- Ramp Core -->
+    <script src="../../../ramp.js" type="text/javascript"></script>
+
     <!-- UI : Base -->
     <script src="../../base/ui.base.js" type="text/javascript"></script>
     <link href="../../base/ui.base.css" rel="stylesheet" type="text/css">
@@ -17,83 +20,107 @@
         }
 
 
-        #target, #video {
-            width: 600px;
-            height: 250px;
+        .test{
+            background:  gray;
+            width: 300px;
+            height: 150px;
+            margin: 24px 0;
         }
 
         .metaplayer {
-            background: #888;
             outline: 5px solid blue;
+            background: #888;
         }
 
         .metaplayer-video {
-            outline: 2px solid red;
             background: red;
         }
+
+        #layout .metaplayer-video {
+            top: 25px;
+            left: 25px;
+            bottom: 25px;
+            right: 25px;
+        }
+
+        .tl, .tr, .bl, .br {
+            position: absolute;
+            background: green;
+            height: 25px;
+            width: 25px;
+        }
+        .tl, .tr {
+            top: 0;
+        }
+        .bl, .br {
+            bottom: 0;
+        }
+        .tl, .bl {
+            left : 0;
+        }
+        .tr, .br {
+            right : 0;
+        }
+
+
     </style>
 </head>
 <body>
 
 <h3>Metaplayer &raquo; UI Base Plugin</h3>
 
-
-
-<div>
-    <button onclick="javascript:playit();">play</button>
-    <button onclick="javascript:errorit();">error</button>
-    <button onclick="javascript:breakit();">break</button>
-    <button onclick="javascript:fixit();">fix</button>
-    <button onclick="javascript:resizeit();">resize</button>
+Empty Div:
+<div id="empty" class="test">
 </div>
 
-<div id="target" class="metaplayer">
-    <video id='video' controls autoplay preload='none' >
+
+Empty Div with corner blocks and resized video:
+<div id="layout" class="test">
+    <div class='tl'></div>
+    <div class='tr'></div>
+    <div class='bl'></div>
+    <div class='br'></div>
+</div>
+
+Div with child video element but no CSS classes:
+<div id="partial" class="test">
+    <video controls preload="none">
+        <source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.mp4" type="video/mp4">
+        <source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.webm" type="video/webM">
+        <source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.ogv" type="video/ogg">
     </video>
 </div>
 
+Div with full structure and classname already applied:
+<div id="full" class="metaplayer test">
+    <div class="metaplayer-video">
+        <video controls  preload="none">
+            <source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.mp4" type="video/mp4">
+            <source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.webm" type="video/webM">
+            <source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.ogv" type="video/ogg">
+        </video>
+    </div>
+</div>
+
+Empty Div, alternate instantiation:
+<div id="alternate" class="test">
+</div>
+
+
+<!--<video id='video' controls>-->
+<!--<source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.mp4" type="video/mp4">-->
+<!--<source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.webm" type="video/webM">-->
+<!--<source src="http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.ogv" type="video/ogg">-->
+<!--</video>-->
+
 <script type="text/javascript">
+    Ramp.layout('#empty');
+    Ramp.layout('#layout');
+    Ramp.layout('#partial');
+    Ramp.layout('#full');
 
-    var video = document.getElementById('video')
-    var t = $('#target');
-    var v = $('#video');
-    var p = v.parent();
-    var src = t.html();
-
-
-    video.addEventListener("playing", function (){
-        console.log("playing raw event")
-    });
-    v.bind("playing", function (){
-        console.log("playing bind event")
-    });
-
-    function breakit () {
-        var c = $("<div>")
-                .addClass("metaplayer-video")
-                .appendTo(p)
-                .append(v);
-    }
-
-    function playit () {
-        video.src = "http://media.w3.org/2010/05/sintel/trailer.mp4";
-        video.load();
-    }
-
-    function resizeit () {
-        v.width( v.width() + 10 );
-    }
-    function fixit () {
-        var c = v.clone(true, true);
-        v.parent().append(c);
-        v.remove();
-    }
-    function errorit () {
-        console.log("error: " + video.error+ " .. "  + video.readyState );
-    }
-
-    playit();
-    Ramp.metaplayer('#video');
+    debugger;
+    Ramp("#alternate");
 </script>
 
 </body>

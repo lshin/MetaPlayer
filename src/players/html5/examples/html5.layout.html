@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+
+    <title>HTML5 Plugin | Metaplayer</title>
+
+    <style>
+        #target {
+            width: 600px;
+            height: 300px;
+            background:  #333;
+        }
+    </style>
+
+    <!--Dependency: jQuery-->
+    <script src="../../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
+
+    <!-- Core: Ramp -->
+    <script src="../../../ramp.js"></script>
+    <script src="../../../services/smil/service.smil.js"></script>
+    <script src="../../../utils/util.event.js"></script>
+    <script src="../../../utils/util.proxy.js"></script>
+    <script src="../../../utils/util.script.js"></script>
+    <script src="../../../utils/util.ui.js"></script>
+
+    <!-- UI Plugin: Base -->
+    <script src="../../../ui/base/ui.base.js"></script>
+    <link href="../../../ui/base/ui.base.css" rel="stylesheet" type="text/css">
+
+    <!-- UI Plugin: HTML5 -->
+    <script src="../../playlist/player.playlist.js"></script>
+    <script src="../player.html5.js"></script>
+
+</head>
+<body>
+
+<h3>Metaplayer &raquo; HTML5Player Plugin</h3>
+
+
+<div id="target"></div>
+
+<script type="text/javascript">
+
+    var player = Ramp('#target')
+            .html5()
+            .video.src = "http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.mp4"
+</script>
+
+</body>
+</html>

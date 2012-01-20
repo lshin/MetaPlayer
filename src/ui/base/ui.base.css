@@ -11,3 +11,8 @@
     left: 0;
     right: 0;
 }
+
+.metaplayer-video video {
+    width: 100%;
+    height: 100%;
+}
