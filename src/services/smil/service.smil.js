@@ -28,7 +28,7 @@
     };
 
     MetaPlayer.addPlugin("ramp", function (options) {
-        return SmilService(this.video, options);
+        this.service = SmilService(this.video, options);
     });
 
     SmilService.parseUrl = function ( url, obj ) {
