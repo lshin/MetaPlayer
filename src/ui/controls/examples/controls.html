@@ -14,18 +14,30 @@
     </style>
 
     <!-- Dependency: jQuery -->
-    <script src="../../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
+    <script src="../../../../external/jquery/jquery-1.7.1.js" type="text/javascript"></script>
 
-    <!--Dependency: Popcorn -->
-    <script src="../../../../external/popcorn/popcorn.js" type="text/javascript"></script>
+    <!-- Core: Ramp -->
+    <script src="../../../core/metaplayer.js"></script>
+    <script src="../../../core/utils/util.event.js"></script>
+    <script src="../../../core/utils/util.proxy.js"></script>
+    <script src="../../../core/utils/util.script.js"></script>
+    <script src="../../../core/utils/util.timer.js"></script>
+    <script src="../../../core/utils/util.format.js"></script>
+    <script src="../../../core/utils/util.ui.js"></script>
+    <script src="../../../core/playlist/player.playlist.js"></script>
+    <script src="../../../core/layout/core.layout.js"></script>
+    <link href="../../../core/layout/core.layout.css" rel="stylesheet" type="text/css">
 
-    <!-- Dependency: Metaplayer -->
-    <script src="../../../../build/metaplayer.js" type="text/javascript"></script>
+    <!-- Service Plugin: RAMP -->
+    <script src="../../../services/smil/service.smil.js"></script>
 
-    <!-- UI Plugin: Controls -->
-    <script src="../ui.controls.js"></script>
-    <link href="../ui.controls.css" rel="stylesheet" type="text/css">
-    <link href="../../../themes/mp2/theme.controls.css" rel="stylesheet" type="text/css">
+    <!-- Playback Plugin: HTML5 -->
+    <script src="../../../players/html5/player.html5.js"></script>
+
+    <!-- UI: Controls -->
+    <script src="../../../ui/controls/ui.controls.js"></script>
+    <link href="../../../ui/controls/ui.controls.css" rel="stylesheet"  type="text/css">
+    <link href="../../../themes/mp2/theme.controls.css" rel="stylesheet"  type="text/css">
 
 
 </head>
@@ -35,8 +47,11 @@
     <div id='target'></div>
 
     <script type="text/javascript">
-        var player = Ramp.html5('#target', "ramp:/pca:36234882");
-        var controls = Ramp.controls(player);
+        var player = MetaPlayer('#target')
+                .html5({ autoplay : true })
+                .ramp()
+                .controls()
+                .load("ramp:/advisor:48920875");
     </script>
 </body>
 </html>

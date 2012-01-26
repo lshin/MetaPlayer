@@ -6,77 +6,77 @@
     var $ = jQuery;
 
     var defaults = {
-        cssPrefix : 'metaplayer-',
+        cssPrefix : 'mp-controls',
         leading: true,
         trackIntervalMsec : 5000,
         clockIntervalMsec : 500,
+        revealTimeMsec : 500,
+        revealDelayMsec : 500,
+        hideDelayMsec : 1500,
         annotationSeekOffsetSec : -1,
         createMarkup : true,
         renderTags : true,
-        renderMetaq : false
+        renderMetaq : false,
+        autoHide : false,
+        showBelow : true
     };
 
-    var Controls = function (player, service, options) {
+    var Controls = function (player, options) {
 
         if( !(this instanceof Controls) )
-            return new Controls(player, service, options);
-
-
-        // two-argument constructor(player, options)
-        if( options == undefined && player.service ) {
-            options = service;
-            service = player.service;
-        }
+            return new Controls(player, options);
 
         this.config = $.extend(true, {}, defaults, options);
-        this.service = service;
 
-        var target = $(this.config.container || $(player).parent() );
-        this.container = this.create('controls');
-        target.append(this.container );
-
-        if( typeof player == "string")
-            player = document.getElementById( player.substr(1) );
-        this.player = player;
-        this.player.controls = false;
+        this.container = $(this.config.container || $(player.video).parents('.metaplayer') );
+        this.video = player.video;
+        this.dispatcher = player.dispatcher;
 
         this.annotations = [];
+        this.video.controls = false;
 
         if( this.config.createMarkup )
             this.createMarkup();
 
-        this.addPlayerListeners();
+        this.addDataListeners(player);
+        this.addVideoListeners();
         this.addUIListeners();
-        this.addDataListeners();
 
-        this.trackTimer = Ramp.Timer(this.config.trackIntervalMsec);
+        this.trackTimer = Ramp.timer(this.config.trackIntervalMsec);
         this.trackTimer.listen('time', this.render, this);
 
-        this.clockTimer = Ramp.Timer(this.config.clockIntervalMsec);
+        this.clockTimer = Ramp.timer(this.config.clockIntervalMsec);
         this.clockTimer.listen('time', this.onClockTimer, this);
+
+        this.revealTimer = Ramp.timer(this.config.revealDelayMsec);
+        this.revealTimer.listen('time', this.onRevealTimer, this);
+
+        this.hideTimer = Ramp.timer(this.config.hideDelayMsec);
+        this.hideTimer.listen('time', this.onHideTimer, this);
+
+        if( this.config.showBelow ) {
+            this.config.autoHide = false;
+            this.showBelow(true);
+        }
+
+        if( this.config.autoHide )
+            this.toggle(false, 0);
     };
 
-    Ramp.controls = function (player, options) {
-        return  Controls(player, options);
+    MetaPlayer.controls = function (video, options) {
+        return Controls(this, options);
     };
+
+    MetaPlayer.addPlugin("controls", function (options) {
+        return Controls(this, options);
+    });
 
     Controls.prototype = {
 
-        addPlayerListeners : function () {
+        addVideoListeners : function () {
             var self = this;
-            $(this.player).bind('pause play seeked seeking', function(){
-                self.onPlayStateChange()
-            });
-        },
-
-        onLoad : function (data) {
-            var self = this;
-            self.clearAnnotations();
-            $(data.jumptags).each( function () {
-                var jump = this;
-                $(this.timestamps).each( function () {
-                    self.addAnnotation(this, null, jump.term);
-                })
+            $(this.video).bind('pause play seeked seeking ended', function(e){
+                self.onPlayStateChange(e)
             });
         },
 
@@ -111,24 +111,35 @@
                 return self.onKnobMouseMove(e);
             });
 
+            var player = $(this.container);
+            player.bind("mouseenter touchstart", function (e) {
+                if( self.config.autoHide ) {
+                    self.hideTimer.reset();
+                    self.revealTimer.start();
+                }
+            });
+
+            player.bind("mouseleave", function (e) {
+                if( self.config.autoHide ) {
+                    self.revealTimer.reset();
+                    self.hideTimer.start()
+                }
+            });
         },
 
-        addDataListeners : function () {
-            if(! this.service.onMetaData )
-                return;
+        addDataListeners : function (player) {
+            var d = this.dispatcher;
             if( this.config.renderTags )
-                this.service.onTags(this._onTags, this);
+                d.listen("tags", this.onTags, this);
 
             if( this.config.renderMetaq )
-                this.service.onMetaQ(this._onMetaq, this);
+                d.listen("metaq", this._onMetaq, this);
 
-            this.service.onMetaData(this.onMetaData, this);
-
-            this.service.onSearch(this.onSearch, this);
+            d.listen("metadata", this.onMetaData, this);
+            d.listen("search", this.onSearch, this);
         },
 
-        _onTags : function (tags) {
-
+        onTags : function (e, tags) {
             var self = this;
             $.each(tags, function (i, tag){
                 $.each(tag.timestamps, function (j, time){
@@ -138,7 +149,7 @@
             this.renderAnnotations();
         },
 
-        _onMetaq : function (popcorn) {
+        _onMetaq : function (e, popcorn) {
             var self = this;
             $.each(popcorn, function (type, events){
                 $.each(events, function (i, event){
@@ -148,11 +159,11 @@
             this.renderAnnotations();
         },
 
-        onMetaData: function (metadata) {
+        onMetaData: function (e, metadata) {
             this.clearAnnotations();
         },
 
-        onSearch : function (response) {
+        onSearch : function (e, response) {
             var self = this;
             var searchClass = 'query';
 
@@ -179,7 +190,7 @@
         },
 
         onPlayToggle : function () {
-            var p = this.player;
+            var p = this.video;
             if( p.paused )
                 p.play();
             else
@@ -188,9 +199,9 @@
             this.render();
         },
 
-        onPlayStateChange : function () {
+        onPlayStateChange : function (e) {
             // manage our timers based on play state
-            if(! this.player.paused ){
+            if(! this.video.paused ){
                 this.clockTimer.start();
                 this.trackTimer.start();
             }
@@ -234,7 +245,7 @@
 
 
             var ratio = x / track.width();
-            var t = ratio * this.player.duration;
+            var t = ratio * this.video.duration;
 
             this.renderTime(t);
 
@@ -249,7 +260,7 @@
             var x = knob.position().left;
 
             var percent = x / parent.width();
-            var time = percent * this.player.duration;
+            var time = percent * this.video.duration;
 
             if( throttle )
                 this.throttledSeek(time);
@@ -267,20 +278,20 @@
 
         seek : function (time) {
             clearTimeout( this.seekDelay );
-            this.player.currentTime = parseFloat(time);
+            this.video.currentTime = parseFloat(time);
             this.render();
         },
 
         renderTime : function (time ) {
             if( ! time ) {
-                time = this.player.currentTime; // render seek target if present
+                time = this.video.currentTime; // render seek target if present
             }
             this.find("time-current").text( this.formatTime(time) );
         },
 
 //        renderBuffer : function (){
-//            var status = this.player.status();
-//            var bufferPercent = status.buffer.end / this.player.duration * 100;
+//            var status = this.video.status();
+//            var bufferPercent = status.buffer.end / this.video.duration * 100;
 //            var buffer = this.find('track-buffer').stop();
 //            buffer.animate( { width : bufferPercent + "%"}, this.config.clockIntervalMsec, 'linear');
 //            if( bufferPercent == 100)
@@ -288,10 +299,10 @@
 //        },
 
         render : function (){
-            var duration = this.player.duration;
-            var time = this.player.currentTime // render seek target if present
+            var duration = this.video.duration;
+            var time = this.video.currentTime // render seek target if present
 
-            this.find('play').toggleClass( this.cssName('pause'), ! this.player.paused );
+            this.find('play').toggleClass( this.cssName('pause'), ! this.video.paused );
             this.find('time-duration').html(' / ' + this.formatTime( duration ) );
 
             this.renderAnnotations();
@@ -301,19 +312,26 @@
             // time isn't always ok correct immediately following a seek
             this.renderTime();
 
-            var trackPercent = time / duration * 100;
-            var toPercent = (time +  (msec/1000) ) / duration * 100;
-            toPercent = Math.min(toPercent, 100);
-
+            var trackPercent, toPercent;
+            if( duration ) {
+                trackPercent = time / duration * 100;
+                toPercent = (time +  (msec/1000) ) / duration * 100;
+                toPercent = Math.min(toPercent, 100);
+            }
+            else {
+                trackPercent = 0;
+                toPercent = 0;
+                toPercent =0;
+            }
 
             var fill = this.find('track-fill').stop();
             var knob = this.find('track-knob').stop();
 
-            if( this.player.paused ) {
+            if( this.video.paused ) {
                 toPercent = trackPercent;
             }
 
-            if( this.player.seeking ){
+            if( this.video.seeking ){
                 msec = msec * 3; // give time and don't overshoot the animation
             }
 
@@ -323,11 +341,62 @@
                 knob.css('left', trackPercent + "%");
             }
 
-            if( ! this.player.paused && this.config.leading && !(this.player.seeking || this.dragging) ){
+            if( ! this.video.paused && this.config.leading && !(this.video.seeking || this.dragging) ){
                 fill.animate( { width : toPercent + "%"}, msec, 'linear');
                 knob.animate( { left : toPercent + "%"}, msec, 'linear');
             }
 
+        },
+
+        autoHide : function (bool) {
+            if( bool )
+                this.hideTimer.start();
+            else
+                this.hideTimer.stop();
+
+            return this.config.autoHide = bool;
+        },
+
+        onRevealTimer : function () {
+            this.toggle(true);
+            this.revealTimer.reset();
+        },
+
+        onHideTimer : function () {
+            this.toggle(false);
+            this.hideTimer.reset();
+        },
+
+        toggle : function (bool, duration) {
+            var el = this.find();
+            var v = $(this.container).find('.metaplayer-video');
+            var show = bool == undefined ? !el.is(":visible") : bool;
+
+            if( show  ) // make visible to fade in
+                el.toggle(true);
+
+            el.stop().animate({
+                opacity: show ? 1 : 0
+                }, duration == null ? this.config.revealTimeMsec : duration,
+                function () {
+                    el.toggle(show);
+                });
+        },
+
+        showBelow : function (bool){
+            var stage = $(this.video);
+            var h = this.find().height();
+            var b = parseFloat( stage.css('bottom') );
+            if( bool ) {
+                if( this.__shownBelow == null ) {
+                    stage.css('bottom', (b + h) );
+                    this.__shownBelow = h;
+                }
+            }
+            else {
+                stage.css('bottom', (b - this.__shownBelow) );
+                this.__shownBelow = null;
+            }
         },
 
         addAnnotation : function (start, end, title, cssClass) {
@@ -358,7 +427,7 @@
         },
 
         renderAnnotations : function () {
-            var duration = this.player.duration;
+            var duration = this.video.duration;
             if( ! duration )
                 return;
             $(this.annotations).each( function (i, annotation) {
@@ -389,7 +458,7 @@
         },
 
         createMarkup : function () {
-            var controls = $(this.container);
+            var controls = this.create().appendTo(this.container);
 
             var box = this.create('box');
             controls.append(box)
@@ -402,7 +471,7 @@
             var time = this.create('time');
             time.append( this.create('time-current') );
             time.append( this.create('time-duration') );
-            controls.append(time);
+            box.append(time);
 
             var track = this.create('track');
             track.append( this.create('track-buffer') );
@@ -445,7 +514,7 @@
         },
 
         cssName : function (className){
-            return  this.config.cssPrefix + className;
+            return  this.config.cssPrefix + (className ? '-' + className : '');
         }
 
     };
