@@ -3,7 +3,7 @@
 
     var $ = jQuery;
 
-    Ramp.Utils.Script = {
+    Ramp.script = {
 
         url : function (filename) {
             // returns the first matching script tag

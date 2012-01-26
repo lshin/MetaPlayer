@@ -6,42 +6,30 @@
         playlistService : "/device/services/mp2-playlist?e={e}"
     };
 
-    var SmilService = function (url, options) {
+    var SmilService = function (video, options) {
         if( ! (this instanceof SmilService ))
-            return new SmilService(url, options);
+            return new SmilService(video, options);
 
-        if( options == undefined && (url instanceof Object) ){
-            options = url;
-            url = null;
-        }
 
         this.config = $.extend({}, defaults, options);
 
-        var dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
-        dispatcher.attach(this);
+        this.dispatcher = Ramp.dispatcher(video);
+        this.dispatcher.attach(this);
 
-        this.onMetaData = dispatcher.observer("metaData");
-        this.onTranscodes = dispatcher.observer("transcodes");
-        this.onCaptions = dispatcher.observer("captions");
-        this.onTags = dispatcher.observer("tags");
-        this.onMetaQ = dispatcher.observer("metaQ");
-        this.onRelated = dispatcher.observer("related");
-        this.onMediaChange = dispatcher.observer("mediaChange");
-        this.onSearch = dispatcher.observer("search");
-
-        if( url )
-            this.load( url );
+        // if we're attached to video, update with track changes
+        this.dispatcher.listen("trackchange", this._onTrackChange, this);
     };
 
     SmilService.msQuotes = true;
     SmilService.rebase = true;
 
-    Ramp.Services.SmilService = SmilService;
-
-    Ramp.data = function (url, options) {
-        return SmilService(url, options);
+    MetaPlayer.ramp = function (options) {
+        return SmilService(null, options);
     };
 
+    MetaPlayer.addPlugin("ramp", function (options) {
+        return SmilService(this.video, options);
+    });
 
     SmilService.parseUrl = function ( url, obj ) {
         var parts = url.split(':');
@@ -57,43 +45,38 @@
     };
 
     SmilService.prototype = {
-        _interface : "onMetaData onTranscodes onCaptions onTags onMetaQ onRelated onMediaChange",
+        _onTrackChange : function (e, track) {
+            if(! track ) {
+                return;
+            }
 
-        attach : function (target) {
-            var self = this;
-            var methods = this._interface.split(/\s+/g);
-            $.each(methods, function (i, key) {
-                var val = self[key];
-                if( key[0] == "_" || ! (val instanceof Function))
-                    return;
-                target[key] = function () {
-                    return self[key].apply(self, arguments);
-                }
-            });
+            if( typeof track == "string" ) {
+                track = SmilService.parseUrl(track);
+            }
+
+            if( track && track.rampId ){
+                this.load(track);
+                e.preventDefault();
+            }
         },
 
-        load : function ( o  ) {
+        load : function ( track  ) {
 
             // parse format:  "ramp:publishing.ramp.com/ramp:1234"
-            if( typeof o == "string" ) {
-                o = SmilService.parseUrl(o);
-            }
-            else if( o.url && ! o.rampId ) {
-                SmilService.parseUrl(o.url, o);
+            if( typeof track == "string" ) {
+                track = SmilService.parseUrl(track);
             }
 
-            if( ! o.rampId )
-                throw "invalide media id";
+            if( ! track.rampId ) {
+                throw "invalid media id";
+            }
 
-            if( this.mediaId )
-                this.dispatch('mediaChange');
+            this.mediaId = track.rampId;
 
-            this.mediaId = o.rampId;
+            if( track.rampHost )
+                this.lastHost = track.rampHost;
 
-            if( o.rampHost )
-                this.lastHost = o.rampHost;
-
-            var host = this.lastHost || rampHost;
+            var host = this.lastHost;
             var url = host + this.config.playlistService.replace(/{e}/, this.mediaId);
 
             var params = {
@@ -113,15 +96,21 @@
                 success : function (response, textStatus, jqXHR) {
                     var data = this.parse(response);
                     data.metadata.host = host;
-                    this._data = data;
-                    this.dispatch('metaData', data.metadata);
-                    this.dispatch('transcodes', data.transcodes);
-                    this.dispatch('captions', data.captions);
-                    this.dispatch('tags', data.tags);
-                    this.dispatch('metaQ', data.metaq);
-                    this.dispatch('related', data.related);
+                    this.setData(data)
+
                 }
             });
+        },
+
+        setData : function (data) {
+            this._data = data;
+            var d = this.dispatcher;
+            d.dispatch('metadata', data.metadata);
+            d.dispatch('transcodes', data.transcodes);
+            d.dispatch('captions', data.captions);
+            d.dispatch('tags', data.tags);
+            d.dispatch('metaq', data.metaq);
+            d.dispatch('related', data.related);
         },
 
         parse : function (data) {
@@ -159,7 +148,7 @@
             // transcodes
             media.transcodes.push({
                 name : "default",
-                type : "video/" + video.attr('type'),
+                type : SmilService.resolveType( video.attr('src') ),
                 url : video.attr('src')
             });
 

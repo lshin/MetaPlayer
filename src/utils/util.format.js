@@ -1,6 +1,6 @@
 (function () {
 
-    Ramp.Utils.Format = {
+    Ramp.format = {
         seconds : function (time) {
             var zpad = function (val, len) {
                 var r = String(val);

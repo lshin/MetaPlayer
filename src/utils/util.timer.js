@@ -2,12 +2,12 @@
 (function () {
     var $ = jQuery;
 
-    Ramp.Timer = function (delay, count) {
-        if( ! (this instanceof Ramp.Timer ) )
-            return new Ramp.Timer(delay, count);
+    var Timer = function (delay, count) {
+        if( ! (this instanceof Timer ) )
+            return new Timer(delay, count);
 
         var self = this;
-        Ramp.Utils.EventDispatcher(this);
+        Ramp.dispatcher(this);
         this.delay = delay;
         this.count = count || -1;
         this._counted = 0;
@@ -24,7 +24,9 @@
         };
     };
 
-    Ramp.Timer.prototype = {
+    Ramp.timer = Timer;
+
+    Timer.prototype = {
         reset : function () {
             this._counted = 0;
             this.stop();

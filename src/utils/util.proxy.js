@@ -20,8 +20,7 @@
 
             // emulate if old non-standard event model
             if( ! target.addEventListener ) {
-                var d = Ramp.Utils.EventDispatcher();
-                d.attach(target);
+                Ramp.dispatcher(target);
             }
             $.each(types.split(/\s+/g), function (i, type) {
                 $(source).bind(type, function (e) {
@@ -93,6 +92,9 @@
         // iOS: can't do DOM objects
         // use DOM where possible
         getProxyObject : function ( dom ) {
+            if( ! dom )
+                dom = document.createElement("div");
+
             try {
                 Object.defineProperty(dom, "__proptest", {} );
                 return dom;
@@ -100,6 +102,7 @@
             catch(e){
             }
 
+            // dom to be flushed out as needed
             var target = {
                 parentNode : dom.parentNode
             };
@@ -113,19 +116,29 @@
 
 
             throw "Object.defineProperty not defined";
+        },
+
+        proxyPlayer : function (source, target) {
+            var proxy = Ramp.proxy.getProxyObject(target);
+
+            Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
+                " paused played controls autoplay preload src ended readyState",
+                proxy, source);
+
+            Proxy.proxyFunction("load play pause canPlayType" ,source, proxy);
+
+            Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
+                "loadeddata loadedmetadata canplay loadstart durationchange volumechange " +
+                "ended error",source, proxy);
+
+            return proxy;
         }
-
     };
-
-
 
     if( ! window.Ramp )
         window.Ramp = {};
 
-    if( ! Ramp.Utils )
-        Ramp.Utils = {};
-
-    Ramp.Utils.Proxy = Proxy;
+    Ramp.proxy = Proxy;
 
 
 })();
