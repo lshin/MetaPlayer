@@ -18,282 +18,535 @@
     Created: 2011 by Greg Kindel <gkindel@ramp.com>
 
     Dependencies: jQuery
-*/
+ */
 (function () {
-    window.Ramp = {
-        wrap : function (method, object) {
-            return function () {
-                method.apply(object || this, arguments);
-            };
+
+    /**
+     * Sets up player plugin container, playlist, and DOM scaffolding
+     * @constructor
+     * @param target a DOM element, or jQuery selector (eg: "#mydiv")
+     */
+    var MetaPlayer = function (target, options ) {
+
+        if( ! (this instanceof MetaPlayer ) )
+            return new MetaPlayer( target );
+
+        this._plugins = [];
+
+        var layout = MetaPlayer.layout(target);
+
+
+        this.target = $(target).get(0);
+        this.video = MetaPlayer.proxy.getProxyObject(layout.stage);
+        this.dispatcher = MetaPlayer.dispatcher( this.video );
+        this.playlist(options);
+    };
+
+    /**
+     * Registers a non-playback plugin.
+     * @static
+     * @param keyword
+     * @param callback
+     */
+    MetaPlayer.addPlugin= function (keyword, callback ) {
+        var p = MetaPlayer.prototype;
+        if( p[keyword] )
+            throw "keyword unavailable: " + keyword;
+
+        p[keyword] = function () {
+
+            // wait for load()
+            if( this._plugins ) {
+                this._plugins.push({
+                    name : keyword,
+                    args : arguments,
+                    fn : callback
+                })
+            }
+            else { // post load(), fire now
+                callback.apply(this, arguments);
+            }
+            return this;
+        };
+    };
+
+    /**
+     * Registers a function as a playback plugin.
+     * @param keyword
+     * @param callback Function reference to invoke to inititialize plugin, with player as "this"
+     */
+    MetaPlayer.addPlayer = function (keyword, callback ) {
+        var p = MetaPlayer.prototype;
+        if( p[keyword] )
+            throw "keyword unavailable: " + keyword;
+
+        p[keyword] = function () {
+            var video =  callback.apply(this, arguments);
+            this.player( video );
+            return this;
+        };
+    };
+
+    MetaPlayer.prototype = {
+        /**
+         * Manually set the video playback source.
+         * @param video
+         */
+        player : function (video) {
+            MetaPlayer.proxy.proxyPlayer(video, this.video);
+            return this;
+        },
+
+        /**
+         * Initializes requested player plugins, optinally begins plabyack.
+         * @param url (optional) initial url or tracks
+         */
+        load : function (url) {
+            var self = this;
+            $( this._plugins ).each(function (i, plugin) {
+                self[plugin.name] = plugin.fn.apply(self, plugin.args);
+            });
+            this._plugins = null;
+
+            this.dispatcher.dispatch("ready");
+
+            if( url )
+                this.playlist.queue(url);
+
+            return this;
         }
     };
-    Ramp.Players = {};
-    Ramp.Services = {};
-    Ramp.Views = {};
-    Ramp.UI = {};
-    Ramp.Utils = {};
-    Ramp.Models = {};
+
+
+    window.MetaPlayer = MetaPlayer;
+    window.MPF = MetaPlayer;
+    window.Ramp = MetaPlayer;
 })();
 
+/*
+ ui.base.js
+ - establishes a basic html structure for adding player UI elements
+ - ui elements can reliably position themselves using css
+ - resizing is handled by css and the browser, not javascript calculations
+ - components can adjust video size by adjusting css top/bottom/etc properties of metaplayer-video
+
+ Basic structure:
+ <div class="metaplayer" style="postion: relative">
+
+ <!-- video element is stretched to fit parent using absolute positioning -->
+ <div class="metaplayer-video" style="position: absolute: top: 0; left: 0; right: 0; bottom: 0>
+ <--- any object or video child elements are height: 100%, width: 100% -->
+ </div>
+
+ <!-- example bottom-aligned control bar -->
+ <div class="sample-controls" style="position: absolute: bottom: 0; height: 32px">
+ ...
+ </div>
+
+ </div>
+ */
+
+( function () {
+    var $ = jQuery;
+
+    var defaults = {
+        cssPrefix : "mp"
+    };
+
+    MetaPlayer.layout = function (target, options) {
+
+        this.config = $.extend(true, {}, defaults, options);
+        this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+
+        var t = $(target);
+        var isVideo = t.is("video");
+        var base;
+        var stage = t.find('.mp-video');
+        var video = t.find('video');
+
+        // set up main wrapper
+        if( isVideo ){
+            base = $('<div></div>')
+                .addClass('metaplayer')
+                .appendTo( t.parent() );
+
+            // assume they've set the dimensions on the target
+            base.width( t.width() );
+            base.height( t.height() );
+        } else {
+            base = t;
+        }
+        base.addClass('metaplayer');
+
+
+        // set up the video playback area "stage"
+        if( stage.length == 0) {
+            stage = $('<div></div>')
+                .addClass('mp-video');
+            stage.appendTo(base);
+        }
+        if( video.length > 0 ) {
+            stage.append(video);
+        }
+
+        if( isVideo )
+            stage.append(t);
+
+        return {
+            base : base.get(0),
+            stage : stage.get(0)
+        }
+    }
+})();
 (function () {
 
     var $ = jQuery;
 
     var defaults = {
-        autoLoad : true,
+        applySources : true,
+        selectSource : true,
+        autoAdvance : true,
+        autoPlay : true,
+        autoBuffer : true,
         related: true,
-        loop : false,
-        dispatcher : null
+        loop : false
     };
 
-    var Playlist = function (urls, options) {
-        if( ! (this instanceof Playlist) )
-            return new Playlist(urls, options);
+    var Playlist = function (video, options ){
 
-        if( urls instanceof Object && ! (urls instanceof Array )){
-            options = urls;
-            urls = null;
-        }
+        if( !(this instanceof Playlist ))
+            return new Playlist(video, options);
 
         this.config = $.extend({}, defaults, options);
-
+        this.video = video;
+        this._haveRelated = false;
         this._tracks = [];
-        this.__index = 0;
-        this.__loop = this.config.loop;
+        this._index = 0;
+        this.loop = this.config.loop;
+        this.autoplay = this.config.autoPlay;
+        this.preload = this.config.autoBuffer;
+        this.advance = this.config.autoAdvance;
 
-        this.autoLoad = this.config.autoLoad;
+//        this.dispatcher = MetaPlayer.dispatcher();
+        this.dispatcher = MetaPlayer.dispatcher(video);
 
-        Ramp.Utils.Proxy.mapProperty("index loop", this);
-
-        this.dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
-        this.onPlaylistChange = this.dispatcher.observer("playlistChange");
-        this.onTrackChange = this.dispatcher.observer("trackChange");
-        this.dispatcher.attach(this);
-
-        if( urls )
-            this.add(urls);
+        this._addDataListeners(this.video);
+        this._addMediaListeners(this.video);
     };
 
+    MetaPlayer.playlist = function (video, options) {
+        return Playlist( $(video).get(0), options);
+    };
+
+    MetaPlayer.addPlugin('playlist', function (options) {
+        return MetaPlayer.playlist(this.video, options);
+    });
 
     Playlist.prototype = {
-        _interface : "empty queue next previous track tracks nextTrack nextTrackIndex onPlaylistChange onTrackChange",
 
-        attach : function (target) {
-            var self = this;
-            var methods = this._interface.split(/\s+/g);
-
-            $.each(methods, function (i, key) {
-                var val = self[key];
-                if( key[0] == "_" || ! (val instanceof Function))
-                    return;
-                target[key] = function () {
-                    return self[key].apply(self, arguments);
-                }
-            });
-
-            Ramp.Utils.Proxy.mapProperty("index loop", target, this);
-        },
-
-        empty : function ( tracks ) {
-            this._tracks = [];
-            this.index = 0;
-            this.dispatcher.dispatch("playlistChange");
+        index : function ( i ) {
+            i = this._resolveIndex(i);
+            if( i != null ) {
+                this._index = i;
+                this.load( this.track() );
+            }
+            return this._index;
         },
 
         queue : function ( tracks ) {
             if( ! (tracks instanceof Array) )
                 tracks = [tracks];
 
-            var wasEmpty = this._tracks.length == 0;
+            var wasEmpty = (this._tracks.length == 0);
 
             var self = this;
             $(tracks).each( function (i, track) {
                 self._addTrack(track, true)
             });
-
-            this.dispatcher.dispatch("playlistChange");
+            this.dispatcher.dispatch("playlistchange");
 
             if( wasEmpty )
-                this.dispatcher.dispatch("trackChange");
+                this.load( this.track() )
         },
 
-        _addTrack : function ( track, trackChange ) {
-            if(typeof track == "string" )
-                track = { url : track };
-            this._tracks.push(track);
-        },
+        load : function (track) {
+            this.video.pause();
 
-        _index : function ( i ) {
-            if( i != undefined ) {
-                i = i % this._tracks.length;
-                var old = i;
-                this.__index = i;
-                this.dispatcher.dispatch("trackChange");
+            // let services cancel loading if they need to do something
+            var ok = this.dispatcher.dispatch("trackchange", track);
+            if( ok ) {
+                this._setSrc( track );
             }
-            return this.__index;
         },
 
-        _loop : function ( val ) {
-            if( val !== undefined )
-                this.__loop = val;
-            return this.__loop;
+        empty : function ( tracks ) {
+            this._tracks = [];
+            this._index = 0;
+            this.dispatcher.dispatch("playlistchange");
+            this.dispatcher.dispatch("trackchange");
+        },
+
+        next  : function () {
+            this.index( this._index + 1 )
+        },
+
+        previous : function () {
+            this.index( this._index - 1 )
         },
 
         track : function (i){
             if( i === undefined )
-                i = this.index;
-            return this._tracks[i];
+                i = this.index();
+            return this._tracks[ this._resolveIndex(i) ];
+        },
+
+        nextTrack : function () {
+            return this.track( this._index + 1);
         },
 
         tracks : function () {
             return this._tracks;
         },
 
-        nextTrack : function () {
-            return this.track( this.nextTrackIndex() );
+        _addTrack : function ( track, silent ) {
+            this._tracks.push(track);
+            if( ! silent )
+                this.dispatcher.dispatch("playlistchange");
         },
 
-        nextTrackIndex : function () {
-            var i = this.index;
-            if( i + 1 < this._tracks.length )
-                i++;
-            else if(! this.__loop )
+        _resolveIndex : function (i) {
+            if( i == null)
                 return null;
-            else
-                i = 0;
+            var pl = this.tracks();
+            if( i < 0  )
+                i = pl.length + i;
+            if( this.loop )
+                i = i % pl.length;
+            if( i >= pl.length || i < 0) {
+                return null;
+            }
             return i;
         },
 
-        next  : function () {
-            var i = this.nextTrackIndex();
-            if( i !== null )
-                this.index = i;
+        _addDataListeners : function (dispatcher) {
+            dispatcher.listen("metadata", this._onMetaData, this);
+            dispatcher.listen("transcodes", this._onTranscodes, this);
+            dispatcher.listen("related", this._onRelated, this);
         },
 
-        previous : function () {
-            var i = this.index;
-            if( i - 1 >= 0 )
-                i--;
-            else if(! this.__loop )
+        _addMediaListeners : function () {
+            var self = this;
+            $(this.video).bind('ended error', function(e) {
+                self._onEnded()
+            });
+        },
+
+        _onMetaData: function (e, metadata) {
+            var idx = this.index();
+            // replace a plain url with updated metadata
+            if ( typeof this._tracks[idx] == "string" ) {
+                this._tracks[idx] = metadata;
+            }
+        },
+
+        _onRelated : function (e, related) {
+            if( this._haveRelated || ! this.config.related )
                 return;
-            else
-                i = this._tracks.length - 1;
-            this.index = i;
+            this.queue( related );
+            this._haveRelated = true;
+        },
+
+        _onTranscodes : function (e, transcodes) {
+            var self = this;
+            var video = this.video;
+            this.transcodes = transcodes;
+            var probably = [];
+            var maybe = [];
+            var sources = [];
+
+            $.each(transcodes, function (i, source) {
+                video.appendChild( self._createSource(source.url, source.type) );
+
+                var canPlay = video.canPlayType(source.type);
+                if( ! canPlay )
+                    return;
+
+                if( canPlay == "probably" )
+                    probably.push(source.url);
+                else
+                    maybe.push(source.url);
+
+            });
+
+            var src = probably.shift() || maybe .shift();
+            if( src)
+                this._setSrc(src);
+        },
+
+        _setSrc : function ( src ) {
+            this.video.src = src;
+            if( this.video.autoplay || this.index() > 0 ) {
+                this.video.play();
+            }
+            else if( this.video.preload ) {
+                this.video.load()
+            }
+        },
+
+        _createSource : function (url, type) {
+            var src = $('<source>')
+                .attr('type', type || '')
+                .attr('src', url) ;
+            return src[0];
+        },
+
+        _onEnded : function () {
+            if(! this.advance )
+                return;
+
+            if( this.index() == this.tracks().length - 1 ) {
+                this.dispatcher.dispatch('playlistComplete');
+            }
+            this.next();
         }
+
     };
 
 })();
-
 (function () {
     var $ = jQuery;
 
-    var EventDispatcher = function (target){
-        if( ! (this instanceof EventDispatcher ))
-            return new EventDispatcher(target);
-        this._listeners = {};
-        this._observed = {};
+    var EventDispatcher = function (source){
 
-        if( target )
-            this.attach(target);
+        if( source && source.dispatcher instanceof EventDispatcher)
+            return source.dispatcher;
+
+        if( ! (this instanceof EventDispatcher ))
+            return new EventDispatcher(source);
+
+        this._listeners = {};
+        this.init(source);
     };
 
-    Ramp.Utils.EventDispatcher = EventDispatcher;
+    Ramp.dispatcher = EventDispatcher;
+
+    EventDispatcher.Event = function () {
+        this.cancelBubble = false;
+        this.defaultPrevented = false;
+    };
+
+    EventDispatcher.Event.prototype = {
+        initEvent : function (type, bubbles, cancelable)  {
+            this.type = type;
+            this.cancelable = cancelable;
+        },
+        stopPropagation : function () {
+            this.cancelBubble  = true;
+        },
+        preventDefault : function () {
+            if( this.cancelable )
+                this.defaultPrevented = true;
+        }
+    },
 
     EventDispatcher.prototype = {
-        _interface : "listen forget dispatch addEventListener removeEventListener dispatchEvent",
 
-        attach : function (target) {
-            var names = this._interface.split(/\s+/g);
-            var i, name;
-            for(i = 0; i < names.length; i++ ) {
-                name = names[i];
-                target[name] = this._wrap(name);
+        init : function (source) {
+            if(!  source )
+                return;
+
+            // we can wrap other event dispatchers
+            if( source.addEventListener ){
+                // use the element's native core
+                MetaPlayer.proxy.proxyFunction("addEventListener removeEventListener dispatchEvent",
+                    source, this);
+
+                // but add our convenience functions
+                MetaPlayer.proxy.proxyFunction (
+                    "listen forget dispatch",
+                    this, source);
             }
+            // or enable plain objects
+            else {
+                this.attach(source)
+            }
+        },
+
+        attach : function (target, force) {
+            if( target.addEventListener && ! force  ) {
+                throw 'already an event dispatcher';
+            }
+
+            if(! target.addEventListener ) {
+                MetaPlayer.proxy.proxyFunction(
+                    "addEventListener removeEventListener dispatchEvent",
+                    this, target);
+            }
+
+            MetaPlayer.proxy.proxyFunction (
+                "listen forget dispatch",
+                this, target);
+
+            target.dispatcher = this;
         },
 
         _wrap : function(name) {
             var self = this;
+            var scope = this;
             return function () {
-                return self[name].apply(self, arguments);
+                return self[name].apply(scope, arguments);
             }
         },
 
-        listen : function ( eventType, callback, scope, data) {
-            if( ! this._listeners[eventType] )
-                this._listeners[eventType] = [];
-
-            this._listeners[eventType].push({
-                fn : callback,
-                scope : scope,
-                data: data
+        listen : function ( eventType, callback, scope) {
+            this.addEventListener(eventType, function (e) {
+                callback.call(scope, e, e.data);
             })
         },
 
         forget : function (type, callback) {
-            var l = this._listeners[type];
-            if( ! l )
-                return;
+            this.removeEventListener(type, callback);
+        },
+
+        dispatch : function (eventType, data) {
+            var eventObject = this.createEvent();
+            eventObject.initEvent(eventType, true, true);
+            eventObject.data = data;
+            return this.dispatchEvent(eventObject);
+        },
+
+        // traditional event apis
+        addEventListener : function (eventType, callback) {
+            if( ! this._listeners[eventType] )
+                this._listeners[eventType] = [];
+            this._listeners[eventType].push(callback);
+        },
+
+        removeEventListener : function (type, callback) {
+            var l = this._listeners[type] || [];
             var i;
             for(i=l.length - 1; i >= 0; i-- ){
-                if( l[i].fn = callback ) {
+                if( l[i] == callback ) {
                     l.splice(i, 1);
                 }
             }
         },
 
-        dispatch : function (eventType, data, eventObject) {
-            var l = this._listeners[eventType];
+        createEvent : function (type) {
+            if( document.createEvent )
+                return document.createEvent(type || 'Event');
 
-            if( ! eventObject )
-                eventObject = {};
+            return new EventDispatcher.Event();
+        },
 
-            eventObject.type = eventType;
-            eventObject.source = this;
-
-            if( data !== undefined)
-                eventObject.data = data;
-
-            if( this._observed[eventType] !== undefined )
-                this._observed[eventType] = data || true;
-
-            if( ! l )
-                return;
-
+        dispatchEvent : function (eventObject) {
+            var l = this._listeners[eventObject.type] || [];
             for(var i=0; i < l.length; i++ ){
-                l[i].fn.call(l[i].scope || this, eventObject, l[i].data )
+                if( eventObject.cancelBubble )
+                    break;
+                l[i].call(l[i].scope || this, eventObject, eventObject.data )
             }
-        },
-
-        // makes myobject.eventtype(fn) listen for event
-        // and trigger callback with data immediately, if mapped property not null
-        // useful for object that load data synchronously
-        // syntax based on jQuery events:  $(element).click( callback );
-        observer : function (eventType) {
-            this._observed[eventType] = null;
-            var self = this;
-            return function (callback, scope) {
-                var listener = function (e) {
-                    callback.call(scope , self._observed[eventType] );
-                };
-                self.listen(eventType, listener);
-                if( self._observed[eventType] !== null )
-                    setTimeout(listener, 0);
-            };
-        },
-
-        // traditional event apis
-        addEventListener : function (eventType, callback) {
-            this.listen(eventType, callback);
-        },
-
-        removeEventListener : function (type, callback) {
-            this.forget(type, callback);
-        },
-
-        dispatchEvent : function (event) {
-            if( ! (event instanceof Object) )
-                throw "invalid event";
-            this.dispatch(event.type, null, event);
+            return ! eventObject.defaultPrevented;
         }
 
     }
@@ -301,7 +554,7 @@
 })();
 (function () {
 
-    Ramp.Utils.Format = {
+    Ramp.format = {
         seconds : function (time) {
             var zpad = function (val, len) {
                 var r = String(val);
@@ -347,8 +600,7 @@
 
             // emulate if old non-standard event model
             if( ! target.addEventListener ) {
-                var d = Ramp.Utils.EventDispatcher();
-                d.attach(target);
+                Ramp.dispatcher(target);
             }
             $.each(types.split(/\s+/g), function (i, type) {
                 $(source).bind(type, function (e) {
@@ -420,6 +672,9 @@
         // iOS: can't do DOM objects
         // use DOM where possible
         getProxyObject : function ( dom ) {
+            if( ! dom )
+                dom = document.createElement("div");
+
             try {
                 Object.defineProperty(dom, "__proptest", {} );
                 return dom;
@@ -427,6 +682,7 @@
             catch(e){
             }
 
+            // dom to be flushed out as needed
             var target = {
                 parentNode : dom.parentNode
             };
@@ -440,19 +696,29 @@
 
 
             throw "Object.defineProperty not defined";
+        },
+
+        proxyPlayer : function (source, target) {
+            var proxy = Ramp.proxy.getProxyObject(target);
+
+            Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
+                " paused played controls autoplay preload src ended readyState",
+                proxy, source);
+
+            Proxy.proxyFunction("load play pause canPlayType" ,source, proxy);
+
+            Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
+                "loadeddata loadedmetadata canplay loadstart durationchange volumechange " +
+                "ended error",source, proxy);
+
+            return proxy;
         }
-
     };
-
-
 
     if( ! window.Ramp )
         window.Ramp = {};
 
-    if( ! Ramp.Utils )
-        Ramp.Utils = {};
-
-    Ramp.Utils.Proxy = Proxy;
+    Ramp.proxy = Proxy;
 
 
 })();
@@ -461,7 +727,7 @@
 
     var $ = jQuery;
 
-    Ramp.Utils.Script = {
+    Ramp.script = {
 
         url : function (filename) {
             // returns the first matching script tag
@@ -489,12 +755,12 @@
 (function () {
     var $ = jQuery;
 
-    Ramp.Timer = function (delay, count) {
-        if( ! (this instanceof Ramp.Timer ) )
-            return new Ramp.Timer(delay, count);
+    var Timer = function (delay, count) {
+        if( ! (this instanceof Timer ) )
+            return new Timer(delay, count);
 
         var self = this;
-        Ramp.Utils.EventDispatcher(this);
+        Ramp.dispatcher(this);
         this.delay = delay;
         this.count = count || -1;
         this._counted = 0;
@@ -511,7 +777,9 @@
         };
     };
 
-    Ramp.Timer.prototype = {
+    Ramp.timer = Timer;
+
+    Timer.prototype = {
         reset : function () {
             this._counted = 0;
             this.stop();
@@ -550,7 +818,7 @@
     if( ! window.Ramp )
         window.Ramp = {};
 
-    Ramp.UI = {
+    Ramp.ui = {
         /**
          * Ensures that target's parentNode is it's offsetParent, creating a wrapping div if necessary.
          *  Returned box can be used to reliably position UI elements absolutely using top,left,etc.
@@ -585,349 +853,177 @@
         }
     };
 })();
-
 (function () {
 
     var $ = jQuery;
 
     var defaults = {
-        applySources : true,
-        selectSource : true,
-        autoAdvance : true,
-        autoPlay : true,
-        autoBuffer : true,
-        related: true,
-        loop : false
+        delayMsec : 1000
     };
 
-    var Playlist = function (video, url, options ){
-
-        if( !(this instanceof Playlist ))
-            return new Playlist(video, url, options);
-
-        if( options == undefined && (url instanceof Object) ){
-            options = url;
-            url = null;
-        }
-
-        this.config = $.extend({}, defaults, options);
-
-        if( video.service )
-            this.config.service = video.service;
-
-        this.video = $(video).get(0);
-
-        this.dispatcher = video.dispatcher || this.config.dispatcher || Ramp.Utils.EventDispatcher();
-        this.dispatcher.attach(this);
-
-        this._haveRelated = false;
-        this._tracks = [];
-        this._index = 0;
-        this.loop = this.config.loop;
-        this.autoplay = this.config.autoPlay;
-        this.preload = this.config.autoBuffer;
-        this.advance = this.config.autoAdvance;
-
-        if( this.config.service ) {
-            this.service = this.config.service;
-        }
-        else {
-            this.service = Ramp.data({
-                dispatcher : this._dispatcher
-            });
-        }
-        this.video.service = this.service;
-
-        this.onPlaylistChange = this.dispatcher.observer("playlistChange");
-        this.onTrackChange = this.dispatcher.observer("trackChange");
-
-        this._addServiceListeners();
-        this._addMediaListeners();
-
-        if( url ){
-            this.queue(url)
-        }
-        this.video.playlist = this;
+    var Sample = function  (options) {
+        if( !(this instanceof Sample) )
+            return new Sample(options);
+        this.config = $.extend(true, {}, defaults, options);
     };
 
+    Ramp.Services.Sample = Sample;
 
-    Ramp.playlist = Playlist;
-
-    Playlist.prototype = {
-
-        index : function ( i ) {
-            if( i != undefined ) {
-                this._index = this._resolveIndex(i);
-                this.dispatcher.dispatch("trackChange");
-                this.service.load( this.track() );
-            }
-            return this._index;
-        },
-
-        queue : function ( tracks ) {
-            if( ! (tracks instanceof Array) )
-                tracks = [tracks];
-
-            var wasEmpty = this._tracks.length == 0;
-
-            var self = this;
-            $(tracks).each( function (i, track) {
-                self._addTrack(track, true)
-            });
-            this.dispatcher.dispatch("playlistChange");
-
-            if( wasEmpty ) {
-                this.service.load( this.track() );
-            }
-        },
-
-        empty : function ( tracks ) {
-            this._tracks = [];
-            this._index = 0;
-            this.dispatcher.dispatch("playlistChange");
-            this.dispatcher.dispatch("trackChange");
-        },
-
-        next  : function () {
-            this.index( this._index + 1 )
-        },
-
-        previous : function () {
-            this.index( this._index - 1 )
-        },
-
-        track : function (i){
-            if( i === undefined )
-                i = this.index();
-            return this._tracks[ this._resolveIndex(i) ];
-        },
-
-        nextTrack : function () {
-            return this.track( this._index + 1);
-        },
-
-        tracks : function () {
-            return this._tracks;
-        },
-
-        _addTrack : function ( track ) {
-            if( typeof track == "string" )
-                track = { url : track };
-            this._tracks.push(track);
-        },
-
-        _resolveIndex : function (i) {
-            var pl = this.tracks();
-            if( i < 0  )
-                i = pl.length + i;
-            if( this.loop )
-                i = i % pl.length;
-            if( i >= pl.length || i < 0) {
-                return;
-            }
-            return i;
-        },
-
-        _addServiceListeners : function () {
-            this.service.onMetaData(this._onMetaData, this);
-            this.service.onTranscodes(this._onTranscodes, this);
-            this.service.onRelated(this._onRelated, this);
-        },
-
-        _addMediaListeners : function () {
-            var self = this;
-            $(this.video).bind('ended', function(){
-                self._onEnded()
-            });
-        },
-
-        _onMetaData: function (metadata) {
-            $.extend( this.track(), metadata );
-            this._metadata = metadata
-        },
-
-        _onRelated : function (related) {
-            if( this._haveRelated || ! this.config.related )
-                return;
-            this.queue( related );
-            this._haveRelated = true;
-        },
-
-        _onTranscodes : function (transcodes) {
-            var video = this.video;
-
-            var probably = [];
-            var maybe = [];
-
-            $.each(transcodes, function (i, source) {
-                var canPlay = video.canPlayType(source.type);
-                if( ! canPlay )
-                    return;
-
-                if( canPlay == "probably" )
-                    probably.push(source.url);
-                else
-                    maybe.push(source.url);
-
-            });
-
-            var src = probably.shift() || maybe .shift();
-            if( src )
-                video.src = src;
-            video.autoplay = true;
-
-            if( video.autoplay ) {
-                video.play();
-
-            }
-            else if( video.preload ) {
-                video.load()
-            }
-        },
-
-        _onEnded : function () {
-            if(! this.advance )
-                return;
-
-            if( this.index() == this.tracks().length - 1 ) {
-                this.dispatcher.dispatch('playlistComplete');
-            }
-
-            this.next();
-        },
-
-        decorate : function (obj) {
-            Ramp.Utils.Proxy.mapProperty("index advance service",
-                this.video, this);
-
-            Ramp.Utils.Proxy.proxyFunction("next previous track tracks queue clear " +
-                "nextTrack nextTrackIndex onPlaylistChange onTrackChange",this, this.video);
-
-            Ramp.Utils.Proxy.proxyEvent("trackChange playlistChange ",this, this.video);
-        }
-
-
+    Ramp.sample = function (id, host, options) {
+        return new Ramp.Models.Media({
+            rampId : id,
+            rampHost : host,
+            service : new Sample(options)
+        }, host);
     };
 
-})();(function () {
-    var $ = jQuery;
-
-    var defaults = {
-        jsonService : "/{e}.json"
-    };
-
-    var JsonService = function (url, options) {
-        if( ! (this instanceof JsonService ))
-            return new JsonService(url, options);
-
-        if( options == undefined && (url instanceof Object) ){
-            options = url;
-            url = null;
-        }
-
-        this.config = $.extend({}, defaults, options);
-
-        var dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
-        dispatcher.attach(this);
-
-        this.onMetaData = dispatcher.observer("metaData");
-        this.onTranscodes = dispatcher.observer("transcodes");
-        this.onCaptions = dispatcher.observer("captions");
-        this.onTags = dispatcher.observer("tags");
-        this.onMetaQ = dispatcher.observer("metaQ");
-        this.onRelated = dispatcher.observer("related");
-        this.onMediaChange = dispatcher.observer("mediaChange");
-
-        if( url )
-            this.load( url );
-    };
-
-
-    Ramp.data = function (url, options) {
-        return JsonService(url, options);
-    };
-
-    JsonService.prototype = {
-        _interface : "onMetaData onTranscodes onCaptions onTags onMetaQ onRelated onMediaChange",
-
-
-        attach : function (target) {
-            var self = this;
-            var methods = this._interface.split(/\s+/g);
-            $.each(methods, function (i, key) {
-                var val = self[key];
-                if( key[0] == "_" || ! (val instanceof Function))
-                    return;
-                target[key] = function () {
-                    return self[key].apply(self, arguments);
-                }
-            });
+    Sample.prototype = {
+        parse : function (string) {
+            return Sample.data;
         },
 
-        parse : function (str) {
-            return jQuery.parseJSON(str);
+        load : function ( mediaId, mediaHost, callback, scope) {
+            setTimeout( function () {
+                var data = $.extend(true, {}, Sample.mediaData);
+                callback.call(scope, data);
+            }, this.config.delayMsec);
         },
 
-        load : function ( o  ) {
+        search : function (term, callback, scope) {
+            if( ! this.data )
+                throw "media not loaded";
 
-            // parse format:  "ramp:publishing.ramp.com/ramp:1234"
-            if( typeof o == "string" ) {
-                o = JsonService.parseUrl(o);
-            }
-            else if( o.url && ! o.rampId ) {
-                JsonService.parseUrl(o.url, o);
-            }
-
-            if( ! o.rampId )
-                throw "invalide media id";
-
-            if( this.mediaId )
-                this.dispatch('mediaChange');
-
-            this.mediaId = o.rampId;
-
-            if( o.rampHost )
-                this.lastHost = o.rampHost;
-
-            var url = this.lastHost + this.config.jsonService.replace(/{e}/, this.mediaId);
-
-            $.ajax(url, {
-                dataType : "json",
-                timeout : 5000,
-                context: this,
-                error : function (jqXHR, textStatus, errorThrown) {
-                    console.error("Load  error: " + textStatus + ", url: " + url);
-                },
-                success : function (response, textStatus, jqXHR) {
-                    var data = response;
-                    this.dispatch('metadata', data.metadata);
-                    this.dispatch('related', data.related);
-                    this.dispatch('transcodes', data.transcodes);
-                    this.dispatch('captions', data.captions);
-                    this.dispatch('tags', data.tags);
-                    this.dispatch('metaq', data.metaq);                }
-            });
-        },
-
-        search : function (str) {
-            throw "not implemented"; // ...
+            setTimeout( function () {
+                var data = $.extend(true, {}, Sample.searchData);
+                callback.call(scope, data);
+            }, this.config.delayMsec);
         }
     };
 
-
-    JsonService.parseUrl = function ( url, obj ) {
-        var parts = url.split(':');
-        if( obj == undefined)
-            obj = {};
-        if( parts[0] !== "ramp" )
-            obj.url = url;
-        else {
-            obj.rampHost = parts[1];
-            obj.rampId = parts[2];
-        }
-        return obj;
+    Sample.mediaData = {
+        metadata : {
+            title : "Euro Contagion Risks Loom in Corporate Credit Market ",
+            description: "Fundamentals remain strong across the board, but high-quality corporate credits are likely to outperform in a volatile environment, says Morningstar's Dave Sekera.",
+            thumbnail : "http://publishing.ramp.com/thumbnails/cached_media/0006/0006401/0006401014/images/thumb.jpg",
+            poster : "http://publishing.ramp.com/thumbnails/cached_media/0006/0006401/0006401014/images/thumb.jpg"
+        },
+        "transcodes" : [
+            {
+                "name" : "default",
+                "type" : "video/mp4",
+                "url"  : "http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.mp4"
+            },
+            {
+                "name" : "some.name",
+                "type" : "video/webm",
+                "url"  : "http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.webm"
+            },
+            {
+                "name" : "some.name",
+                "type" : "video/ogg",
+                "url"  : "http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.ogv"
+            }
+        ],
+        tags : [
+            {
+                term : "United States",
+                type : "place",
+                score : 19.390835,
+                origin : "namedentity",
+                timestamps : [ 44.449, 170.339, 196.689, 217.504 ]
+            },
+            {
+                term : "Morningstar",
+                type : "company",
+                score : 4.843158,
+                origin : "namedentity",
+                timestamps : [ 8.209, 498.966 ]
+            },
+            {
+                term : "Spain",
+                type : "place",
+                score : 3.7033582,
+                origin : "namedentity",
+                timestamps : [ 283.749, 300.219 ]
+            },                    {
+                term : "private equity",
+                type : "unk",
+                score : 3.6826441,
+                origin : "namedentity",
+                timestamps : [ 89.619 ]
+            }
+        ],
+        captions : [
+            {
+                start : 0,
+                text : "Jeremy Glaser : For Morningstar, I'm Jeremy Glaser. I'm here"
+            },
+            {
+                start : 10.29,
+                text : "today with our bond strategist, Dave Sekera, to get an "
+            },
+            {
+                start : 12.30,
+                text : "update on the corporate credit market , and on what investors"
+            },
+            {
+                start : 14.69,
+                text : ""
+            }
+            // <smilText>Jeremy Glaser : For Morningstar, I'm Jeremy Glaser. I'm here <clear begin="10.29s"/>today with our bond strategist, Dave Sekera, to get an <clear begin="12.30s"/>update on the corporate credit market , and on what investors <clear begin="14.69s"/>could expect going forward. Dave, thanks for joining me today. <clear begin="16.84s"/>Dave Sekera : You are welcome, Jeremy. Good to be <clear begin="18.35s"/>here. Glaser : So let's start talking a little bit <clear begin="19.99s"/>about corporate fundamentals, before we get to some of the <clear begin="22.75s"/>macro issues, that I know are on a lot of <clear begin="24.33s"/>people's minds. What's really happening in the corporate marketplace? Are <clear begin="28.77s"/>balance sheets still remaining strong, even as the economy kind <clear begin="32.03s"/>of weakened a little bit this summer? Sekera : As <clear begin="34.22s"/>you mentioned, it has been a crazy time in all <clear begin="36.28s"/>of the asset markets, including the corporate bond market . But <clear begin="40.01s"/>you know, getting back to just the underlying fundamentals of <clear begin="43.34s"/>corporate credit here in the United States , fundamentally, we are <clear begin="46.58s"/>still looking pretty good. Third-quarter earnings reports that came out <clear begin="50.28s"/>generally were either in line or better than expected. It <clear begin="53.24s"/>has been positive for bondholders, looking at probability of default <clear begin="58.78s"/>risk across the universe of names that we cover. Things <clear begin="62.88s"/>still are pretty even; are still even maybe looking a <clear begin="65.51s"/>tad better. Glaser : So I know in the past, <clear begin="68.00s"/>you have talked about self-inflicted credit wounds. Companies either doing <clear begin="72.31s"/>a debt-fueled buyback or M&amp;A activity or an LBO or <clear begin="75.73s"/>something something like that. Is that a trend that you <clear begin="78.20s"/>have seen kind of play out this year, or do <clear begin="79.83s"/>you think that companies are still being pretty prudent about <clear begin="82.33s"/>their cash management? Sekera : Of those three, we didn't <clear begin="85.01s"/>see the LBOs that we expected this year, we missed <clear begin="87.70s"/>that one. We thought there was going to be a <clear begin="89.23s"/>lot more private equity activity out there. Debt-fueled LBOs, where <clear begin="93.95s"/>we'd see companies get taken out and levered up. It <clear begin="96.63s"/>just really did not occur. There were definitely some instances, <clear begin="98.72s"/>but we thought it was going to be much greater <clear begin="100.63s"/>than it actually was. However, we have seen a lot <clear begin="103.59s"/>more share buybacks, where companies are issuing debt, using that <clear begin="107.70s"/>debt in order to buy back the stock, which, of <clear begin="109.65s"/>course, is usually negative for bondholders. Having said that--of the <clear begin="113.26s"/>names that we follow, the buybacks that they have done, <clear begin="116.63s"/>the debt that they have issued, has been within the <clear begin="119.51s"/>rating category. So there have really only been a couple <clear begin="121.84s"/>of instances where we've downgraded any of the companies that <clear begin="124.50s"/>we cover because of that share buyback activity. Glaser : <clear begin="127.86s"/>Now you mentioned third-quarter earnings were reasonably in line or <clear begin="131.09s"/>a little bit stronger. But they were really kind of <clear begin="133.14s"/>overshadowed in a lot of ways by the crisis in <clear begin="135.73s"/>Europe. What impact do you think that the sovereign debt <clear begin="139.07s"/>situation there is having on corporate credits in the U.S. <clear begin="141.97s"/>and elsewhere? Sekera : Well, it has definitely been a <clear begin="144.62s"/>rollercoaster. Going back to May of 2010, when you and <clear begin="147.36s"/>I first started talking about the sovereign debt crisis, we <clear begin="151.87s"/>did write and opined at that point in time that <clear begin="153.58s"/>we recommended that investors stick with U.S. corporate bonds as <clear begin="157.39s"/>opposed to European corporate bonds, and we still hold that <clear begin="160.25s"/>view today. Now there are instances where we are starting <clear begin="162.81s"/>to see some European bonds for the same corporate credit <clear begin="165.99s"/>risks that are trading at a higher yield or a <clear begin="168.70s"/>wider spread than what we are seeing in the United <clear begin="170.71s"/>States . But it's not yet to the point where we <clear begin="172.73s"/>are willing to make that call, to go ahead and <clear begin="175.27s"/>buy the euro-denominated issues, even if you can swap that <clear begin="178.54s"/>back into U.S. dollars. There is just still too much <clear begin="181.81s"/>fundamental or really systemic risk of what could happen in <clear begin="186.06s"/>Europe right now. Having said that, in the U.S., PPI/CPI <clear begin="191.09s"/>that came out this week, both of those numbers are <clear begin="193.35s"/>still showing inflation is well under control here in the <clear begin="196.69s"/>United States . Looking at what we call the five-year, five-year <clear begin="201.44s"/>forward, which is inflation expectation, stripping out inflation from the <clear begin="205.50s"/>TIPS and straight bonds, still within that trading range that <clear begin="208.96s"/>we have seen--kind of that 2% to 2.5% for quite <clear begin="211.62s"/>a while now. So, we're really not worried about inflation <clear begin="214.97s"/>at this point. We're not worried about the United States <clear begin="218.11s"/>as much as we are the contagion effect of what <clear begin="220.09s"/>could happen in Europe. Glaser : So, some of those <clear begin="222.15s"/>contagion effects into the U.S. credits, do you think that <clear begin="225.58s"/>would come from a weakening of those corporate fundamentals? Would <clear begin="228.38s"/>it come from people kind of rushing money into different <clear begin="231.61s"/>parts of the bond market that maybe don't expect to <clear begin="233.74s"/>get that money? How exactly would that contagion work? Sekera <clear begin="236.37s"/>: Well, it depends on how that contagion first starts. <clear begin="238.82s"/>So, what we've been seeing and our bank credit analyst <clear begin="241.65s"/>Jim Leonard put out a note earlier this week mentioning <clear begin="245.31s"/>that it looks like they're having some liquidity and some <clear begin="247.26s"/>funding issues with the Italian banks this week--that the Italian <clear begin="250.53s"/>banks have gone to the ECB, asking that ECB to <clear begin="255.01s"/>free up some of the collateral guidelines, so that they <clear begin="257.30s"/>can take some of their assets, pledge that to the <clear begin="259.33s"/>ECB to get additional funding. So it depends if we're <clear begin="263.04s"/>looking at a liquidity crisis coming from the banks, or <clear begin="266.06s"/>if it's really more of a solvency crisis coming from <clear begin="269.11s"/>the nations themselves. So this week, we have been seeing <clear begin="272.56s"/>the ECB trying to defend where the interest rates have <clear begin="275.54s"/>been for Italy. Spain's bonds have been weakening pretty dramatically <clear begin="280.31s"/>as well. It looks like they have been intervening in <clear begin="282.52s"/>that market. Spain issued some new 10-year notes, just inside <clear begin="287.29s"/>7% last night, and 7% on the 10-year has kind <clear begin="290.46s"/>of been this litmus test that we have seen in <clear begin="292.39s"/>the market, where tighter than 7% as long as the <clear begin="295.93s"/>dynamics of the country look like they could be fixed <clear begin="298.31s"/>over time, i.e., Italy and Spain, if it's inside 7%, <clear begin="303.19s"/>they can probably work it out. But if all of <clear begin="305.03s"/>a sudden we start getting wider than 7%, now people <clear begin="307.90s"/>are starting to question whether or not those countries would <clear begin="310.05s"/>essentially go into a debt spiral, because the interest expense <clear begin="313.26s"/>that they have to pay on the debt that they <clear begin="315.34s"/>need to issue to fund their deficit, as well as <clear begin="317.38s"/>the debt that they need to issue to roll existing <clear begin="319.70s"/>debt as it comes due, becomes such that the interest <clear begin="322.68s"/>expense becomes more and greater, faster than what they'd ever <clear begin="326.80s"/>be able to grow out of with additional GDP. Glaser <clear begin="329.14s"/>: So does it concern you that even after the <clear begin="332.01s"/>installation of these new technocratic governments in Greece and in <clear begin="334.63s"/>Italy, that those spreads remain so elevated through this week? <clear begin="338.14s"/>Sekera : Yes, and essentially what we've seen is the <clear begin="340.18s"/>market keeps going back and keeps testing the ECB to <clear begin="342.97s"/>see if the ECB's resolve is really there. So, for <clear begin="346.61s"/>example, with that Spanish bond issue that was just auctioned, <clear begin="348.80s"/>it was auctioned I think at  6.98%. After it was <clear begin="353.38s"/>auctioned, it rallied maybe a good 40 basis points, but <clear begin="356.79s"/>then throughout the rest of the day we kept seeing <clear begin="358.97s"/>it weaken and weaken further until it got back to <clear begin="361.59s"/>that 7%; by the end of the day it looked <clear begin="363.91s"/>like it traded maybe just inside that 7%. Same with <clear begin="367.22s"/>the Italian 10-year bonds; we initially saw that blow way <clear begin="370.35s"/>through 7% up to 7.4%, it came back in to <clear begin="374.34s"/>maybe the six-handle area before it widened back out and <clear begin="377.63s"/>then came back in again. So, the ECB is definitely <clear begin="380.36s"/>out there. Well, in my opinion, from what I have <clear begin="382.59s"/>heard, it appears that the ECB is in there trying <clear begin="385.43s"/>to defend those markets, trying to keep them inside that <clear begin="388.06s"/>7%, trying to make sure that there is enough room <clear begin="392.07s"/>that the technocrats, as you want to call it, will <clear begin="395.29s"/>have the ability to come in, put in structural reforms, <clear begin="398.66s"/>put in some austerity measures , really be able to come <clear begin="403.00s"/>in with a couple of different avenues to try and <clear begin="405.60s"/>bring their finances under control. But they need enough time <clear begin="408.51s"/>to do that, which is part of what the EFSF <clear begin="411.71s"/>was originally supposed to do, was to be able to <clear begin="414.40s"/>go out and buy bonds in the secondary market. Part <clear begin="418.94s"/>of the latest package was that they were going to <clear begin="420.73s"/>try and lever that up so that you could use <clear begin="422.70s"/>that in order to bridge and backstop sovereign debt issuance <clear begin="426.06s"/>as well as then try and recapitalize the banks if <clear begin="428.41s"/>the European banks couldn't recapitalize in the secondary market. We're <clear begin="432.53s"/>still waiting to see details on that plan. So, I <clear begin="434.89s"/>am still skeptical that that plan really comes through at <clear begin="437.81s"/>the end of the day. Glaser : So, given all <clear begin="439.49s"/>of this, for investors who may want to be buying <clear begin="441.82s"/>U.S. corporates now, are there certain areas of maturity that <clear begin="445.37s"/>look more attractive or certain sectors that look more attractive <clear begin="448.09s"/>than others? Where would be a good place to put <clear begin="450.02s"/>money to work? Sekera : On the curve, probably the <clear begin="452.60s"/>seven-year duration is probably the most attractive to us at <clear begin="455.82s"/>this point. It's where you get the greatest pickup on <clear begin="458.28s"/>the yield curve without going too far out on the <clear begin="460.53s"/>yield curve. The high-quality names definitely look good. Single-A or <clear begin="465.29s"/>better is probably a good spot to be in right <clear begin="467.59s"/>now. It gives you additional yield pickup. You can probably <clear begin="470.06s"/>pick up 150 basis points to 200 basis points over <clear begin="473.77s"/>Treasuries. But it's still a very high-quality name, and even <clear begin="477.37s"/>in a downturn, you should have a lot less risk <clear begin="479.84s"/>in those single-As than the BBBs. The BBBs at the <clear begin="483.62s"/>250 to 300 range might look attractive, but those bonds <clear begin="488.77s"/>are going to be the ones that get hit the <clear begin="490.15s"/>hardest if we do see any kind of systemic risk <clear begin="493.12s"/>in the system coming out of Europe. Glaser : Well, <clear begin="495.31s"/>Dave, I really appreciate your insight today. Sekera : You're <clear begin="497.46s"/>welcome. Good to be here. Glaser : For Morningstar, I'm <clear begin="499.79s"/>Jeremy Glaser. </smilText>
+        ],
+        metaq : []
     };
 
+    Sample.searchData = {
+        query : "brown fox",
+        results : [
+            {
+                start: 10,
+                text :   [
+                    {
+                        start : 10,
+                        text : "The"
+                    },
+                    {
+                        start : 11,
+                        text : "quick"
+                    },
+                    {
+                        start : 12,
+                        match : true,
+                        text : "brown"
+                    },
+                    {
+                        start : 13,
+                        match : true,
+                        text : "fox"
+                    },
+                    {
+                        start : 14,
+                        text : "jumps"
+                    },
+                    {
+                        start : 15,
+                        text : "over"
+                    },
+                    {
+                        start : 16,
+                        text : "the"
+                    },
+                    {
+                        start : 17,
+                        text : "lazy"
+                    },
+                    {
+                        start : 18,
+                        text : "dog"
+                    }
+
+                ]
+            }
+        ]
+    };
 
 })();(function () {
 
@@ -937,42 +1033,30 @@
         playlistService : "/device/services/mp2-playlist?e={e}"
     };
 
-    var SmilService = function (url, options) {
+    var SmilService = function (video, options) {
         if( ! (this instanceof SmilService ))
-            return new SmilService(url, options);
+            return new SmilService(video, options);
 
-        if( options == undefined && (url instanceof Object) ){
-            options = url;
-            url = null;
-        }
 
         this.config = $.extend({}, defaults, options);
 
-        var dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
-        dispatcher.attach(this);
+        this.dispatcher = Ramp.dispatcher(video);
+        this.dispatcher.attach(this);
 
-        this.onMetaData = dispatcher.observer("metaData");
-        this.onTranscodes = dispatcher.observer("transcodes");
-        this.onCaptions = dispatcher.observer("captions");
-        this.onTags = dispatcher.observer("tags");
-        this.onMetaQ = dispatcher.observer("metaQ");
-        this.onRelated = dispatcher.observer("related");
-        this.onMediaChange = dispatcher.observer("mediaChange");
-        this.onSearch = dispatcher.observer("search");
-
-        if( url )
-            this.load( url );
+        // if we're attached to video, update with track changes
+        this.dispatcher.listen("trackchange", this._onTrackChange, this);
     };
 
     SmilService.msQuotes = true;
     SmilService.rebase = true;
 
-    Ramp.Services.SmilService = SmilService;
-
-    Ramp.data = function (url, options) {
-        return SmilService(url, options);
+    MetaPlayer.ramp = function (options) {
+        return SmilService(null, options);
     };
 
+    MetaPlayer.addPlugin("ramp", function (options) {
+        this.service = SmilService(this.video, options);
+    });
 
     SmilService.parseUrl = function ( url, obj ) {
         var parts = url.split(':');
@@ -988,43 +1072,38 @@
     };
 
     SmilService.prototype = {
-        _interface : "onMetaData onTranscodes onCaptions onTags onMetaQ onRelated onMediaChange",
+        _onTrackChange : function (e, track) {
+            if(! track ) {
+                return;
+            }
 
-        attach : function (target) {
-            var self = this;
-            var methods = this._interface.split(/\s+/g);
-            $.each(methods, function (i, key) {
-                var val = self[key];
-                if( key[0] == "_" || ! (val instanceof Function))
-                    return;
-                target[key] = function () {
-                    return self[key].apply(self, arguments);
-                }
-            });
+            if( typeof track == "string" ) {
+                track = SmilService.parseUrl(track);
+            }
+
+            if( track && track.rampId ){
+                this.load(track);
+                e.preventDefault();
+            }
         },
 
-        load : function ( o  ) {
+        load : function ( track  ) {
 
             // parse format:  "ramp:publishing.ramp.com/ramp:1234"
-            if( typeof o == "string" ) {
-                o = SmilService.parseUrl(o);
-            }
-            else if( o.url && ! o.rampId ) {
-                SmilService.parseUrl(o.url, o);
+            if( typeof track == "string" ) {
+                track = SmilService.parseUrl(track);
             }
 
-            if( ! o.rampId )
-                throw "invalide media id";
+            if( ! track.rampId ) {
+                throw "invalid media id";
+            }
 
-            if( this.mediaId )
-                this.dispatch('mediaChange');
+            this.mediaId = track.rampId;
 
-            this.mediaId = o.rampId;
+            if( track.rampHost )
+                this.lastHost = track.rampHost;
 
-            if( o.rampHost )
-                this.lastHost = o.rampHost;
-
-            var host = this.lastHost || rampHost;
+            var host = this.lastHost;
             var url = host + this.config.playlistService.replace(/{e}/, this.mediaId);
 
             var params = {
@@ -1044,15 +1123,21 @@
                 success : function (response, textStatus, jqXHR) {
                     var data = this.parse(response);
                     data.metadata.host = host;
-                    this._data = data;
-                    this.dispatch('metaData', data.metadata);
-                    this.dispatch('transcodes', data.transcodes);
-                    this.dispatch('captions', data.captions);
-                    this.dispatch('tags', data.tags);
-                    this.dispatch('metaQ', data.metaq);
-                    this.dispatch('related', data.related);
+                    this.setData(data)
+
                 }
             });
+        },
+
+        setData : function (data) {
+            this._data = data;
+            var d = this.dispatcher;
+            d.dispatch('metadata', data.metadata);
+            d.dispatch('transcodes', data.transcodes);
+            d.dispatch('captions', data.captions);
+            d.dispatch('tags', data.tags);
+            d.dispatch('metaq', data.metaq);
+            d.dispatch('related', data.related);
         },
 
         parse : function (data) {
@@ -1090,7 +1175,7 @@
             // transcodes
             media.transcodes.push({
                 name : "default",
-                type : "video/" + video.attr('type'),
+                type : SmilService.resolveType( video.attr('src') ),
                 url : video.attr('src')
             });
 
@@ -1321,12 +1406,20 @@
 
     SmilService.deSmart = function (text) {
        return text.replace(/\xC2\x92/, "\u2019" );
-    }
+    };
 
     SmilService.resolveType = function ( url ) {
         var ext = url.substr( url.lastIndexOf('.') + 1 );
+
         if( ext == "ogv")
-            ext = "ogg";
+            return "video/ogg";
+
+        // none of these seem to work on ipad4
+        if( ext == "m3u8" )
+            // return  "application.vnd.apple.mpegurl";
+            // return  "vnd.apple.mpegURL";
+            return  "application/application.vnd.apple.mpegurl";
+
         return "video/"+ext;
     };
 
@@ -1345,47 +1438,45 @@
         autoAdvance : true,
         related: true,
         loop : false,
+        volume: 1,
         controls : true
     };
 
-    var Html5Player = function (el, url, options ){
-
+    var Html5Player = function (el, options ){
         if( !(this instanceof Html5Player ))
-            return new Html5Player(el, url, options);
+            return new Html5Player(el, options);
 
+        this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
         this.config = $.extend({}, defaults, options);
-
-        this._createMarkup( el);
-
-        // set up playlist, have it use our event dispatcher
-        this.service = Ramp.data({});
-        this.service.attach(this);
-        this.video.service = this.service;
-
-        if( Ramp.playlist )
-            Ramp.playlist(this.video, url);
-        else
-            this.video.src = url;
-
+        this._createMarkup(el);
     };
 
-
-    Ramp.html5 = function (el, url, options) {
-        var player = Html5Player(el, url, options);
-        player.video._player = player;
-        return player.video;
+    MetaPlayer.html5 = function (video, options) {
+        return Html5Player(video, options).video;
     };
 
-    Ramp.metaplayer = Ramp.html5;
-    Ramp.Players.Html5Player = Html5Player;
+    MetaPlayer.addPlayer("html5", function (options) {
+       return MetaPlayer.html5(this.video, options);
+    });
 
     Html5Player.prototype = {
-
         _createMarkup : function ( parent ) {
             var p = $(parent);
-            if( p.is('video') ) {
-                this.video = p.get(0);
-                Ramp.UI.ensureOffsetParent( this.video, true);
+            var v = p.find('video');
+
+            if( p.is('video') || parent.currentTime != null ) {
+                v = p;
+            }
+
+            if( v.length > 0 ) {
+                if( this._iOS ){
+                    // ipad video breaks upon reparenting, so needs resetting
+                    // jquery listeners will be preserved, but not video.addEventListener
+                    this.video = v.clone(true, true).appendTo( v.parent() ).get(0);
+                    v.remove();
+                } else {
+                    this.video = v.get(0);
+                }
             }
             else {
                 var video = document.createElement('video');
@@ -1393,16 +1484,11 @@
                 video.preload = this.config.preload;
                 video.controls = this.config.controls;
                 video.muted = this.config.muted;
-                video.style.position = "absolute";
-                video.style.top = 0;
-                video.style.left = 0;
-                video.style.width = "100%";
-                video.style.height = "100%";
+                video.volume = this.config.volume
                 this.video = video;
                 p.append(video);
-                Ramp.UI.ensureOffsetParent( this.video);
             }
-            this.video.style.position = "absolute";
+
         }
 
     };
@@ -1492,7 +1578,7 @@
                         autoBuffering: true
                     }
                 },this.config.fpConfig);
-                var v = $('<div class="mp-video""></div>');
+                var v = $('<div class="metaplayer-video""></div>');
                 $(el).append(v);
                 this._flowplayer = $f( v.get(0), {
                     src: this.config.swfUrl,
@@ -1532,11 +1618,12 @@
 
             this.controls( this.config.controls );
 
-            self.dispatch('loadstart');
 
             // apply src from before we were loaded, if any
             if( this.__src )
                 this.src( this.__src );
+
+            self.dispatch('loadstart');
 
             if( this.preload() || this.autoplay()  )
                 this.load();
@@ -1675,10 +1762,27 @@
         },
 
         canPlayType : function (type) {
-            if( this._iOS && type.match( /m3u8$/ ) )
-                return "probably";
-            if( type.match( /mov|m4v|mp4|avi$/ ) )
-                return "maybe";
+            var canPlay = null;
+
+            // html5 / ipad
+            if( window.flashembed.__replaced ){
+                if( ! this._video )
+                    this._video = document.createElement('video');
+
+                // just accept m3u8
+                if( this._iOS  && type.match(/mpegurl|m3u8/i)  ){
+                    canPlay = "probably";
+                }
+                else if( this._video.canPlayType )
+                    canPlay = this._video.canPlayType(type)
+            }
+
+            // fall through to flash
+            else if( type.match( /mp4|flv|jpg$/ ) ) {
+                canPlay = "probably";
+            }
+
+            return canPlay
         },
 
         paused : function (){
@@ -1820,21 +1924,11 @@
             return this.__readyState;
         },
 
-        _children : function () {
-            var sources = [];
-            var src = document.createElement('source');
-            src.setAttribute('type', "video/ramp");
-            src.setAttribute('src', this.src);
-            return [src];
-        },
-
-
         getInterface : function () {
             var target = Ramp.Utils.Proxy.getProxyObject( this._flowplayer.getParent() );
 
             Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
-                " paused played controls autoplay preload src ended readyState" +
-                " children",
+                " paused played controls autoplay preload src ended readyState",
                 target, this);
 
             Ramp.Utils.Proxy.proxyFunction("load play pause canPlayType" ,this, target);
@@ -1869,153 +1963,4 @@
         }
 
     };
-})();
-(function () {
-
-    var $ = jQuery;
-    var Popcorn = window.Popcorn;
-
-    var defaults = {
-        subtitles : true
-    };
-
-    var PopcornLoader = function (player, service, options) {
-
-        if( !(this instanceof PopcornLoader) )
-            return new PopcornLoader(player, service, options);
-
-        if( ! (window.Popcorn && Popcorn instanceof Function) )
-            return;
-
-        if( player.getTrackEvent )
-            this.popcorn = player;
-        else if( player.popcorn )
-            this.popcorn = player.popcorn;
-        else {
-            this.popcorn = Popcorn(player);
-            player.popcorn = this.popcorn;
-        }
-
-        // two-argument constructor(player, options)
-        if( options == undefined && player.service ) {
-            options = service;
-            service = player.service;
-        }
-
-        this.config = $.extend(true, {}, defaults, options);
-
-        this.player = player;
-        this.service = service;
-
-        this._sequences = {};
-        this.metaq = {};
-
-        this.addDataListeners();
-    };
-
-    Ramp.metaq = function (player, options) {
-        return PopcornLoader(player, options);
-    };
-
-    PopcornLoader.prototype = {
-        addDataListeners : function () {
-            if( ! this.service )
-                return;
-            this.service.onMetaData( this.onMetaData, this);
-            this.service.onCaptions( this._onCaptions, this);
-            this.service.onMetaQ( this._onMetaq, this);
-        },
-
-        _onCaptions : function (captions) {
-            var self = this;
-            if( this.config.subtitles )
-                $.extend(this.metaq, { subtitle : captions });
-        },
-
-        _onMetaq : function (metaq) {
-            var self = this;
-            $.extend(this.metaq, metaq);
-            this._renderPopcorn();
-        },
-
-        onMetaData : function () {
-            // cleanup
-            var events = this.popcorn.getTrackEvents();
-            var self = this;
-            $.each(events, function (i, e){
-                self.popcorn.removeTrackEvent(e._id);
-            });
-            this.metaq = {};
-        },
-
-        _renderPopcorn : function () {
-            var self = this;
-
-            // clones
-            $.each(this.config, function (btype, config){
-
-                $.each(self.metaq, function (type, events){
-                    $.each(events, function (i, options) {
-
-                        if( type != btype  )
-                            return;
-
-                        if(! config.clone )
-                            return;
-
-                        var clones = config.clone.split(/\s+/);
-                        $.each(clones, function (j, ctype) {
-
-                            if( ! self.metaq[ctype] )
-                                self.metaq[ctype] = [];
-
-                            self.metaq[ctype].push( $.extend({}, options));
-                        });
-                    });
-                });
-            });
-
-            // process overrides, sequences
-            $.each(this.metaq, function (type, events){
-                $.each(events, function (i, event){
-                    events[i] =  self._composite(type, event);
-                });
-            });
-
-            // schedule with popcorn instance
-            $.each(this.metaq, function (type, events){
-                $.each(events, function (i, options){
-                    self._schedule(type, options);
-                });
-            });
-        },
-
-        _composite : function (type, options) {
-            var c = this.config[type];
-            if( ! c )
-                return options;
-
-            if( c.overrides )
-                options = $.extend({},  options, c.overrides );
-
-            if(  c.duration )
-                options.end = options.start + c.duration;
-
-            if( c.sequence ) {
-                var last = this._sequences[c.sequence];
-                if( last )
-                    last.end = options.start;
-                this._sequences[c.sequence] = options;
-            }
-
-            return options;
-        },
-
-        _schedule : function (type, options){
-            var fn = this.popcorn[type];
-            if( fn  )
-                fn.call(this.popcorn, options);
-        }
-    };
-
 })();

@@ -35,29 +35,28 @@ all copies or substantial portions of the Software.
 
     };
 
-    var Embed = function (target, service, options) {
+    var Embed = function (target, video, options) {
 
         if( !(this instanceof Embed) )
-            return new Embed(target, service, options);
+            return new Embed(target, video, options);
 
         this.config = $.extend(true, {}, defaults, options);
-
-        // if passed in player instance
-        if( service.service )
-            service = service.service;
-
-        this.service = service;
         this.container = target;
+        this.dispatcher = MetaPlayer.dispatcher(video);
 
         this.addDom();
-        this.service.onMetaData( this.onMetaData, this );
+        this.dispatcher.listen("metadata", this.onMetaData, this );
     };
 
-    Ramp.embed = Embed;
+    MetaPlayer.embed  = Embed;
+
+    MetaPlayer.addPlugin("embed", function (target, options) {
+        return Embed(target, this.video, options);
+    });
 
     Embed.prototype = {
 
-        onMetaData : function (metadata) {
+        onMetaData : function (e, metadata) {
             this._metadata = metadata;
 
             if( this._current )
@@ -156,7 +155,5 @@ all copies or substantial portions of the Software.
                 return dict[match];
             });
     };
-
-    window.repl = Embed.templateReplace;
 
 })();

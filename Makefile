@@ -10,12 +10,12 @@ BUILD_DIR=build
 CORE=$(BUILD_DIR)/metaplayer.js
 CSS=$(BUILD_DIR)/metaplayer.css
 
-CORE_SRC=src/ramp.js src/models/*.js src/utils/*.js  src/players/playlist/player.playlist.js
+CORE_SRC=src/core/metaplayer.js src/core/*/*js
 CORE_MIN=$(CORE:.js=.min.js)
 
-ALL_SERVICES=service.json service.smil 
-ALL_PLAYERS=player.html5 player.flowplayer player.popcorn
-ALL_UI=ui.controls ui.overlay ui.transcript ui.captions ui.search ui.videojs ui.endcap ui.social ui.embed
+ALL_SERVICES=service.sample service.smil 
+ALL_PLAYERS=player.html5 player.flowplayer 
+ALL_UI=ui.controls ui.overlay ui.transcript ui.captions ui.search ui.videojs ui.endcap ui.social ui.embed ui.metaq
 ALL_THEME=theme.mp2
 
 compile=$(CLOSURE) $(CLOSURE_FLAGS) --js=$1 >  $2
@@ -35,7 +35,7 @@ $(CORE): $(BUILD_DIR)
 	@cat $(CORE_SRC) > $@
 
 $(CSS): $(BUILD_DIR) $(ALL_UI)
-	@cat src/ui/base/*css >> $(CSS)
+	@cat src/core/*/*.css >> $(CSS)
 	@echo $@ 
 
 service.%: $(BUILD_DIR)

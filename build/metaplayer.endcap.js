@@ -28,42 +28,32 @@ all copies or substantial portions of the Software.
         fadeMs : 250
     };
 
-    var EndCap = function (player, service, options) {
+    var EndCap = function (player, options) {
 
         if( !(this instanceof EndCap ))
-            return new EndCap(player, service, options);
+            return new EndCap(player, options);
 
         this.config = $.extend({}, defaults, options);
 
-        // two-argument constructor(player, options)
-        if( options == undefined && player.service ) {
-            options = service;
-            service = player.service;
-        }
-        this.service = service;
-        this.player = player;
-        this.baseUrl = Ramp.Utils.Script.base('(metaplayer||ui).endcap(.min)?.js');
+        this.dispatcher = player.dispatcher;
+        this.video = player.video;
+        this.playlist = player.playlist;
 
-        var dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
-        dispatcher.attach(this);
-
-        this.onRender = dispatcher.observer("render");
+        this.baseUrl = Ramp.script.base('(metaplayer||ui).endcap(.min)?.js');
 
         if( this.config.container ) {
             this.container = this.config.container;
             this.init();
         }
         else {
-            this.container = player.parentNode;
+            this.container = this.video.parentNode;
             this.getTemplate();
         }
-
-
     };
 
-    Ramp.endcap = function (player, service, options) {
-        return EndCap(player, service, options);
-    };
+    MetaPlayer.addPlugin("endcap", function (options) {
+        return EndCap(this, options);
+    });
 
     EndCap.prototype = {
 
@@ -81,19 +71,15 @@ all copies or substantial portions of the Software.
         init : function  (){
             var self = this;
 
-            if( this.player.playlist )
-                this.player.playlist.onPlaylistChange( this.onTrackChange, this);
+            this.dispatcher.listen("metadata", this.onTrackChange, this);
+            this.dispatcher.listen("playlistchange", this.onTrackChange, this);
 
-            $(this.player).bind('play playing seeked loadstart', function () {
+            $(this.video).bind('play playing seeked loadstart', function () {
                 self.onPlaying();
             });
 
-            $(this.player).bind('ended', function () {
+            $(this.video).bind('ended', function () {
                 self.onEnded();
-            });
-
-            $(this.player).bind('loadedmetadata', function () {
-                self.onTrackChange();
             });
 
             this.find('countdown').click( function (e) {
@@ -104,11 +90,11 @@ all copies or substantial portions of the Software.
                 self.countdown.stop();
             });
             this.find('preview').click( function () {
-                self.player.playlist.next();
+                self.playlist.next();
             });
             this.find('repeat').click( function () {
-                self.player.currentTime = 0;
-                self.player.play();
+                self.video.currentTime = 0;
+                self.video.play();
             });
 
             this.find('search-btn').click( function (e) {
@@ -121,20 +107,20 @@ all copies or substantial portions of the Software.
                 }
             });
 
-            this.player.playlist.advance = false;
+            this.playlist.advance = false;
 
-            this.countdown = Ramp.Timer(1000, this.config.countDownSec);
+            this.countdown = Ramp.timer(1000, this.config.countDownSec);
             this.countdown.listen('time', this.onCountdownTick, this);
             this.countdown.listen('complete', this.onCountdownDone, this);
 
 
             if( Ramp.embed ) {
-                this.embed = Ramp.embed( this.find('embed'), this.service );
+                this.embed = Ramp.embed( this.find('embed'), this.video );
                 this.find('embed').show();
             }
 
             if( Ramp.social ){
-                Ramp.social( this.find('social'), this.service );
+                Ramp.social( this.find('social'), this.video );
             }
 
             this.toggle(false, true);
@@ -177,12 +163,9 @@ all copies or substantial portions of the Software.
                 });
         },
 
-        onTrackChange : function () {
-            if( ! this.player.readyState > 0 )
-                return;
-
+        onTrackChange : function (e) {
             this.toggle(false);
-            var again = this.player.playlist.track();
+            var again = this.playlist.track();
             this.find('again-thumb').attr('src', again.thumbnail);
             this.find('again-title').text(again.title);
             this.find('again').show();
@@ -190,7 +173,7 @@ all copies or substantial portions of the Software.
             this.siteSearchUrl = again.siteSearchURL;
 
             this.find('next').hide();
-            var nextup = this.player.playlist.nextTrack();
+            var nextup = this.playlist.nextTrack();
             if( nextup ){
                 this.find('preview-thumb').attr('src', nextup.thumbnail);
                 this.find('preview-title').text(nextup.title);
@@ -204,7 +187,7 @@ all copies or substantial portions of the Software.
         },
 
         onCountdownDone : function (e) {
-            this.player.playlist.next();
+            this.playlist.next();
         },
 
         find : function (className){

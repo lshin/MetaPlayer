@@ -29,39 +29,37 @@ all copies or substantial portions of the Software.
         hideOnEnded : true
     };
 
-    var Overlay = function (player, service, options) {
+    var Overlay = function (player, options) {
 
         if( !(this instanceof Overlay ))
-            return new Overlay(player, service, options);
+            return new Overlay(player, options);
 
         this.config = $.extend({}, defaults, options);
 
-        // two-argument constructor(player, options)
-        if( options == undefined && player.service ) {
-            options = service;
-            service = player.service;
-        }
-        this.service = service;
-        this.player = player;
+        this.video = player.video;
+        this.dispatcher = player.dispatcher;
+        this.service = player.service;
+        this.popcorn = player.popcorn;
         this.playlist = player.playlist;
-        this.baseUrl = Ramp.Utils.Script.base('(metaplayer||ui).overlay(.min)?.js');
-        this.nextUp = Ramp.data();
-        this._touchDevice = /iPad|iPhone|iPod/i.test(navigator.userAgent);
 
+        // used to find our templates
+        this.baseUrl = Ramp.script.base('(metaplayer||ui).overlay(.min)?.js');
+        this._touchDevice = /iPad|iPhone|iPod/i.test(navigator.userAgent);
 
         if( this.config.container ) {
             this.container = this.config.container;
             this.init();
         }
         else {
-            this.container = this.config.target || this.player.parentNode;
+            this.container = this.config.target || this.video.parentNode;
             this.createMarkup(); // async init
         }
+        this.video.overlay = this;
     };
 
-    Ramp.overlay = function (player, service, options) {
-        return Overlay(player, service, options);
-    };
+    MetaPlayer.addPlugin("overlay", function (options) {
+        return Overlay(this, options);
+    });
 
     Overlay.prototype = {
         init : function () {
@@ -76,7 +74,7 @@ all copies or substantial portions of the Software.
             this.onPlayStateChange();
             this.setCaptions(this.config.captions);
 
-            if( this._touchDevice )
+            if( this._touchDevice || ! this.config.autoHide )
                 this.find('close-btn').show();
 
             if( Ramp.embed ) {
@@ -91,20 +89,17 @@ all copies or substantial portions of the Software.
         addUIListeners : function () {
             var self = this;
             this.find('play').click( function (e) {
-                self.player.play();
-            });
-            this.find('play').click( function (e) {
-                self.player.play();
+                self.video.play();
             });
             this.find('pause').click( function (e) {
-                self.player.pause();
+                self.video.pause();
             });
             this.find('mute').click( function (e) {
-                self.player.muted = true;
+                self.video.muted = true;
             });
 
             this.find('unmute').click( function (e) {
-                self.player.muted = false;
+                self.video.muted = false;
             });
 
             this.find('search-btn').click( function (e) {
@@ -139,7 +134,7 @@ all copies or substantial portions of the Software.
                 self.onVolumeDrag(e);
             });
 
-            if( this.config.autoHide  && ! this.config.target ) {
+            if( ! this.config.target ) {
                 var node = this.find().get(0);
 
                 if( this._touchDevice ) {
@@ -155,6 +150,7 @@ all copies or substantial portions of the Software.
                         if( ! self._ended )
                             self.delayedToggle(true)
                     });
+
                     container.bind('mouseleave', function (e) {
                         if( ! self._ended )
                             self.delayedToggle(false)
@@ -168,14 +164,12 @@ all copies or substantial portions of the Software.
         },
 
         addServiceListeners : function () {
-            if( ! this.service.onTags )
+            if( ! this.service )
                 return;
-
-            this.service.onTags(this.onTags, this);
-//            this.service.onSearch(this.onSearchResult, this);
+            this.service.listen("tags", this.onTags, this);
         },
 
-        onTags : function (tags) {
+        onTags : function (e, tags) {
             var self = this;
             $.each(tags, function (i, tag){
                 self.createTag(tag.term);
@@ -258,11 +252,11 @@ all copies or substantial portions of the Software.
             var self = this;
             var el = this.create('result');
             el.click( function (e) {
-                self.player.currentTime = result.start - self.config.seekBeforeSec;
+                self.video.currentTime = result.start - self.config.seekBeforeSec;
             });
 
             var time = this.create('result-time');
-            time.text( Ramp.Utils.Format.seconds( result.start) );
+            time.text( Ramp.format.seconds( result.start) );
             el.append(time);
 
             var phrase = this.create('result-text');
@@ -283,7 +277,7 @@ all copies or substantial portions of the Software.
         },
 
         addPopcornListeners : function () {
-            if(! this.player.popcorn )
+            if(! this.popcorn )
                 return;
 
             var self = this;
@@ -297,13 +291,13 @@ all copies or substantial portions of the Software.
         },
 
         setCaptions : function ( bool ){
-            if(! this.player.popcorn )
+            if(! this.popcorn )
                 return;
 
             if( bool )
-                this.player.popcorn.enable('subtitle');
+                this.popcorn.enable('subtitle');
             else
-                this.player.popcorn.disable('subtitle');
+                this.popcorn.disable('subtitle');
 
             this.find('cc').toggle(bool);
             this.find('cc-off').toggle(!bool)
@@ -313,33 +307,31 @@ all copies or substantial portions of the Software.
         addPlayerListeners : function () {
             var self = this;
 
-            $(this.player).bind('canplay', function(e){
+            $(this.video).bind('canplay', function(e){
                 // check if volume adjustment is not supported (eg. iOS)
-                var hold = self.player.volume;
+                var hold = self.video.volume;
                 var test =  .5;
-                self.player.volume = test;
-                if(self.player.volume !=  test)
+                self.video.volume = test;
+                if(self.video.volume !=  test)
                     self.hideVolumeControls();
-                self.player.volume = hold;
+                self.video.volume = hold;
             });
 
-            $(this.player).bind('pause play seeked seeking canplay', function(e){
+            $(this.video).bind('pause play seeked seeking canplay', function(e){
                 self.onPlayStateChange();
             });
-            $(this.player).bind('ended', function(e){
+            $(this.video).bind('ended', function(e){
                 self.onEnded();
             });
-            $(this.player).bind('volumechange', function(e){
+            $(this.video).bind('volumechange', function(e){
                 self.onVolumeChange();
             });
 
         },
 
         addPlaylistListeners : function (){
-            if( ! this.playlist )
-                return;
-            this.playlist.onTrackChange( this.onTrackChange, this);
-            this.playlist.onPlaylistChange( this.onPlaylistChange, this);
+            this.dispatcher.listen("trackchange", this.onTrackChange, this);
+            this.dispatcher.listen("playlistchange", this.onPlaylistChange, this);
         },
 
         onVolumeDragStart : function (e) {
@@ -377,8 +369,8 @@ all copies or substantial portions of the Software.
                 ratio = 1;
 
             // todo, throttle the mousemove
-            this.player.muted = false;
-            this.player.volume = ratio;
+            this.video.muted = false;
+            this.video.volume = ratio;
         },
 
         hideVolumeControls : function () {
@@ -390,11 +382,11 @@ all copies or substantial portions of the Software.
 
         onVolumeChange : function () {
 
-            var muted = this.player.muted;
+            var muted = this.video.muted;
             this.find('mute').toggle( !muted );
             this.find('unmute').toggle( muted );
 
-            var volume = muted ? 0 : this.player.volume;
+            var volume = muted ? 0 : this.video.volume;
 
             this.find('volume').width( (volume * 100) + "%");
         },
@@ -403,7 +395,7 @@ all copies or substantial portions of the Software.
             this._ended = false;
             // manage our timers based on play state
             // don't use toggle(); triggers layout quirks in chrome
-            if( this.player.paused ) {
+            if( this.video.paused ) {
                 this.find('pause').hide();
                 this.find('play').show();
             }
@@ -414,7 +406,7 @@ all copies or substantial portions of the Software.
         },
 
         onEnded : function () {
-            if( ! this.config.hideOnEnded )
+            if( ! (this.config.hideOnEnded && this.config.autoHide) )
                 return;
             this._ended = true;
             var node = this.find().stop();
@@ -436,6 +428,11 @@ all copies or substantial portions of the Software.
 
         delayedToggle : function ( bool) {
             this._delayed = bool;
+
+            // don't auto-hide;
+            if( ! this.config.autoHide && ! bool){
+                return;
+            }
             var self = this;
             setTimeout( function () {
                 if( this.__opened != self._delayed )

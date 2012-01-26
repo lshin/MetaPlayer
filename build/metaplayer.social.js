@@ -40,7 +40,7 @@ all copies or substantial portions of the Software.
         this.container = target;
 
         this.addDom();
-        this.service.onMetaData( this.onMetaData, this );
+        this.service.listen("metadata", this.onMetaData, this );
     };
 
     Ramp.social = Social;
@@ -52,7 +52,7 @@ all copies or substantial portions of the Software.
             this.create('clear').appendTo( el );
         },
 
-        onMetaData : function (data) {
+        onMetaData : function (e, data) {
             this.setFacebook(data);
             this.setTwitter(data);
             this.find().show();

@@ -57,9 +57,6 @@ all copies or substantial portions of the Software.
     Captions.instances = {};
     Captions._count = 0;
 
-    if( window.Ramp )
-        Ramp.captions = Captions;
-
     Captions.prototype = {
         init : function (){
             this.container = this.create();
