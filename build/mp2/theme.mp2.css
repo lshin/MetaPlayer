@@ -1,24 +1,25 @@
-.metaplayer-controls {
+.mp-controls {
     position: absolute;
     bottom: 0;
     right: 0;
     left: 0;
     height: 32px;
+    overflow:  hidden;
 }
 
-.metaplayer-box {
+.mp-controls-box {
     background: #aaa;
     padding:  4px;
 }
 
-.metaplayer-play,
-.metaplayer-time {
+.mp-controls-play,
+.mp-controls-time {
     display: block;
     position: absolute;
     top: 4px;
 }
 
-.metaplayer-time {
+.mp-controls-time {
     width: 96px;
     height: 24px;
     line-height: 28px;
@@ -27,41 +28,41 @@
     right: 4px;
     text-shadow: 0 0 2px #666;
 }
-.metaplayer-time-current {
+.mp-controls-time-current {
     display: inline;
     color: #fff;
 }
 
-.metaplayer-time-duration {
+.mp-controls-time-duration {
     display: inline;
     color: #ddd;
 }
 
-.metaplayer-play,
-.metaplayer-pause
+.mp-controls-play,
+.mp-controls-pause
 {
     cursor: pointer;
 }
 
-.metaplayer-play {
+.mp-controls-play {
     width: 28px;
     height: 24px;
     left: 4px;
 }
 
-.metaplayer-pause {
+.mp-controls-pause {
     width: 28px;
     height: 24px;
 }
 
-.metaplayer-fullscreen {
+.mp-controls-fullscreen {
     width: 32px;
     height: 24px;
     right: 4px;
     display: none;
 }
 
-.metaplayer-track {
+.mp-controls-track {
     height: 24px;
     background: #333;
     margin-left: 32px;
@@ -74,7 +75,7 @@
     margin-top: 1px;
 }
 
-.metaplayer-track-fill {
+.mp-controls-track-fill {
     width: 0%;
     background: #fff;
     height: 100%;
@@ -85,7 +86,7 @@
     border-bottom-left-radius: 5px;
 }
 
-.metaplayer-track-marker {
+.mp-controls-track-marker {
     width: 4px;
     height: 22px;
     margin-left: -2px;
@@ -97,15 +98,15 @@
     background: gray;
 }
 
-.metaplayer-tag {
+.mp-controls-tag {
     background: cyan;
 }
 
-.metaplayer-metaq {
+.mp-controls-metaq {
     background: #ee82ee;
 }
 
-.metaplayer-track-knob {
+.mp-controls-track-knob {
     width: 8px;
     height: 24px;
     border: 1px solid #666;
@@ -120,16 +121,16 @@
 
 }
 
-.metaplayer-track-knob:hover {
+.mp-controls-track-knob:hover {
     border: 1px solid blue;
 }
 
-.metaplayer-track-knob:active {
+.mp-controls-track-knob:active {
     background: #aaaaff;
     border: 1px solid blue;
 }
 
-.metaplayer-track-buffer {
+.mp-controls-track-buffer {
     width: 0%;
     margin-top: -1px;
     height: 24px;
@@ -139,7 +140,7 @@
     border-radius: 5px;
 }
 
-.metaplayer-query {
+.mp-controls-query {
   background: orange;
   border-radius: 2px;
 }
@@ -783,6 +784,26 @@
     width: 100%;
     margin: 0; padding:  0;
 }
+.metaplayer {
+    position: relative;
+    top: 0;
+    left: 0;
+}
+
+.mp-video {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+.mp-video div,
+.mp-video video,
+.mp-video object {
+    width: 100% !important;
+    height: 100% !important;;
+}
 .metaplayer-captions {
     bottom: 40px;
 }
@@ -792,15 +813,15 @@
     font-family: Verdana, sans-serif;
     font-size: 14px;
     padding: 10px;
-}.metaplayer-controls {
+}.mp-controls {
     background: silver;
     height: 26px;
 }
-.metaplayer-box {
+.mp-controls-box {
     background: #aaa;
 }
 
-.metaplayer-time {
+.mp-controls-time {
     text-shadow: 0 0 2px #666;
     font-family: verdana, arial, sans-serif;
     font-size:11px;
@@ -809,17 +830,17 @@
     vertical-align: top;
     margin-top: -4px;
 }
-.metaplayer-time-current {
+.mp-controls-time-current {
     color: black;
     text-shadow: 0 1px 0 #fff;
 }
 
-.metaplayer-time-duration {
+.mp-controls-time-duration {
     text-shadow: none;
     color:#777777;
 }
 
-.metaplayer-play {
+.mp-controls-play {
     width: 17px;
     height: 17px;
     background-repeat: no-repeat;
@@ -829,15 +850,15 @@
     left: 7px;
 }
 
-.metaplayer-pause {
+.mp-controls-pause {
     background-image: url(assets/control/pause-28x24.png);
 }
 
-.metaplayer-fullscreen {
+.mp-controls-fullscreen {
     background: url(assets/control/fullscreen-32x24.png);
 }
 
-.metaplayer-track {
+.mp-controls-track {
     border: 1px solid dimGray;
     border-radius: 3px;
     -moz-border-radius: 3px;
@@ -848,7 +869,7 @@
 
 }
 
-.metaplayer-track-fill {
+.mp-controls-track-fill {
     background: #d3d3d3; /* for non-css3 browsers */
     /* filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#d3d3d3', endColorstr='#9f9f9f');  for IE but doesn't work in IE9 */
     background: -webkit-gradient(linear, left top, left bottom, from(#d3d3d3), to(#9f9f9f)); /* for webkit browsers */
@@ -858,26 +879,26 @@
     -webkit-border-radius:3px;
     }
 
-.metaplayer-track-marker {
+.mp-controls-track-marker {
     width: 14px;
     height: 14px;
     margin-left: -7px;
     background: url(assets/dot-blue.png) no-repeat;
 }
 
-.metaplayer-query {
+.mp-controls-query {
     background: transparent url(assets/dot-orange.png) no-repeat;
 }
 
-.metaplayer-tag {
+.mp-controls-tag {
     background: url(assets/dot-blue.png) no-repeat;
 }
 
-.metaplayer-metaq {
+.mp-controls-metaq {
     background: #ee82ee;
 }
 
-.metaplayer-track-knob {
+.mp-controls-track-knob {
     background: url(assets/playhead.png) no-repeat;
     border:  none;
     width:9px;
@@ -885,17 +906,17 @@
     top:-2px;
 }
 
-.metaplayer-track-knob:hover {
+.mp-controls-track-knob:hover {
     border:  none;
     background: url(assets/playhead.png) no-repeat;
 }
 
-.metaplayer-track-knob:active {
+.mp-controls-track-knob:active {
     border:  none;
     background: url(assets/playhead.png) no-repeat;
 }
 
-.metaplayer-track-buffer {
+.mp-controls-track-buffer {
     background: #666;
     border-radius: 5px;
 }
