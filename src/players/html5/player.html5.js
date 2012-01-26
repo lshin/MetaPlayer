@@ -12,51 +12,45 @@
         autoAdvance : true,
         related: true,
         loop : false,
+        volume: 1,
         controls : true
     };
 
-    var Html5Player = function (el, url, options ){
-
+    var Html5Player = function (el, options ){
         if( !(this instanceof Html5Player ))
-            return new Html5Player(el, url, options);
+            return new Html5Player(el, options);
 
+        this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
         this.config = $.extend({}, defaults, options);
-
-        this._createMarkup( el);
-
-        // set up playlist, have it use our event dispatcher
-        this.service = this.config.service || Ramp.data({});
-        this.video.service = this.service;
-
-        if( Ramp.playlist )
-            Ramp.playlist(this.video, url);
-        else
-            this.video.src = url;
+        this._createMarkup(el);
     };
 
-
-    Ramp.html5 = function (el, url, options) {
-        var player = Html5Player(el, url, options);
-        player.video._player = player;
-        return player.video;
+    MetaPlayer.html5 = function (video, options) {
+        return Html5Player(video, options).video;
     };
 
-    Ramp.prototype.html5 = function (url, options) {
-        this.video = Html5Player(this.target, url, options).video;
-        return this;
-    };
+    MetaPlayer.addPlayer("html5", function (options) {
+       return MetaPlayer.html5(this.video, options);
+    });
 
     Html5Player.prototype = {
         _createMarkup : function ( parent ) {
             var p = $(parent);
             var v = p.find('video');
-            var container = p.find('.metaplayer-video') || p;
 
-            if( p.is('video') ) {
-                this.video = p.get(0);
+            if( p.is('video') || parent.currentTime != null ) {
+                v = p;
             }
-            else if( v.length ){
-                this.video = v.get(0)
+
+            if( v.length > 0 ) {
+                if( this._iOS ){
+                    // ipad video breaks upon reparenting, so needs resetting
+                    // jquery listeners will be preserved, but not video.addEventListener
+                    this.video = v.clone(true, true).appendTo( v.parent() ).get(0);
+                    v.remove();
+                } else {
+                    this.video = v.get(0);
+                }
             }
             else {
                 var video = document.createElement('video');
@@ -64,9 +58,11 @@
                 video.preload = this.config.preload;
                 video.controls = this.config.controls;
                 video.muted = this.config.muted;
+                video.volume = this.config.volume
                 this.video = video;
-                container.append(video);
+                p.append(video);
             }
+
         }
 
     };
