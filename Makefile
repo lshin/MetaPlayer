@@ -13,7 +13,7 @@ CSS=$(BUILD_DIR)/metaplayer.css
 CORE_SRC=src/core/metaplayer.js src/core/*/*js
 CORE_MIN=$(CORE:.js=.min.js)
 
-ALL_SERVICES=service.sample service.smil 
+ALL_SERVICES=service.mrss service.smil 
 ALL_PLAYERS=player.html5 player.flowplayer 
 ALL_UI=ui.controls ui.overlay ui.transcript ui.captions ui.search ui.videojs ui.endcap ui.social ui.embed ui.metaq
 ALL_THEME=theme.mp2

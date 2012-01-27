@@ -37,6 +37,7 @@
 
 
         this.target = $(target).get(0);
+        this.dom = layout.base;
         this.video = MetaPlayer.proxy.getProxyObject(layout.stage);
         this.dispatcher = MetaPlayer.dispatcher( this.video );
         this.playlist(options);
@@ -93,7 +94,11 @@
          * @param video
          */
         player : function (video) {
+            // append any child player to layout, defensively
+            if( !(this.video === video) )
+                this.video.appendChild( video );
             MetaPlayer.proxy.proxyPlayer(video, this.video);
+            this.currentPlayer = video;
             return this;
         },
 
@@ -158,11 +163,14 @@
         this.config = $.extend(true, {}, defaults, options);
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
 
+
         var t = $(target);
-        var isVideo = t.is("video");
+        target = t.get(0);
+
         var base;
         var stage = t.find('.mp-video');
         var video = t.find('video');
+        var isVideo = ! (target.currentTime == null);
 
         // set up main wrapper
         if( isVideo ){
@@ -185,12 +193,18 @@
                 .addClass('mp-video');
             stage.appendTo(base);
         }
+
+        // move any child video objects over
         if( video.length > 0 ) {
             stage.append(video);
         }
 
         if( isVideo )
             stage.append(t);
+
+        // steal the id for sizing
+//        base.attr('id', t.attr('id') );
+//        t.attr('id', '');
 
         return {
             base : base.get(0),
@@ -425,7 +439,7 @@
             return new EventDispatcher(source);
 
         this._listeners = {};
-        this.init(source);
+        this.attach(source);
     };
 
     Ramp.dispatcher = EventDispatcher;
@@ -451,51 +465,27 @@
 
     EventDispatcher.prototype = {
 
-        init : function (source) {
+        attach : function (source) {
             if(!  source )
                 return;
 
-            // we can wrap other event dispatchers
             if( source.addEventListener ){
                 // use the element's native core
-                MetaPlayer.proxy.proxyFunction("addEventListener removeEventListener dispatchEvent",
+                MetaPlayer.proxy.proxyFunction( "addEventListener removeEventListener dispatchEvent",
                     source, this);
-
-                // but add our convenience functions
-                MetaPlayer.proxy.proxyFunction (
-                    "listen forget dispatch",
-                    this, source);
             }
-            // or enable plain objects
             else {
-                this.attach(source)
-            }
-        },
-
-        attach : function (target, force) {
-            if( target.addEventListener && ! force  ) {
-                throw 'already an event dispatcher';
-            }
-
-            if(! target.addEventListener ) {
+                // or enable plain objects
                 MetaPlayer.proxy.proxyFunction(
                     "addEventListener removeEventListener dispatchEvent",
-                    this, target);
+                    this, source);
             }
 
-            MetaPlayer.proxy.proxyFunction (
-                "listen forget dispatch",
-                this, target);
+            // and add our convenience functions
+            MetaPlayer.proxy.proxyFunction ( "listen forget dispatch",
+                this, source);
 
-            target.dispatcher = this;
-        },
-
-        _wrap : function(name) {
-            var self = this;
-            var scope = this;
-            return function () {
-                return self[name].apply(scope, arguments);
-            }
+            source.dispatcher = this;
         },
 
         listen : function ( eventType, callback, scope) {
@@ -766,13 +756,13 @@
         this._counted = 0;
         this._onTimeout = function () {
             self._counted++;
-            self.dispatch('time', {
+            self.dispatcher.dispatch('time', {
                 count : self._counted,
                 remain : self.count - self._counted
             });
             if( self.count > 0 && self.count < self._counted + 1 ){
                 self.reset();
-                self.dispatch('complete');
+                self.dispatcher.dispatch('complete');
             }
         };
     };
@@ -858,171 +848,142 @@
     var $ = jQuery;
 
     var defaults = {
-        delayMsec : 1000
     };
 
-    var Sample = function  (options) {
-        if( !(this instanceof Sample) )
-            return new Sample(options);
-        this.config = $.extend(true, {}, defaults, options);
+    var MrssService = function (video, options) {
+        if( ! (this instanceof MrssService ))
+            return new MrssService(video, options);
+
+        this.config = $.extend({}, defaults, options);
+
+        this.dispatcher = MetaPlayer.dispatcher(video);
+        this.dispatcher.attach(this);
+
+        // if we're attached to video, update with track changes
+        this.dispatcher.listen("trackchange", this._onTrackChange, this);
     };
 
-    Ramp.Services.Sample = Sample;
 
-    Ramp.sample = function (id, host, options) {
-        return new Ramp.Models.Media({
-            rampId : id,
-            rampHost : host,
-            service : new Sample(options)
-        }, host);
+    if( ! window.Ramp )
+        window.Ramp = {};
+
+    MetaPlayer.mrss = function (options) {
+        return MrssService(null, options);
     };
 
-    Sample.prototype = {
-        parse : function (string) {
-            return Sample.data;
+    MetaPlayer.addPlugin("mrss", function (options) {
+        this.service = MrssService(this.video, options);
+    });
+
+    MrssService.prototype = {
+        load : function ( url  ) {
+
+            var params = {};
+
+            $.ajax(url, {
+                dataType : "xml",
+                timeout : 15000,
+                context: this,
+                data : params,
+                error : function (jqXHR, textStatus, errorThrown) {
+                    console.error("Load playlist error: " + textStatus + ", url: " + url);
+                },
+                success : function (response, textStatus, jqXHR) {
+                    this.setData( this.parse(response) );
+                }
+            });
         },
 
-        load : function ( mediaId, mediaHost, callback, scope) {
-            setTimeout( function () {
-                var data = $.extend(true, {}, Sample.mediaData);
-                callback.call(scope, data);
-            }, this.config.delayMsec);
+        setData : function (data) {
+            this._data = data;
+            var d = this.dispatcher;
+            d.dispatch('metadata', data.metadata);
+            d.dispatch('transcodes', data.transcodes);
+            d.dispatch('captions', data.captions);
+            d.dispatch('tags', data.tags);
+            d.dispatch('metaq', data.metaq);
+            d.dispatch('related', data.related);
         },
 
-        search : function (term, callback, scope) {
-            if( ! this.data )
-                throw "media not loaded";
+        _onTrackChange : function (e, track) {
+            if(! track ) {
+                return;
+            }
+            e.preventDefault();
 
-            setTimeout( function () {
-                var data = $.extend(true, {}, Sample.searchData);
-                callback.call(scope, data);
-            }, this.config.delayMsec);
+            if( typeof track == "string"  ){
+                this.load(track);
+            }
+            else {
+                this.setData(track);
+            }
+        },
+
+
+        parse : function (data) {
+            var self = this;
+            var playlist = [];
+            var nodes = $(data).find('item').toArray();
+
+            $.each(nodes, function(i, node) {
+                playlist.push( self.parseItem(node) );
+            });
+
+            var media = playlist.shift();
+            media.related = playlist;
+            return media;
+        },
+
+        parseItem : function (item) {
+            var media = {
+                metadata : {},
+                transcodes : [],
+                tags : [],
+                captions : [],
+                metaq : {},
+                related : []
+            };
+            var el = $(item);
+            var self = this;
+
+            // compatibility issues: http://bugs.jquery.com/ticket/10377
+            var content = el.find('media:content, content');
+            $.each(content, function (i, node) {
+                node = $(node);
+                var codec = node.attr('codec');
+                var type = node.attr('type') + ( codec ? 'codec="'+codec+'"' : '');
+                media.transcodes.push({
+                    url : node.attr('url'),
+                    fileSize : node.attr('fileSize'),
+                    type : type,
+                    medium : node.attr('medium'),
+                    isDefault : node.attr('isDefault'),
+                    expression : node.attr('expression'),
+                    bitrate : node.attr('bitrate'),
+                    framerate : node.attr('framerate'),
+                    samplingrate : node.attr('samplingrate'),
+                    channels : node.attr('channels'),
+                    duration : node.attr('duration'),
+                    height : node.attr('height'),
+                    width : node.attr('width'),
+                    lang : node.attr('lang'),
+                    codec : codec
+                })
+            });
+
+            media.metadata.title = el.find('media:title, title').text()
+
+            media.metadata.description = el.find('media:description, description').text()
+                || el.find(']').text();
+
+            media.metadata.thumbnail = el.find('media:thumbnail, thumbnail').attr('url');
+
+            return media;
+        },
+
+        search : function ( query, callback, scope) {
+            throw "not implemented"
         }
-    };
-
-    Sample.mediaData = {
-        metadata : {
-            title : "Euro Contagion Risks Loom in Corporate Credit Market ",
-            description: "Fundamentals remain strong across the board, but high-quality corporate credits are likely to outperform in a volatile environment, says Morningstar's Dave Sekera.",
-            thumbnail : "http://publishing.ramp.com/thumbnails/cached_media/0006/0006401/0006401014/images/thumb.jpg",
-            poster : "http://publishing.ramp.com/thumbnails/cached_media/0006/0006401/0006401014/images/thumb.jpg"
-        },
-        "transcodes" : [
-            {
-                "name" : "default",
-                "type" : "video/mp4",
-                "url"  : "http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.mp4"
-            },
-            {
-                "name" : "some.name",
-                "type" : "video/webm",
-                "url"  : "http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.webm"
-            },
-            {
-                "name" : "some.name",
-                "type" : "video/ogg",
-                "url"  : "http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.ogv"
-            }
-        ],
-        tags : [
-            {
-                term : "United States",
-                type : "place",
-                score : 19.390835,
-                origin : "namedentity",
-                timestamps : [ 44.449, 170.339, 196.689, 217.504 ]
-            },
-            {
-                term : "Morningstar",
-                type : "company",
-                score : 4.843158,
-                origin : "namedentity",
-                timestamps : [ 8.209, 498.966 ]
-            },
-            {
-                term : "Spain",
-                type : "place",
-                score : 3.7033582,
-                origin : "namedentity",
-                timestamps : [ 283.749, 300.219 ]
-            },                    {
-                term : "private equity",
-                type : "unk",
-                score : 3.6826441,
-                origin : "namedentity",
-                timestamps : [ 89.619 ]
-            }
-        ],
-        captions : [
-            {
-                start : 0,
-                text : "Jeremy Glaser : For Morningstar, I'm Jeremy Glaser. I'm here"
-            },
-            {
-                start : 10.29,
-                text : "today with our bond strategist, Dave Sekera, to get an "
-            },
-            {
-                start : 12.30,
-                text : "update on the corporate credit market , and on what investors"
-            },
-            {
-                start : 14.69,
-                text : ""
-            }
-            // <smilText>Jeremy Glaser : For Morningstar, I'm Jeremy Glaser. I'm here <clear begin="10.29s"/>today with our bond strategist, Dave Sekera, to get an <clear begin="12.30s"/>update on the corporate credit market , and on what investors <clear begin="14.69s"/>could expect going forward. Dave, thanks for joining me today. <clear begin="16.84s"/>Dave Sekera : You are welcome, Jeremy. Good to be <clear begin="18.35s"/>here. Glaser : So let's start talking a little bit <clear begin="19.99s"/>about corporate fundamentals, before we get to some of the <clear begin="22.75s"/>macro issues, that I know are on a lot of <clear begin="24.33s"/>people's minds. What's really happening in the corporate marketplace? Are <clear begin="28.77s"/>balance sheets still remaining strong, even as the economy kind <clear begin="32.03s"/>of weakened a little bit this summer? Sekera : As <clear begin="34.22s"/>you mentioned, it has been a crazy time in all <clear begin="36.28s"/>of the asset markets, including the corporate bond market . But <clear begin="40.01s"/>you know, getting back to just the underlying fundamentals of <clear begin="43.34s"/>corporate credit here in the United States , fundamentally, we are <clear begin="46.58s"/>still looking pretty good. Third-quarter earnings reports that came out <clear begin="50.28s"/>generally were either in line or better than expected. It <clear begin="53.24s"/>has been positive for bondholders, looking at probability of default <clear begin="58.78s"/>risk across the universe of names that we cover. Things <clear begin="62.88s"/>still are pretty even; are still even maybe looking a <clear begin="65.51s"/>tad better. Glaser : So I know in the past, <clear begin="68.00s"/>you have talked about self-inflicted credit wounds. Companies either doing <clear begin="72.31s"/>a debt-fueled buyback or M&amp;A activity or an LBO or <clear begin="75.73s"/>something something like that. Is that a trend that you <clear begin="78.20s"/>have seen kind of play out this year, or do <clear begin="79.83s"/>you think that companies are still being pretty prudent about <clear begin="82.33s"/>their cash management? Sekera : Of those three, we didn't <clear begin="85.01s"/>see the LBOs that we expected this year, we missed <clear begin="87.70s"/>that one. We thought there was going to be a <clear begin="89.23s"/>lot more private equity activity out there. Debt-fueled LBOs, where <clear begin="93.95s"/>we'd see companies get taken out and levered up. It <clear begin="96.63s"/>just really did not occur. There were definitely some instances, <clear begin="98.72s"/>but we thought it was going to be much greater <clear begin="100.63s"/>than it actually was. However, we have seen a lot <clear begin="103.59s"/>more share buybacks, where companies are issuing debt, using that <clear begin="107.70s"/>debt in order to buy back the stock, which, of <clear begin="109.65s"/>course, is usually negative for bondholders. Having said that--of the <clear begin="113.26s"/>names that we follow, the buybacks that they have done, <clear begin="116.63s"/>the debt that they have issued, has been within the <clear begin="119.51s"/>rating category. So there have really only been a couple <clear begin="121.84s"/>of instances where we've downgraded any of the companies that <clear begin="124.50s"/>we cover because of that share buyback activity. Glaser : <clear begin="127.86s"/>Now you mentioned third-quarter earnings were reasonably in line or <clear begin="131.09s"/>a little bit stronger. But they were really kind of <clear begin="133.14s"/>overshadowed in a lot of ways by the crisis in <clear begin="135.73s"/>Europe. What impact do you think that the sovereign debt <clear begin="139.07s"/>situation there is having on corporate credits in the U.S. <clear begin="141.97s"/>and elsewhere? Sekera : Well, it has definitely been a <clear begin="144.62s"/>rollercoaster. Going back to May of 2010, when you and <clear begin="147.36s"/>I first started talking about the sovereign debt crisis, we <clear begin="151.87s"/>did write and opined at that point in time that <clear begin="153.58s"/>we recommended that investors stick with U.S. corporate bonds as <clear begin="157.39s"/>opposed to European corporate bonds, and we still hold that <clear begin="160.25s"/>view today. Now there are instances where we are starting <clear begin="162.81s"/>to see some European bonds for the same corporate credit <clear begin="165.99s"/>risks that are trading at a higher yield or a <clear begin="168.70s"/>wider spread than what we are seeing in the United <clear begin="170.71s"/>States . But it's not yet to the point where we <clear begin="172.73s"/>are willing to make that call, to go ahead and <clear begin="175.27s"/>buy the euro-denominated issues, even if you can swap that <clear begin="178.54s"/>back into U.S. dollars. There is just still too much <clear begin="181.81s"/>fundamental or really systemic risk of what could happen in <clear begin="186.06s"/>Europe right now. Having said that, in the U.S., PPI/CPI <clear begin="191.09s"/>that came out this week, both of those numbers are <clear begin="193.35s"/>still showing inflation is well under control here in the <clear begin="196.69s"/>United States . Looking at what we call the five-year, five-year <clear begin="201.44s"/>forward, which is inflation expectation, stripping out inflation from the <clear begin="205.50s"/>TIPS and straight bonds, still within that trading range that <clear begin="208.96s"/>we have seen--kind of that 2% to 2.5% for quite <clear begin="211.62s"/>a while now. So, we're really not worried about inflation <clear begin="214.97s"/>at this point. We're not worried about the United States <clear begin="218.11s"/>as much as we are the contagion effect of what <clear begin="220.09s"/>could happen in Europe. Glaser : So, some of those <clear begin="222.15s"/>contagion effects into the U.S. credits, do you think that <clear begin="225.58s"/>would come from a weakening of those corporate fundamentals? Would <clear begin="228.38s"/>it come from people kind of rushing money into different <clear begin="231.61s"/>parts of the bond market that maybe don't expect to <clear begin="233.74s"/>get that money? How exactly would that contagion work? Sekera <clear begin="236.37s"/>: Well, it depends on how that contagion first starts. <clear begin="238.82s"/>So, what we've been seeing and our bank credit analyst <clear begin="241.65s"/>Jim Leonard put out a note earlier this week mentioning <clear begin="245.31s"/>that it looks like they're having some liquidity and some <clear begin="247.26s"/>funding issues with the Italian banks this week--that the Italian <clear begin="250.53s"/>banks have gone to the ECB, asking that ECB to <clear begin="255.01s"/>free up some of the collateral guidelines, so that they <clear begin="257.30s"/>can take some of their assets, pledge that to the <clear begin="259.33s"/>ECB to get additional funding. So it depends if we're <clear begin="263.04s"/>looking at a liquidity crisis coming from the banks, or <clear begin="266.06s"/>if it's really more of a solvency crisis coming from <clear begin="269.11s"/>the nations themselves. So this week, we have been seeing <clear begin="272.56s"/>the ECB trying to defend where the interest rates have <clear begin="275.54s"/>been for Italy. Spain's bonds have been weakening pretty dramatically <clear begin="280.31s"/>as well. It looks like they have been intervening in <clear begin="282.52s"/>that market. Spain issued some new 10-year notes, just inside <clear begin="287.29s"/>7% last night, and 7% on the 10-year has kind <clear begin="290.46s"/>of been this litmus test that we have seen in <clear begin="292.39s"/>the market, where tighter than 7% as long as the <clear begin="295.93s"/>dynamics of the country look like they could be fixed <clear begin="298.31s"/>over time, i.e., Italy and Spain, if it's inside 7%, <clear begin="303.19s"/>they can probably work it out. But if all of <clear begin="305.03s"/>a sudden we start getting wider than 7%, now people <clear begin="307.90s"/>are starting to question whether or not those countries would <clear begin="310.05s"/>essentially go into a debt spiral, because the interest expense <clear begin="313.26s"/>that they have to pay on the debt that they <clear begin="315.34s"/>need to issue to fund their deficit, as well as <clear begin="317.38s"/>the debt that they need to issue to roll existing <clear begin="319.70s"/>debt as it comes due, becomes such that the interest <clear begin="322.68s"/>expense becomes more and greater, faster than what they'd ever <clear begin="326.80s"/>be able to grow out of with additional GDP. Glaser <clear begin="329.14s"/>: So does it concern you that even after the <clear begin="332.01s"/>installation of these new technocratic governments in Greece and in <clear begin="334.63s"/>Italy, that those spreads remain so elevated through this week? <clear begin="338.14s"/>Sekera : Yes, and essentially what we've seen is the <clear begin="340.18s"/>market keeps going back and keeps testing the ECB to <clear begin="342.97s"/>see if the ECB's resolve is really there. So, for <clear begin="346.61s"/>example, with that Spanish bond issue that was just auctioned, <clear begin="348.80s"/>it was auctioned I think at  6.98%. After it was <clear begin="353.38s"/>auctioned, it rallied maybe a good 40 basis points, but <clear begin="356.79s"/>then throughout the rest of the day we kept seeing <clear begin="358.97s"/>it weaken and weaken further until it got back to <clear begin="361.59s"/>that 7%; by the end of the day it looked <clear begin="363.91s"/>like it traded maybe just inside that 7%. Same with <clear begin="367.22s"/>the Italian 10-year bonds; we initially saw that blow way <clear begin="370.35s"/>through 7% up to 7.4%, it came back in to <clear begin="374.34s"/>maybe the six-handle area before it widened back out and <clear begin="377.63s"/>then came back in again. So, the ECB is definitely <clear begin="380.36s"/>out there. Well, in my opinion, from what I have <clear begin="382.59s"/>heard, it appears that the ECB is in there trying <clear begin="385.43s"/>to defend those markets, trying to keep them inside that <clear begin="388.06s"/>7%, trying to make sure that there is enough room <clear begin="392.07s"/>that the technocrats, as you want to call it, will <clear begin="395.29s"/>have the ability to come in, put in structural reforms, <clear begin="398.66s"/>put in some austerity measures , really be able to come <clear begin="403.00s"/>in with a couple of different avenues to try and <clear begin="405.60s"/>bring their finances under control. But they need enough time <clear begin="408.51s"/>to do that, which is part of what the EFSF <clear begin="411.71s"/>was originally supposed to do, was to be able to <clear begin="414.40s"/>go out and buy bonds in the secondary market. Part <clear begin="418.94s"/>of the latest package was that they were going to <clear begin="420.73s"/>try and lever that up so that you could use <clear begin="422.70s"/>that in order to bridge and backstop sovereign debt issuance <clear begin="426.06s"/>as well as then try and recapitalize the banks if <clear begin="428.41s"/>the European banks couldn't recapitalize in the secondary market. We're <clear begin="432.53s"/>still waiting to see details on that plan. So, I <clear begin="434.89s"/>am still skeptical that that plan really comes through at <clear begin="437.81s"/>the end of the day. Glaser : So, given all <clear begin="439.49s"/>of this, for investors who may want to be buying <clear begin="441.82s"/>U.S. corporates now, are there certain areas of maturity that <clear begin="445.37s"/>look more attractive or certain sectors that look more attractive <clear begin="448.09s"/>than others? Where would be a good place to put <clear begin="450.02s"/>money to work? Sekera : On the curve, probably the <clear begin="452.60s"/>seven-year duration is probably the most attractive to us at <clear begin="455.82s"/>this point. It's where you get the greatest pickup on <clear begin="458.28s"/>the yield curve without going too far out on the <clear begin="460.53s"/>yield curve. The high-quality names definitely look good. Single-A or <clear begin="465.29s"/>better is probably a good spot to be in right <clear begin="467.59s"/>now. It gives you additional yield pickup. You can probably <clear begin="470.06s"/>pick up 150 basis points to 200 basis points over <clear begin="473.77s"/>Treasuries. But it's still a very high-quality name, and even <clear begin="477.37s"/>in a downturn, you should have a lot less risk <clear begin="479.84s"/>in those single-As than the BBBs. The BBBs at the <clear begin="483.62s"/>250 to 300 range might look attractive, but those bonds <clear begin="488.77s"/>are going to be the ones that get hit the <clear begin="490.15s"/>hardest if we do see any kind of systemic risk <clear begin="493.12s"/>in the system coming out of Europe. Glaser : Well, <clear begin="495.31s"/>Dave, I really appreciate your insight today. Sekera : You're <clear begin="497.46s"/>welcome. Good to be here. Glaser : For Morningstar, I'm <clear begin="499.79s"/>Jeremy Glaser. </smilText>
-        ],
-        metaq : []
-    };
-
-    Sample.searchData = {
-        query : "brown fox",
-        results : [
-            {
-                start: 10,
-                text :   [
-                    {
-                        start : 10,
-                        text : "The"
-                    },
-                    {
-                        start : 11,
-                        text : "quick"
-                    },
-                    {
-                        start : 12,
-                        match : true,
-                        text : "brown"
-                    },
-                    {
-                        start : 13,
-                        match : true,
-                        text : "fox"
-                    },
-                    {
-                        start : 14,
-                        text : "jumps"
-                    },
-                    {
-                        start : 15,
-                        text : "over"
-                    },
-                    {
-                        start : 16,
-                        text : "the"
-                    },
-                    {
-                        start : 17,
-                        text : "lazy"
-                    },
-                    {
-                        start : 18,
-                        text : "dog"
-                    }
-
-                ]
-            }
-        ]
     };
 
 })();(function () {
@@ -1037,10 +998,9 @@
         if( ! (this instanceof SmilService ))
             return new SmilService(video, options);
 
-
         this.config = $.extend({}, defaults, options);
 
-        this.dispatcher = Ramp.dispatcher(video);
+        this.dispatcher = MetaPlayer.dispatcher(video);
         this.dispatcher.attach(this);
 
         // if we're attached to video, update with track changes
@@ -1504,6 +1464,7 @@
         controls : true,
         swfUrl : "flowplayer-3.2.7.swf",
         wmode : "transparent",
+        cssName : "mp-flowplayer",
         statusThrottleMSec : 500,
         fpConfig : {
             clip : {
@@ -1512,32 +1473,32 @@
         }
     };
 
-    var FlowPlayer = function (el, url, options){
+    var FlowPlayer = function (el, options){
 
         if( !(this instanceof FlowPlayer ))
-            return new FlowPlayer(el, url, options);
+            return new FlowPlayer(el, options);
 
         this.config = $.extend(true, {}, defaults, options);
 
-        this.dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
-        this.dispatcher.attach(this);
+        this.dispatcher = MetaPlayer.dispatcher(el);
 
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
         this.__seeking = null;
         this.__readyState = 0;
         this.__ended = false;
         this.__paused = true;
+        this.__duration = NaN;
 
         this._pageSetup(el);
 
         this.__preload = this.config.preload;
         this.__autoplay = this.config.autoplay;
-        this.__src = null;
+        this.__src = "";
 
-        this._statepoll = Ramp.Timer(250);
+        this._statepoll = Ramp.timer(250);
         this._statepoll.listen('time', this._onPlayStatePoll, this);
 
-        this._timeupdater = Ramp.Timer(250);
+        this._timeupdater = Ramp.timer(250);
         this._timeupdater.listen('time', this._onTimeUpdate, this);
 
         var self = this;
@@ -1545,20 +1506,22 @@
             self._onLoad();
         });
 
-        this.video = this.getInterface();
-
-        if( Ramp.playlist )
-            Ramp.playlist(this.video, url);
-        else
-            this.src(url);
-
+        this.video = this.attach( this._flowplayer.getParent() );
     };
 
-    Ramp.flowplayer = function (el, url, options) {
-        var player = FlowPlayer(el, url, options);
-        player.video._player = player;
-        return player.video;
+    MetaPlayer.flowplayer = function (el, options) {
+        return FlowPlayer(el, options).video;
     };
+
+    MetaPlayer.addPlayer("flowplayer", function (el, options) {
+        // single argument mode: function(options) {
+        if(!  el.getCommonClip  ) {
+            options = el;
+            el = $("<div></div>").appendTo(this.video);
+        }
+
+        return FlowPlayer(el, options).video;
+    });
 
     FlowPlayer.prototype = {
 
@@ -1572,15 +1535,16 @@
             }
             // otherwise start one up
             else {
+                el = $(el).get(0); // resolve "#foo"
                 var config = $.extend(true, {
                     clip : {
                         autoPlay: false,
                         autoBuffering: true
                     }
-                },this.config.fpConfig);
-                var v = $('<div class="metaplayer-video""></div>');
-                $(el).append(v);
-                this._flowplayer = $f( v.get(0), {
+                }, this.config.fpConfig);
+
+
+                this._flowplayer = $f( el, {
                     src: this.config.swfUrl,
                     wmode: this.config.wmode
                 }, config );
@@ -1597,23 +1561,23 @@
 
             // Player listeners
             this._flowplayer.onVolume( function (level) {
-                self.dispatch("volumechange");
+                self.dispatcher.dispatch("volumechange");
             });
 
             this._flowplayer.onMute( function (level) {
-                self.dispatch("volumechange");
+                self.dispatcher.dispatch("volumechange");
             });
 
             this._flowplayer.onUnmute( function (level) {
-                self.dispatch("volumechange");
+                self.dispatcher.dispatch("volumechange");
             });
 
             this._flowplayer.onPlaylistReplace( function () {
-                self.dispatch("playlistChange");
+                self.dispatcher.dispatch("playlistChange");
             });
 
             this._flowplayer.onClipAdd( function () {
-                self.dispatch("playlistChange");
+                self.dispatcher.dispatch("playlistChange");
             });
 
             this.controls( this.config.controls );
@@ -1623,7 +1587,7 @@
             if( this.__src )
                 this.src( this.__src );
 
-            self.dispatch('loadstart');
+            self.dispatcher.dispatch('loadstart');
 
             if( this.preload() || this.autoplay()  )
                 this.load();
@@ -1651,10 +1615,10 @@
                     $(self._flowplayer.getParent() ).find('video').get(0).controls = false;
                 }
 
-                self.dispatch('loadeddata');
+                self.dispatcher.dispatch('loadeddata');
                 self.__duration = clip.duration;
-                self.dispatch("durationchange");
-                self.dispatch('loadedmetadata');
+                self.dispatcher.dispatch("durationchange");
+                self.dispatcher.dispatch('loadedmetadata');
             });
 
             clip.onStop( function (clip) {
@@ -1667,7 +1631,7 @@
                 self.__seeking = null;
                 self._setPlaying(false);
                 self._flowplayer.stop();
-                self.dispatch("ended");
+                self.dispatcher.dispatch("ended");
             });
 
             clip.onPause( function (clip) {
@@ -1677,16 +1641,16 @@
 
             clip.onResume( function (clip) {
                 self._setPlaying(true);
-                self.dispatch("play");
+                self.dispatcher.dispatch("play");
             });
 
             clip.onBeforeSeek( function (clip) {
-                self.dispatch("seeking");
-                self.dispatch("timeupdate");
+                self.dispatcher.dispatch("seeking");
+                self.dispatcher.dispatch("timeupdate");
 
                 // fp doesn't do seeks while paused until it plays again, so we fake
                 if( self.paused() )  {
-                    self.dispatch("seeked");
+                    self.dispatcher.dispatch("seeked");
                     self.__seeking = null;
                 }
             });
@@ -1694,18 +1658,18 @@
             clip.onSeek( function (clip) {
                 self.__seeking = null;
                 if( ! self.paused() )
-                    self.dispatch("seeked");
+                    self.dispatcher.dispatch("seeked");
             });
         },
 
         _setReady : function (){
             if( this.__readyState != 4 ) {
                 this.__readyState = 4;
-                this.dispatch("canplay");
+                this.dispatcher.dispatch("canplay");
             }
             else {
-                this.dispatch("seeking");
-                this.dispatch("seeked");
+                this.dispatcher.dispatch("seeking");
+                this.dispatcher.dispatch("seeked");
             }
         },
 
@@ -1841,7 +1805,7 @@
                     this._flowplayer.unmute();
             }
             var status = this._flowplayer.getStatus();
-            return status.muted;
+            return Boolean( status.muted );
         },
 
         volume : function (val){
@@ -1916,26 +1880,16 @@
             return this.__src;
         },
 
-
-
         readyState : function (val) {
             if( val !== undefined )
                 this.__readyState = val;
             return this.__readyState;
         },
 
-        getInterface : function () {
-            var target = Ramp.Utils.Proxy.getProxyObject( this._flowplayer.getParent() );
-
-            Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
-                " paused played controls autoplay preload src ended readyState",
-                target, this);
-
-            Ramp.Utils.Proxy.proxyFunction("load play pause canPlayType" ,this, target);
-
-            Ramp.Utils.Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
-                "loadeddata loadedmetadata canplay loadstart durationchange volumechange ended ",this, target);
-
+        attach : function (target) {
+            target = MetaPlayer.proxy.getProxyObject(target);
+            this.dispatcher.attach(target);
+            MetaPlayer.proxy.proxyPlayer(this, target);
             return target;
         },
 
@@ -1947,19 +1901,19 @@
 
             this._statepoll.reset();
             if( this.paused()  ) {
-                this.dispatch("pause");
+                this.dispatcher.dispatch("pause");
                 this._timeupdater.reset();
             }
             else {
                 this.autoplay(true);
-                this.dispatch("playing");
-                this.dispatch("play");
+                this.dispatcher.dispatch("playing");
+                this.dispatcher.dispatch("play");
                 this._timeupdater.start();
             }
         },
 
         _onTimeUpdate : function  () {
-            this.dispatch("timeupdate");
+            this.dispatcher.dispatch("timeupdate");
         }
 
     };
