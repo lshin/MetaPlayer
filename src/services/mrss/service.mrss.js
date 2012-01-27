@@ -5,62 +5,38 @@
     var defaults = {
     };
 
-    var MrssService = function (url, options) {
+    var MrssService = function (video, options) {
         if( ! (this instanceof MrssService ))
-            return new MrssService(url, options);
-
-        if( options == undefined && (url instanceof Object) ){
-            options = url;
-            url = null;
-        }
+            return new MrssService(video, options);
 
         this.config = $.extend({}, defaults, options);
 
-        var dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
-        dispatcher.attach(this);
+        this.dispatcher = MetaPlayer.dispatcher(video);
+        this.dispatcher.attach(this);
 
-        this.onMetaData = dispatcher.observer("metaData");
-        this.onTranscodes = dispatcher.observer("transcodes");
-        this.onCaptions = dispatcher.observer("captions");
-        this.onTags = dispatcher.observer("tags");
-        this.onMetaQ = dispatcher.observer("metaQ");
-        this.onRelated = dispatcher.observer("related");
-        this.onMediaChange = dispatcher.observer("mediaChange");
-        this.onSearch = dispatcher.observer("search");
-
-        if( url )
-            this.load( url );
+        // if we're attached to video, update with track changes
+        this.dispatcher.listen("trackchange", this._onTrackChange, this);
     };
 
 
     if( ! window.Ramp )
         window.Ramp = {};
 
-    Ramp.mrss = MrssService;
-    Ramp.mrss = MrssService;
+    MetaPlayer.mrss = function (options) {
+        return MrssService(null, options);
+    };
+
+    MetaPlayer.addPlugin("mrss", function (options) {
+        this.service = MrssService(this.video, options);
+    });
 
     MrssService.prototype = {
-
         load : function ( url  ) {
 
-            if( url instanceof Object ) {
-                // already loaded
-                if( url.metadata ) {
-                    this._ready(url);
-                    return;
-                }
-                // load off the url
-                url = url.url;
-            }
-
-            var params = {
-//                format: 'playlist',
-//                renderJSON: true
-            };
+            var params = {};
 
             $.ajax(url, {
                 dataType : "xml",
-//                jsonp : "jsoncallback",
                 timeout : 15000,
                 context: this,
                 data : params,
@@ -68,24 +44,38 @@
                     console.error("Load playlist error: " + textStatus + ", url: " + url);
                 },
                 success : function (response, textStatus, jqXHR) {
-                    var data = this.parse(response)
-                    this._ready(data);
+                    this.setData( this.parse(response) );
                 }
             });
         },
 
-        _ready : function (data) {
+        setData : function (data) {
             this._data = data;
-            this.dispatch('metaData', data.metadata);
-            this.dispatch('transcodes', data.transcodes);
-            this.dispatch('related', data.related);
-//            this.dispatch('captions', data.captions);
-//            this.dispatch('tags', data.tags);
-//            this.dispatch('metaQ', data.metaq);
+            var d = this.dispatcher;
+            d.dispatch('metadata', data.metadata);
+            d.dispatch('transcodes', data.transcodes);
+            d.dispatch('captions', data.captions);
+            d.dispatch('tags', data.tags);
+            d.dispatch('metaq', data.metaq);
+            d.dispatch('related', data.related);
         },
 
-        parse : function (data) {
+        _onTrackChange : function (e, track) {
+            if(! track ) {
+                return;
+            }
+            e.preventDefault();
 
+            if( typeof track == "string"  ){
+                this.load(track);
+            }
+            else {
+                this.setData(track);
+            }
+        },
+
+
+        parse : function (data) {
             var self = this;
             var playlist = [];
             var nodes = $(data).find('item').toArray();
@@ -111,7 +101,8 @@
             var el = $(item);
             var self = this;
 
-            var content = el.find('[nodeName="media:content"]')
+            // compatibility issues: http://bugs.jquery.com/ticket/10377
+            var content = el.find('media:content, content');
             $.each(content, function (i, node) {
                 node = $(node);
                 var codec = node.attr('codec');
@@ -135,14 +126,12 @@
                 })
             });
 
+            media.metadata.title = el.find('media:title, title').text()
 
-            media.metadata.title = el.find('[nodeName="media:title"]').text()
-                || el.find('[nodeName="title"]').text();
+            media.metadata.description = el.find('media:description, description').text()
+                || el.find(']').text();
 
-            media.metadata.description = el.find('[nodeName="media:description"]').text()
-                || el.find('[nodeName="descriptoin"]').text();
-
-            media.metadata.thumbnail = el.find('[nodeName="media:thumbnail"]').attr('url');
+            media.metadata.thumbnail = el.find('media:thumbnail, thumbnail').attr('url');
 
             return media;
         },
