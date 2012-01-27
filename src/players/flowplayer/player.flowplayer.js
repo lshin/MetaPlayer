@@ -9,6 +9,7 @@
         controls : true,
         swfUrl : "flowplayer-3.2.7.swf",
         wmode : "transparent",
+        cssName : "mp-flowplayer",
         statusThrottleMSec : 500,
         fpConfig : {
             clip : {
@@ -17,32 +18,32 @@
         }
     };
 
-    var FlowPlayer = function (el, url, options){
+    var FlowPlayer = function (el, options){
 
         if( !(this instanceof FlowPlayer ))
-            return new FlowPlayer(el, url, options);
+            return new FlowPlayer(el, options);
 
         this.config = $.extend(true, {}, defaults, options);
 
-        this.dispatcher = this.config.dispatcher || Ramp.Utils.EventDispatcher();
-        this.dispatcher.attach(this);
+        this.dispatcher = MetaPlayer.dispatcher(el);
 
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
         this.__seeking = null;
         this.__readyState = 0;
         this.__ended = false;
         this.__paused = true;
+        this.__duration = NaN;
 
         this._pageSetup(el);
 
         this.__preload = this.config.preload;
         this.__autoplay = this.config.autoplay;
-        this.__src = null;
+        this.__src = "";
 
-        this._statepoll = Ramp.Timer(250);
+        this._statepoll = Ramp.timer(250);
         this._statepoll.listen('time', this._onPlayStatePoll, this);
 
-        this._timeupdater = Ramp.Timer(250);
+        this._timeupdater = Ramp.timer(250);
         this._timeupdater.listen('time', this._onTimeUpdate, this);
 
         var self = this;
@@ -50,20 +51,22 @@
             self._onLoad();
         });
 
-        this.video = this.getInterface();
-
-        if( Ramp.playlist )
-            Ramp.playlist(this.video, url);
-        else
-            this.src(url);
-
+        this.video = this.attach( this._flowplayer.getParent() );
     };
 
-    Ramp.flowplayer = function (el, url, options) {
-        var player = FlowPlayer(el, url, options);
-        player.video._player = player;
-        return player.video;
+    MetaPlayer.flowplayer = function (el, options) {
+        return FlowPlayer(el, options).video;
     };
+
+    MetaPlayer.addPlayer("flowplayer", function (el, options) {
+        // single argument mode: function(options) {
+        if(!  el.getCommonClip  ) {
+            options = el;
+            el = $("<div></div>").appendTo(this.video);
+        }
+
+        return FlowPlayer(el, options).video;
+    });
 
     FlowPlayer.prototype = {
 
@@ -77,15 +80,16 @@
             }
             // otherwise start one up
             else {
+                el = $(el).get(0); // resolve "#foo"
                 var config = $.extend(true, {
                     clip : {
                         autoPlay: false,
                         autoBuffering: true
                     }
-                },this.config.fpConfig);
-                var v = $('<div class="metaplayer-video""></div>');
-                $(el).append(v);
-                this._flowplayer = $f( v.get(0), {
+                }, this.config.fpConfig);
+
+
+                this._flowplayer = $f( el, {
                     src: this.config.swfUrl,
                     wmode: this.config.wmode
                 }, config );
@@ -102,23 +106,23 @@
 
             // Player listeners
             this._flowplayer.onVolume( function (level) {
-                self.dispatch("volumechange");
+                self.dispatcher.dispatch("volumechange");
             });
 
             this._flowplayer.onMute( function (level) {
-                self.dispatch("volumechange");
+                self.dispatcher.dispatch("volumechange");
             });
 
             this._flowplayer.onUnmute( function (level) {
-                self.dispatch("volumechange");
+                self.dispatcher.dispatch("volumechange");
             });
 
             this._flowplayer.onPlaylistReplace( function () {
-                self.dispatch("playlistChange");
+                self.dispatcher.dispatch("playlistChange");
             });
 
             this._flowplayer.onClipAdd( function () {
-                self.dispatch("playlistChange");
+                self.dispatcher.dispatch("playlistChange");
             });
 
             this.controls( this.config.controls );
@@ -128,7 +132,7 @@
             if( this.__src )
                 this.src( this.__src );
 
-            self.dispatch('loadstart');
+            self.dispatcher.dispatch('loadstart');
 
             if( this.preload() || this.autoplay()  )
                 this.load();
@@ -156,10 +160,10 @@
                     $(self._flowplayer.getParent() ).find('video').get(0).controls = false;
                 }
 
-                self.dispatch('loadeddata');
+                self.dispatcher.dispatch('loadeddata');
                 self.__duration = clip.duration;
-                self.dispatch("durationchange");
-                self.dispatch('loadedmetadata');
+                self.dispatcher.dispatch("durationchange");
+                self.dispatcher.dispatch('loadedmetadata');
             });
 
             clip.onStop( function (clip) {
@@ -172,7 +176,7 @@
                 self.__seeking = null;
                 self._setPlaying(false);
                 self._flowplayer.stop();
-                self.dispatch("ended");
+                self.dispatcher.dispatch("ended");
             });
 
             clip.onPause( function (clip) {
@@ -182,16 +186,16 @@
 
             clip.onResume( function (clip) {
                 self._setPlaying(true);
-                self.dispatch("play");
+                self.dispatcher.dispatch("play");
             });
 
             clip.onBeforeSeek( function (clip) {
-                self.dispatch("seeking");
-                self.dispatch("timeupdate");
+                self.dispatcher.dispatch("seeking");
+                self.dispatcher.dispatch("timeupdate");
 
                 // fp doesn't do seeks while paused until it plays again, so we fake
                 if( self.paused() )  {
-                    self.dispatch("seeked");
+                    self.dispatcher.dispatch("seeked");
                     self.__seeking = null;
                 }
             });
@@ -199,18 +203,18 @@
             clip.onSeek( function (clip) {
                 self.__seeking = null;
                 if( ! self.paused() )
-                    self.dispatch("seeked");
+                    self.dispatcher.dispatch("seeked");
             });
         },
 
         _setReady : function (){
             if( this.__readyState != 4 ) {
                 this.__readyState = 4;
-                this.dispatch("canplay");
+                this.dispatcher.dispatch("canplay");
             }
             else {
-                this.dispatch("seeking");
-                this.dispatch("seeked");
+                this.dispatcher.dispatch("seeking");
+                this.dispatcher.dispatch("seeked");
             }
         },
 
@@ -346,7 +350,7 @@
                     this._flowplayer.unmute();
             }
             var status = this._flowplayer.getStatus();
-            return status.muted;
+            return Boolean( status.muted );
         },
 
         volume : function (val){
@@ -421,26 +425,16 @@
             return this.__src;
         },
 
-
-
         readyState : function (val) {
             if( val !== undefined )
                 this.__readyState = val;
             return this.__readyState;
         },
 
-        getInterface : function () {
-            var target = Ramp.Utils.Proxy.getProxyObject( this._flowplayer.getParent() );
-
-            Ramp.Utils.Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
-                " paused played controls autoplay preload src ended readyState",
-                target, this);
-
-            Ramp.Utils.Proxy.proxyFunction("load play pause canPlayType" ,this, target);
-
-            Ramp.Utils.Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
-                "loadeddata loadedmetadata canplay loadstart durationchange volumechange ended ",this, target);
-
+        attach : function (target) {
+            target = MetaPlayer.proxy.getProxyObject(target);
+            this.dispatcher.attach(target);
+            MetaPlayer.proxy.proxyPlayer(this, target);
             return target;
         },
 
@@ -452,19 +446,19 @@
 
             this._statepoll.reset();
             if( this.paused()  ) {
-                this.dispatch("pause");
+                this.dispatcher.dispatch("pause");
                 this._timeupdater.reset();
             }
             else {
                 this.autoplay(true);
-                this.dispatch("playing");
-                this.dispatch("play");
+                this.dispatcher.dispatch("playing");
+                this.dispatcher.dispatch("play");
                 this._timeupdater.start();
             }
         },
 
         _onTimeUpdate : function  () {
-            this.dispatch("timeupdate");
+            this.dispatcher.dispatch("timeupdate");
         }
 
     };

@@ -6,7 +6,7 @@
     <title>Flowplayer Plugin | Metaplayer</title>
 
     <!--Dependency: jQuery-->
-    <script src="../../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
+    <script src="../../../../external/jquery/jquery-1.7.1.js" type="text/javascript"></script>
 
     <!--Dependency: Flowplayer-->
     <script src="../../../../external/flowplayer/flowplayer-3.2.6.js"></script>
@@ -16,78 +16,61 @@
     <!--<script src="../../../../external/popcorn/popcorn.js" type="text/javascript"></script>-->
     <script src="../../../../external/popcorn-ie8/popcorn-ie8.js" type="text/javascript"></script>
 
-   <!-- Core: Ramp -->
-    <script src="../../../ramp.js"></script>
-    <script src="../../../models/model.playlist.js"></script>
+    <!-- Core: Ramp -->
+    <script src="../../../core/metaplayer.js"></script>
+    <script src="../../../core/utils/util.event.js"></script>
+    <script src="../../../core/utils/util.proxy.js"></script>
+    <script src="../../../core/utils/util.script.js"></script>
+    <script src="../../../core/utils/util.timer.js"></script>
+    <script src="../../../core/utils/util.format.js"></script>
+    <script src="../../../core/utils/util.ui.js"></script>
+    <script src="../../../core/playlist/player.playlist.js"></script>
+    <script src="../../../core/layout/core.layout.js"></script>
+    <link href="../../../core/layout/core.layout.css" rel="stylesheet" type="text/css">
+
+    <!-- Service Plugin: RAMP -->
     <script src="../../../services/smil/service.smil.js"></script>
-    <script src="../../../utils/util.event.js"></script>
-    <script src="../../../utils/util.proxy.js"></script>
-    <script src="../../../utils/util.script.js"></script>
-    <script src="../../../utils/util.timer.js"></script>
-    <script src="../../../utils/util.format.js"></script>
-    <script src="../../../utils/util.ui.js"></script>
 
     <!-- Media Plugin: Flowplayer -->
-    <script src="../player.flowplayer.js"></script>
+    <script src="../../../players/flowplayer/player.flowplayer.js"></script>
 
-    <!-- Media Plugin: Playlist -->
-    <script src="../../playlist/player.playlist.js"></script>
+    <!-- UI : MetaQ  -->
+    <script src="../../../ui/metaq/ui.metaq.js"></script>
 
-    <!-- Plugin: popcorn -->
-    <script src="../../popcorn/ui.popcorn.js"></script>
-
-    <!-- View: Controls -->
-    <script src="../../../ui/controls/ui.controls.js"></script>
-    <link href="../../../ui/controls/ui.controls.css" rel="stylesheet"  type="text/css">
-    <link href="../../../themes/mp2/theme.controls.css" rel="stylesheet"  type="text/css">
-
-    <!-- View: Overlay -->
-    <script src="../../../ui/overlay/ui.overlay.js"></script>
-    <link href="../../../ui/overlay/ui.overlay.css" rel="stylesheet"  type="text/css">
-    <link href="../../../themes/mp2/theme.overlay.css" rel="stylesheet"  type="text/css">
-
-    <!-- View: Captions -->
+    <!-- UI: Captions -->
     <script src="../../../ui/captions/ui.captions.js"></script>
     <link href="../../../ui/captions/ui.captions.css" rel="stylesheet"  type="text/css">
     <link href="../../../themes/mp2/theme.captions.css" rel="stylesheet"  type="text/css">
 
-    <!-- View: Endcap -->
-    <script src="../../../ui/endcap/ui.endcap.js"></script>
-    <link href="../../../ui/endcap/ui.endcap.css" rel="stylesheet"  type="text/css">
-    <link href="../../../themes/mp2/theme.endcap.css" rel="stylesheet"  type="text/css">
-
-    <!-- View: social -->
+    <!-- UI: Social -->
     <script src="../../../ui/social/ui.social.js"></script>
     <link href="../../../ui/social/ui.social.css" rel="stylesheet"  type="text/css">
-    <!-- View: embed -->
+
+    <!-- UI: Embed -->
     <script src="../../../ui/embed/ui.embed.js"></script>
     <link href="../../../ui/embed/ui.embed.css" rel="stylesheet"  type="text/css">
     <link href="../../../themes/mp2/theme.embed.css" rel="stylesheet"  type="text/css">
 
+    <!-- UI: Controls -->
+    <script src="../../../ui/controls/ui.controls.js"></script>
+    <link href="../../../ui/controls/ui.controls.css" rel="stylesheet"  type="text/css">
+    <link href="../../../themes/mp2/theme.controls.css" rel="stylesheet"  type="text/css">
+
+    <!-- UI: Overlay -->
+    <script src="../../../ui/overlay/ui.overlay.js"></script>
+    <link href="../../../ui/overlay/ui.overlay.css" rel="stylesheet"  type="text/css">
+    <link href="../../../themes/mp2/theme.overlay.css" rel="stylesheet"  type="text/css">
+
+    <!-- UI: Endcap -->
+    <script src="../../../ui/endcap/ui.endcap.js"></script>
+    <link href="../../../ui/endcap/ui.endcap.css" rel="stylesheet"  type="text/css">
+    <link href="../../../themes/mp2/theme.endcap.css" rel="stylesheet"  type="text/css">
+
     <style>
         #target {
-            position: relative;
             width: 600px;
             height: 300px;
-            background:  black;
-        }
-        #video {
-            position: absolute;
-            top: 0px; bottom: 0px;
-            left: 0px; right: 0px;
-            z-index: 0;
-        }
-
-        /*video {*/
-            /*z-index: -1;*/
-            /*-webkit-transform: translateZ(0);*/
-            /*-webkit-transform-style: preserve-3d;*/
-        /*}*/
-
-        #test {
-            height: 100px;
-            width: 300px;
-            margin:  10px;
+            background:  gray;
         }
     </style>
 
@@ -97,11 +80,12 @@
 
 <h3>Metaplayer &raquo; Flowplayer Plugin</h3>
 
-<div id='target' class="metaplayer">
-    <div id='video' class="metaplayer-video"></div>
+<div id='target'>
+    <div id='video'></div>
 </div>
 
 <script type="text/javascript">
+
     var fp = $f( 'video',
             {
                 src: "../../../../external/flowplayer/flowplayer-3.2.7.swf",
@@ -113,25 +97,15 @@
                 },
                 playlist : []
             });
-    fp.ipad({
-//        simulateiDevice:true
-    });
 
-    var video = Ramp.flowplayer(fp, "ramp:/pca:36234882" );
-    video.autoplay = false;
-    video.preload = true;
-
-
-    var controls = Ramp.controls(video);
-    var captions = Ramp.captions(video);
-    var metaq = Ramp.metaq(video);
-    var overlay = Ramp.overlay(video);
-    var endcap = Ramp.endcap(video);
-
-
-    fp.load();
-
-
+    player = MetaPlayer("#target")
+            .flowplayer( fp )
+            .ramp()
+            .metaq()
+            .overlay()
+            .endcap()
+            .controls()
+            .load("ramp:/advisor:48920875");
 
 </script>
 
