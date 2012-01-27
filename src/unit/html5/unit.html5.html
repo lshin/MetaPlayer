@@ -34,14 +34,13 @@
             verbose: true
         });
 
-        var harness = PlayerUnit();
+        var harness = PlayerUnit(unit);
 
         unit.test("test setup", function () {
             harness.media = document.getElementById('video');
-            unit.nequal( harness.media, null, "have video element");
         });
 
-        harness.addTests(unit);
+        harness.addTests();
 
         $( function () {
             unit.start();

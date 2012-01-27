@@ -32,17 +32,19 @@
 
     <!-- Core: Ramp -->
     <script src="../../../core/metaplayer.js"></script>
-    <script src="../../playlist/player.playlist.js"></script>
-    <script src="../../../services/smil/service.smil.js"></script>
     <script src="../../../core/utils/util.event.js"></script>
     <script src="../../../core/utils/util.proxy.js"></script>
     <script src="../../../core/utils/util.script.js"></script>
     <script src="../../../core/utils/util.timer.js"></script>
     <script src="../../../core/utils/util.format.js"></script>
     <script src="../../../core/utils/util.ui.js"></script>
+    <script src="../../../core/playlist/player.playlist.js"></script>
+    <script src="../../../core/layout/core.layout.js"></script>
+    <link href="../../../core/layout/core.layout.css" rel="stylesheet" type="text/css">
 
     <!-- Media Plugin: HTML5 -->
-    <script src="../player.html5.js"></script>
+    <script src="../../../players/html5/player.html5.js"></script>
+
 
     <script type="text/javascript">
 
@@ -51,24 +53,19 @@
             verbose: true
         });
 
-        var harness = PlayerUnit();
-        var player;
+        var harness = PlayerUnit(unit);
+        var video;
 
         unit.test("ramp setup", function () {
-            player = Ramp.html5('#target', "ramp:/pca:36234882");
-            unit.event("transcodes", player.service, "transcodes ready");
-            unit.event("metaData", player.service, "metadata ready");
-            unit.event("related", player.service, "related ready");
+            video = Ramp.html5('#target');
+            harness.media = video;
         });
 
-        unit.test("harness setup", function () {
-            harness.media = player;
-        });
-
-        harness.addTests(unit);
+        harness.addTests();
 
         $( function () {
             unit.start();
+            video.src = "http://media.w3.org/2010/05/sintel/trailer.mp4";
         });
     </script>
 </head>

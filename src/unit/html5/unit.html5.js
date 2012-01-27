@@ -1,9 +1,10 @@
 
 
-var PlayerUnit = function (){
+var PlayerUnit = function (unit){
     if( ! ( this instanceof PlayerUnit ))
-        return new PlayerUnit();
+        return new PlayerUnit(unit)
 
+    this.unit = unit;
     this.nearTimeSec = 1;
     this.media = null;
 };
@@ -11,11 +12,11 @@ var PlayerUnit = function (){
 PlayerUnit.prototype = {
 
     isNearTime : function (sec) {
-        console.log("this.media.currentTime " + this.media.currentTime );
         return Math.abs(this.media.currentTime - sec) < this.nearTimeSec;
     },
 
-    addTests : function (unit) {
+    addTests : function () {
+        var unit = this.unit;
         var self = this;
 
         unit.test("media setup",  function () {
@@ -23,7 +24,6 @@ PlayerUnit.prototype = {
             unit.equal( isNaN(self.media.duration), true, "duration at start is NaN");
 
             unit.assert( self.media.canPlayType instanceof Function, "canPlayType defined" );
-            unit.assert( self.media.children.length, "has children" );
         });
 
         unit.test("load events",  function () {

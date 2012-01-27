@@ -10,10 +10,9 @@
         if( ! (this instanceof SmilService ))
             return new SmilService(video, options);
 
-
         this.config = $.extend({}, defaults, options);
 
-        this.dispatcher = Ramp.dispatcher(video);
+        this.dispatcher = MetaPlayer.dispatcher(video);
         this.dispatcher.attach(this);
 
         // if we're attached to video, update with track changes
