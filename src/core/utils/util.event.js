@@ -11,7 +11,7 @@
             return new EventDispatcher(source);
 
         this._listeners = {};
-        this.init(source);
+        this.attach(source);
     };
 
     Ramp.dispatcher = EventDispatcher;
@@ -37,51 +37,27 @@
 
     EventDispatcher.prototype = {
 
-        init : function (source) {
+        attach : function (source) {
             if(!  source )
                 return;
 
-            // we can wrap other event dispatchers
             if( source.addEventListener ){
                 // use the element's native core
-                MetaPlayer.proxy.proxyFunction("addEventListener removeEventListener dispatchEvent",
+                MetaPlayer.proxy.proxyFunction( "addEventListener removeEventListener dispatchEvent",
                     source, this);
-
-                // but add our convenience functions
-                MetaPlayer.proxy.proxyFunction (
-                    "listen forget dispatch",
-                    this, source);
             }
-            // or enable plain objects
             else {
-                this.attach(source)
-            }
-        },
-
-        attach : function (target, force) {
-            if( target.addEventListener && ! force  ) {
-                throw 'already an event dispatcher';
-            }
-
-            if(! target.addEventListener ) {
+                // or enable plain objects
                 MetaPlayer.proxy.proxyFunction(
                     "addEventListener removeEventListener dispatchEvent",
-                    this, target);
+                    this, source);
             }
 
-            MetaPlayer.proxy.proxyFunction (
-                "listen forget dispatch",
-                this, target);
+            // and add our convenience functions
+            MetaPlayer.proxy.proxyFunction ( "listen forget dispatch",
+                this, source);
 
-            target.dispatcher = this;
-        },
-
-        _wrap : function(name) {
-            var self = this;
-            var scope = this;
-            return function () {
-                return self[name].apply(scope, arguments);
-            }
+            source.dispatcher = this;
         },
 
         listen : function ( eventType, callback, scope) {

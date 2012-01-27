@@ -13,13 +13,13 @@
         this._counted = 0;
         this._onTimeout = function () {
             self._counted++;
-            self.dispatch('time', {
+            self.dispatcher.dispatch('time', {
                 count : self._counted,
                 remain : self.count - self._counted
             });
             if( self.count > 0 && self.count < self._counted + 1 ){
                 self.reset();
-                self.dispatch('complete');
+                self.dispatcher.dispatch('complete');
             }
         };
     };

@@ -37,6 +37,7 @@
 
 
         this.target = $(target).get(0);
+        this.dom = layout.base;
         this.video = MetaPlayer.proxy.getProxyObject(layout.stage);
         this.dispatcher = MetaPlayer.dispatcher( this.video );
         this.playlist(options);
@@ -93,7 +94,11 @@
          * @param video
          */
         player : function (video) {
+            // append any child player to layout, defensively
+            if( !(this.video === video) )
+                this.video.appendChild( video );
             MetaPlayer.proxy.proxyPlayer(video, this.video);
+            this.currentPlayer = video;
             return this;
         },
 

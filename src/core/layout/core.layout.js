@@ -33,11 +33,14 @@
         this.config = $.extend(true, {}, defaults, options);
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
 
+
         var t = $(target);
-        var isVideo = t.is("video");
+        target = t.get(0);
+
         var base;
         var stage = t.find('.mp-video');
         var video = t.find('video');
+        var isVideo = ! (target.currentTime == null);
 
         // set up main wrapper
         if( isVideo ){
@@ -60,12 +63,18 @@
                 .addClass('mp-video');
             stage.appendTo(base);
         }
+
+        // move any child video objects over
         if( video.length > 0 ) {
             stage.append(video);
         }
 
         if( isVideo )
             stage.append(t);
+
+        // steal the id for sizing
+//        base.attr('id', t.attr('id') );
+//        t.attr('id', '');
 
         return {
             base : base.get(0),
