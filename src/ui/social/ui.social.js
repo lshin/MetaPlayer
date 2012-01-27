@@ -28,7 +28,11 @@
         this.service.listen("metadata", this.onMetaData, this );
     };
 
-    Ramp.social = Social;
+    MetaPlayer.social = Social;
+
+    MetaPlayer.addPlugin("socia l", function (target, options) {
+        return Social(target, this.service, options);
+    });
 
     Social.prototype = {
 

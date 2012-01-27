@@ -21,6 +21,8 @@
  */
 (function () {
 
+    var $ = jQuery;
+
     /**
      * Sets up player plugin container, playlist, and DOM scaffolding
      * @constructor

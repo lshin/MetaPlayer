@@ -13,8 +13,7 @@
         placeholderText : "Search transcript..."
     };
 
-    var SearchBox = function (target, player, options) {
-
+    var SearchBox = function (target, player, service, options) {
         var id;
         if( typeof target !== "string") {
             if ( ! target.__SEARCH_ID )
@@ -29,13 +28,9 @@
             return SearchBox.instances[id];
 
         if( !(this instanceof SearchBox) )
-            return new SearchBox(target, player, options);
+            return new SearchBox(target, player, service, options);
 
-        if( player.service ) {
-            this.service = player.service;
-        }
-        else if( service.onMetaData )
-            this.service = player;
+        this.service = service;
 
         if( typeof player == "string")
             player = $(player).get(0);;
@@ -55,8 +50,11 @@
     SearchBox.instances = {};
     SearchBox._count = 0;
 
-    if( window.Ramp )
-        Ramp.searchbox = SearchBox;
+    MetaPlayer.searchbox = SearchBox;
+
+    MetaPlayer.addPlugin("searchbox", function(target, options) {
+        return SearchBox(target, this.video, this.service, options);
+    });
 
     SearchBox.prototype = {
 
@@ -106,12 +104,12 @@
             });
 
             if( this.service ) {
-                this.service.onTags( this.onTags, this);
-                this.service.onSearch( this.onSearchResult, this);
+                this.service.listen("tags", this.onTags, this);
+                this.service.listen("search", this.onSearchResult, this);
             }
         },
 
-        onTags : function (tags) {
+        onTags : function (e, tags) {
             var all = $(tags).map(function () {
                 return this.term;
             });
@@ -124,7 +122,7 @@
                 this.onSearch();
         },
 
-        onSearch : function () {
+        onSearch : function (e) {
             var q = this.find('input').val();
             this.search(q);
         },
@@ -141,7 +139,7 @@
             r.empty();
         },
 
-        onSearchResult : function (response) {
+        onSearchResult : function (e,response) {
             this.clear();
 
             var r = this.find('results');
@@ -155,7 +153,7 @@
                 var el = self.create('result');
                 el.data('start', result.start);
                 var time = self.create('time');
-                time.text( Ramp.Utils.Format.seconds( result.start) )
+                time.text( Ramp.format.seconds( result.start) )
                 el.append(time);
 
                 var phrase = self.create('text');

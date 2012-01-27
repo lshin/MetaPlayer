@@ -47,7 +47,7 @@
     </style>
 
     <!--Dependency: jQuery-->
-    <script src="../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
+    <script src="../external/jquery/jquery-1.7.1.js" type="text/javascript"></script>
 
     <!--Dependency: Popcorn-->
     <!--<script src="../external/popcorn/popcorn.js" type="text/javascript"></script>-->
@@ -58,6 +58,7 @@
 
     <!--Metaplayer -->
     <script src="../build/metaplayer.js"></script>
+    <script src="../build/metaplayer.metaq.js"></script>
     <script src="../build/metaplayer.controls.js"></script>
     <script src="../build/metaplayer.overlay.js"></script>
     <script src="../build/metaplayer.endcap.js"></script>
@@ -76,43 +77,49 @@
         $( function () {
 
 //            player = Ramp.html5('#target', "ramp:/pca:36234882", { autoplay: true } );
-            player = Ramp.flowplayer('#video', "ramp:/pca:36234882", {
-                swfUrl : "../external/flowplayer/flowplayer-3.2.7.swf"
-            });
+            player = MetaPlayer('#target')
+                    .ramp()
 
-            transcript_ = Ramp.transcript("#transcript", player, {
-                timestamps: false,
-                breaks: false
-            });
+                    .flowplayer({
+                        swfUrl : "../external/flowplayer/flowplayer-3.2.7.swf"
+                    })
 
-            // initialize popcorn & events
-            metaq = Ramp.metaq(player, {
-                "subtitle" : {
-                    clone : "transcript"
-                },
-                "transcript" : {
-                    overrides : {
-                        target : "#transcript"
-                    }
-                }
-            });
+//                    .html5()
 
-            controls = Ramp.controls(player, {
-                renderTags :false
-            });
+                    .transcript("#transcript", {
+                        timestamps: false,
+                        breaks: false
+                    })
 
-            overlay = Ramp.overlay(player);
+                    .metaq({
+                        "subtitle" : {
+                            clone : "transcript"
+                        },
+                        "transcript" : {
+                            overrides : {
+                                target : "#transcript"
+                            }
+                        }
+                    })
 
-            endcap = Ramp.endcap(player);
+                    .controls({
+                        renderTags : false
+                    })
 
-            search_ = Ramp.searchbox("#search", player   );
+                    .overlay()
+                    .endcap()
 
-            social_ = Ramp.social("#social", player);
+                    .searchbox("#search")
+                    .social("#social")
+                    .embed("#embed");
 
-            embed_ = Ramp.embed("#embed", player);
+            player.video.autoplay = true;
+            player.load("ramp:/advisor:48920875");
+
 
         });
 
+        jQuery.noConflict(true);
     </script>
 
 
@@ -121,8 +128,8 @@
 <h3>Metaplayer &raquo; Plugins Demo</h3>
 
 
-<div id='target' class="metaplayer">
-    <div id='video' class="metaplayer-video">
+<div id='target'>
+    <div id='video'>
     </div>
 </div>
 

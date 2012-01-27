@@ -31,6 +31,7 @@
 
     <!--Metaplayer -->
     <script src="../build/metaplayer.js"></script>
+    <script src="../build/metaplayer.metaq.min.js"></script>
     <script src="../build/metaplayer.controls.min.js"></script>
     <script src="../build/metaplayer.overlay.min.js"></script>
     <script src="../build/metaplayer.captions.min.js"></script>
@@ -44,34 +45,27 @@
     <script type="text/javascript">
         $( function () {
 
-            var fp = $f( 'video',
-                    {
-                        src: "../external/flowplayer/flowplayer-3.2.7.swf",
-                        wmode: "transparent"
-                    },
-                    {
-                        clip : {
-                            scaling : "fit"
-                        },
-                        playlist: []
-                    });
-            fp.ipad(
 
-            );
+                var fp = $f( 'video',
+            {
+                src: "../external/flowplayer/flowplayer-3.2.7.swf",
+                wmode: "transparent"
+            },
+            {
+                clip : {
+                    scaling : "fit"
+                },
+                playlist : []
+            });
 
-            var player = Ramp.flowplayer(fp, "ramp:/pca:36234882");
-
-            // initialize popcorn & events
-            var metaq = Ramp.metaq(player);
-
-            // controls & timeline
-            var controls = Ramp.controls(player);
-
-            // overlay
-            var overlay = Ramp.overlay(player);
-
-            // endcap
-            var endcap = Ramp.endcap(player);
+    player = MetaPlayer("#target")
+            .flowplayer( fp )
+            .ramp()
+            .metaq()
+            .overlay()
+            .endcap()
+            .controls()
+            .load("ramp:/advisor:48920875");
 
         });
 

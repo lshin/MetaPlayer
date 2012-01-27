@@ -58,8 +58,11 @@ all copies or substantial portions of the Software.
 
     Transcript.instances = {};
 
-    if( window.Ramp )
-        Ramp.transcript = Transcript;
+
+    MetaPlayer.addPlugin("transcript", function (target, options) {
+        return Transcript( target, this.video, options);
+    });
+
 
     Transcript.prototype = {
         init : function (){
