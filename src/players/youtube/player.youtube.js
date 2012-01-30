@@ -77,7 +77,7 @@
     if( window.MetaPlayer ) {
         MetaPlayer.addPlayer("youtube", function ( options ) {
             var el = $("<div></div>").appendTo(this.video);
-            return new YouTubePlayer(el, null, options).video;
+            return new YouTubePlayer(el, options).video;
         });
     }
     else {
@@ -385,7 +385,7 @@
                 return val;
             }
 
-            return this.youtube.isMuted();
+            return this.__muted;
         },
 
         volume : function (val){
