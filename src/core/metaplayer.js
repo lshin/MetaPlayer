@@ -96,9 +96,6 @@
          * @param video
          */
         player : function (video) {
-            // append any child player to layout, defensively
-            if( !(this.video === video) )
-                this.video.appendChild( video );
             MetaPlayer.proxy.proxyPlayer(video, this.video);
             this.currentPlayer = video;
             return this;

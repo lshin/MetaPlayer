@@ -48,7 +48,6 @@
         this.__loop = config.loop;
         this.preload = config.preload;
         this.autoplay = config.autoplay;
-
         this.__src = "";
 
         this.apiId = "YT" + YouTubePlayer.embedCount++ + "T" + (new Date()).getTime() ;
@@ -71,7 +70,7 @@
     if( window.MetaPlayer ) {
         MetaPlayer.addPlayer("youtube", function ( options ) {
             var el = $("<div></div>").appendTo(this.video);
-            return new YouTubePlayer(el, null, options);
+            return new YouTubePlayer(el, null, options).video;
         });
     }
     else {
@@ -113,11 +112,17 @@
                 .attr('value', 'always')
                 .appendTo(obj);
 
+            $("<param>")
+                .attr('name', 'wmode')
+                .attr('value', 'transparent')
+                .appendTo(obj);
+
             $("<embed>")
                 .attr('src', url)
                 .attr('type', 'application/x-shockwave-flash')
                 .attr('allowfullscreen', 'true')
                 .attr('allowscriptaccess', 'always')
+                .attr('wmode', 'transparent')
                 .attr("width", "100%")
                 .attr("height", "100%")
                 .appendTo(obj);
@@ -171,6 +176,7 @@
             /*
             http://code.google.com/apis/youtube/js_api_reference.html#Events
              */
+
             switch(state) {
                 case -1: // unstarted
                     break;
@@ -282,6 +288,7 @@
             this.__seeking = true;
             this.video.dispatch("seeking");
             this.youtube.seekTo( time );
+            this.__currentTime = time;
 
             // no seeking events exposed, so fake best we can
             // will be subject to latency, etc
@@ -297,6 +304,10 @@
         /* Media Interface */
 
         load : function () {
+            this.preload = true;
+            if( ! this.youtube )
+                return;
+
             var src = this.src();
             // kickstart the buffering so we get the duration
             this.youtube.playVideo();
@@ -305,8 +316,10 @@
         },
 
         play : function () {
-            if(! this.youtube  )
-                return false;
+            this.autoplay = true;
+            if( ! this.youtube )
+                return;
+
             this.youtube.playVideo()
         },
 
@@ -349,6 +362,9 @@
         },
 
         muted : function (val){
+            if( ! this.youtube )
+                return false;
+
             if( val != null ){
                 if( val  )
                     this.youtube.mute();
@@ -363,7 +379,7 @@
 
         volume : function (val){
             if( ! this.youtube )
-                this.volume = 1;
+                return 1;
             if( val != null ){
                 this.youtube.setVolume(val * 100)
                 this.video.dispatch("volumechange");
