@@ -40,9 +40,11 @@
         this.__seeking = false;
         this.__readyState = 0;
         this.__ended = false;
+        this.__muted = false;
         this.__paused = true;
         this.__duration = NaN;
         this.__currentTime = 0;
+        this.__volume = 1;
 
         this.__controls = config.controls;
         this.__loop = config.loop;
@@ -165,9 +167,6 @@
             // flash implemented, works in IE?
             // player.addEventListener(event:String, listener:String):Void
             this.youtube.addEventListener("onStateChange", this.getCallbackString("onStateChange") );
-
-            // html video starts volume 1
-            this.youtube.setVolume(100);
             this.startVideo();
         },
 
@@ -261,6 +260,13 @@
                 return;
 
             this.__ended = false;
+
+            if( this.__muted ) {
+                this.youtube.mute();
+                console.log("mute");
+            }
+            // volume works, this is too early to set mute
+            this.youtube.setVolume(this.__volume);
 
             var src = this.src();
             if( ! src ) {
@@ -362,10 +368,10 @@
         },
 
         muted : function (val){
-            if( ! this.youtube )
-                return false;
-
             if( val != null ){
+                this.__muted = val
+                if( ! this.youtube )
+                    return val;
                 if( val  )
                     this.youtube.mute();
                 else
@@ -378,13 +384,14 @@
         },
 
         volume : function (val){
-            if( ! this.youtube )
-                return 1;
             if( val != null ){
+                this.__volume = val;
+                if( ! this.youtube )
+                    return val;
                 this.youtube.setVolume(val * 100)
                 this.video.dispatch("volumechange");
             }
-            return this.youtube.getVolume() / 100;
+            return this.__volume;
         },
 
         controls : function (val) {
