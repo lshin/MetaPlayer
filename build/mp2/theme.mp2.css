@@ -784,7 +784,21 @@
     width: 100%;
     margin: 0; padding:  0;
 }
-.metaplayer {
+
+.mp-ff {
+    overflow-y: auto;
+}
+.mp-ff-box {
+    position: relative;
+    top: 0; left: 0;
+    height: 0;
+}
+.mp-ff iframe {
+    display:block;
+    width: 100%;
+    position: absolute;
+    bottom: 0;
+}.metaplayer {
     position: relative;
     top: 0;
     left: 0;

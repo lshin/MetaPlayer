@@ -15,7 +15,7 @@ CORE_MIN=$(CORE:.js=.min.js)
 
 ALL_SERVICES=service.mrss service.smil 
 ALL_PLAYERS=player.html5 player.flowplayer player.youtube
-ALL_UI=ui.controls ui.overlay ui.transcript ui.captions ui.search ui.videojs ui.endcap ui.social ui.embed ui.metaq
+ALL_UI=ui.controls ui.overlay ui.transcript ui.captions ui.search ui.videojs ui.endcap ui.social ui.embed ui.metaq ui.framefeed
 ALL_THEME=theme.mp2
 
 compile=$(CLOSURE) $(CLOSURE_FLAGS) --js=$1 >  $2
@@ -49,9 +49,9 @@ player.%: $(BUILD_DIR)
 ui.%: $(BUILD_DIR)
 	@echo $@ 
 	@cat src/ui/$*/*js >> $(BUILD_DIR)/metaplayer.$*.js
-	@$(call compile,$(BUILD_DIR)/metaplayer.$*.js,$(BUILD_DIR)/metaplayer.$*.min.js)
+#	@$(call compile,$(BUILD_DIR)/metaplayer.$*.js,$(BUILD_DIR)/metaplayer.$*.min.js)
 	@$(call license,$(BUILD_DIR)/metaplayer.$*.js)
-	@$(call license,$(BUILD_DIR)/metaplayer.$*.min.js)
+#	@$(call license,$(BUILD_DIR)/metaplayer.$*.min.js)
 	@cat src/ui/$*/*css >> $(CSS)
 	@if test -d src/ui/$*/templates; then cp src/ui/$*/templates/*\.tmpl\.* $(BUILD_DIR)/templates; fi
 
