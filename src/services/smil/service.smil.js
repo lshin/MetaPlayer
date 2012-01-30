@@ -383,6 +383,10 @@
     SmilService.resolveType = function ( url ) {
         var ext = url.substr( url.lastIndexOf('.') + 1 );
 
+        if( url.match("www.youtube.com") ) {
+            return "video/youtube"
+        }
+
         if( ext == "ogv")
             return "video/ogg";
 
