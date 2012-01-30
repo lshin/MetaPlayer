@@ -7,6 +7,7 @@
         autoplay : false,
         preload : true,
         controls : true,
+        chromeless : false,
         loop : false,
         hd : true,
         annotations: false,
@@ -14,7 +15,8 @@
         related : false,
         showinfo : false,
         captions : false,
-        embedUrl : "http://www.youtube.com/apiplayer"
+        apiUrl  : "http://www.youtube.com/apiplayer", // chromeless
+        videoUrl : "http://www.youtube.com/v/u1zgFlCw8Aw" // controls, need some id
     };
 
     // play nice in the global context by preserving other listeners, hope they do the same for us
@@ -35,7 +37,8 @@
 
         this.video = $(target).get(0);
 
-        this.embedUrl = config.embedUrl;
+        this.apiUrl = config.apiUrl;
+        this.videoUrl = config.videoUrl;
 
         this.__seeking = false;
         this.__readyState = 0;
@@ -46,11 +49,12 @@
         this.__currentTime = 0;
         this.__volume = 1;
 
-        this.__controls = config.controls;
+        this.controls = config.controls;
         this.__loop = config.loop;
         this.preload = config.preload;
         this.autoplay = config.autoplay;
         this.__src = "";
+
 
         this.apiId = "YT" + YouTubePlayer.embedCount++ + "T" + (new Date()).getTime() ;
         this.hd = config.hd;
@@ -59,6 +63,7 @@
         this.showinfo = config.showinfo;
         this.related = config.related;
         this.captions = config.captions;
+        this.chromeless = config.chromeless;
 
         MetaPlayer.proxy.proxyPlayer(this, this.video );
         this.doEmbed( this.video );
@@ -91,6 +96,7 @@
     YouTubePlayer.prototype = {
         doEmbed : function (target) {
             var url = this.getEmbedUrl();
+
             var video = $(target);
 
             video.empty();
@@ -133,20 +139,23 @@
         },
 
         getEmbedUrl : function () {
-            var url = this.embedUrl;
+            var url =  this.chromeless ?
+                this.apiUrl :
+                this.videoUrl;
 
             var params = {
                 enablejsapi : 1,
                 version : 3,
                 playerapiid : this.apiId,
+                autohide : 0,
                 autoplay : this.autoplay ? 1 : 0,
                 controls : this.controls ? 1 : 0,
                 fs : 1,
                 hd : this.hd ? 1 : 0,
                 rel : this.related ? 1 : 0,
-                showinfo : this.showinfo? 1: 0,
+                showinfo : this.showinfo? 1 : 0,
                 iv_load_policy : this.annotations ? 1 : 0,
-                cc_load_policy : this.captions ? 1 : 0
+                cc_load_policy : this.captions ? 1 : 1
             };
 
             return url + "?" + $.param(params,true);
@@ -181,17 +190,14 @@
                     break;
                 case 0: //ended
                     this.__ended = true;
-                    this.stopTimeCheck();
                     this.video.dispatch("ended");
                     break;
                 case 1: // playing
-                    this.startTimeCheck();
                     this.__paused = false;
                     this.video.dispatch("playing");
                     this.video.dispatch("play");
                     break;
                 case 2: // paused
-                    this.stopTimeCheck();
                     this.__paused = true;
                     this.video.dispatch("pause");
                     break;
@@ -200,7 +206,7 @@
                 case 5: // queued
                     this.video.dispatch("canplay");
                     this.video.dispatch("loadeddata");
-                    this.stopTimeCheck();
+                    this.startTimeCheck();
                     break;
             }
         },
@@ -263,7 +269,6 @@
 
             if( this.__muted ) {
                 this.youtube.mute();
-                console.log("mute");
             }
             // volume works, this is too early to set mute
             this.youtube.setVolume(this.__volume);
@@ -392,13 +397,6 @@
                 this.video.dispatch("volumechange");
             }
             return this.__volume;
-        },
-
-        controls : function (val) {
-            if( val !== undefined ) {
-                this.__controls = val;
-            }
-            return this.__controls;
         },
 
         src : function (val) {
