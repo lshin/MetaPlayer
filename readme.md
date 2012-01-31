@@ -4,32 +4,20 @@ A standards-based, multiple engine, media player framework.
 
 About
 -------------
-MetaPlayer's goals are to:
+The MetaPlayer Framework provides a stable UI framework adhering to the standard-based HTML5 media interface. MetaPlayer provides:
 
-* Support multiple playback engines (HTML5, Flowplayer, Youtube, etc).
+* A single HTML5 interface for popular players (eg. YouTube, FlowPlayer)
 
-* Provide a stable UI framework built on the standard-based HTML5 media interface.
+* Ë la carte player controls, timelines, and page widgets
 
-* Seamless integration with RAMP transcription and metadata services.
+* Time-based interactive UI built using Mozilla's open-source [PopcornJS](http://popcornjs.org) 
 
-Quick Start
+* Subtitles, video search, transcripts, and other extensible metadata events originating in data services provides by MRSS, SMIL, and JSON.
+
+Requirements
 -------------
 
-        document.addEventListener("DOMContentLoaded", function () {
-
-            var player = Ramp.html5('#target', "ramp:/pca:36234882", { autoplay: true } );
-
-            // initialize popcorn & events
-            var metaq = Ramp.metaq(player);
-
-            // controls & timeline
-            var controls = Ramp.controls(player);
-
-            // overlay
-            var overlay = Ramp.overlay(player);
-
-        }, false);
-
+The MetaPlayer Framework core is built using jQuery and PopcornJS.  Individual players and plugin requirements will vary.
 
 
 License
