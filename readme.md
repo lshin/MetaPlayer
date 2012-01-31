@@ -6,11 +6,11 @@ About
 -------------
 The MetaPlayer Framework provides a stable UI framework adhering to the standard-based HTML5 media interface. MetaPlayer provides:
 
-* A single HTML5 interface for popular players (eg. YouTube, FlowPlayer)
+* HTML5 interfaces for popular players (eg. YouTube, FlowPlayer)
 
-* Ë la carte player controls, timelines, and page widgets
+* Time-based interactive UI built using Mozilla's open-source [PopcornJS](http://popcornjs.org)
 
-* Time-based interactive UI built using Mozilla's open-source [PopcornJS](http://popcornjs.org) 
+* Individually selectable player controls, timelines, and page widgets.
 
 * Subtitles, video search, transcripts, and other extensible metadata events originating in data services provides by MRSS, SMIL, and JSON.
 
@@ -18,7 +18,6 @@ Requirements
 -------------
 
 The MetaPlayer Framework core is built using jQuery and PopcornJS.  Individual players and plugin requirements will vary.
-
 
 License
 -------------
