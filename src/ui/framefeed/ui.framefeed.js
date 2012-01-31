@@ -5,7 +5,7 @@
 
     var defaults = {
         cssPrefix : "mp-ff",
-        filterMsec : 750,
+        filterMsec : 500,
         revealMsec : 1500
     };
 

@@ -1,6 +1,7 @@
 
 (function () {
 
+    // save reference for no conflict support
     var $ = jQuery;
 
     var defaults = {
@@ -16,7 +17,8 @@
         showinfo : false,
         captions : false,
         apiUrl  : "http://www.youtube.com/apiplayer", // chromeless
-        videoUrl : "http://www.youtube.com/v/u1zgFlCw8Aw" // controls, need some id
+        videoUrl : "http://www.youtube.com/v/Y7dpJ0oseIA", // controls, need some id
+        updateMsec : 500
     };
 
     // play nice in the global context by preserving other listeners, hope they do the same for us
@@ -48,13 +50,13 @@
         this.__duration = NaN;
         this.__currentTime = 0;
         this.__volume = 1;
-
-        this.controls = config.controls;
         this.__loop = config.loop;
-        this.preload = config.preload;
-        this.autoplay = config.autoplay;
         this.__src = "";
 
+        this.preload = config.preload;
+        this.controls = config.controls;
+        this.autoplay = config.autoplay;
+        this.updateMsec = config.updateMsec;
 
         this.apiId = "YT" + YouTubePlayer.embedCount++ + "T" + (new Date()).getTime() ;
         this.hd = config.hd;
@@ -66,7 +68,7 @@
         this.chromeless = config.chromeless;
 
         MetaPlayer.proxy.proxyPlayer(this, this.video );
-        this.doEmbed( this.video );
+        this.doEmbed(  this.video );
         this.dispatcher = MetaPlayer.dispatcher( this.video );
         MetaPlayer.youtube.instances[ this.apiId ] = this;
 
@@ -101,41 +103,20 @@
 
             video.empty();
 
-            var obj =  $("<object></object>")
-                .attr("width", "100%")
-                .attr("height", "100%");
+            var replace = $("<div></div>")
+                .attr("id", this.apiId)
+                .appendTo(this.video);
 
-            $("<param>")
-                .attr('name', 'movie')
-                .attr('value', url)
-                .appendTo(obj);
+            var params = {
+                wmode : "transparent",
+                allowScriptAccess: "always"
 
-            $("<param>")
-                .attr('name', 'allowFullScreen')
-                .attr('value', true)
-                .appendTo(obj);
-
-            $("<param>")
-                .attr('name', 'allowScriptAccess')
-                .attr('value', 'always')
-                .appendTo(obj);
-
-            $("<param>")
-                .attr('name', 'wmode')
-                .attr('value', 'transparent')
-                .appendTo(obj);
-
-            $("<embed>")
-                .attr('src', url)
-                .attr('type', 'application/x-shockwave-flash')
-                .attr('allowfullscreen', 'true')
-                .attr('allowscriptaccess', 'always')
-                .attr('wmode', 'transparent')
-                .attr("width", "100%")
-                .attr("height", "100%")
-                .appendTo(obj);
-
-            obj.appendTo( video );
+            };
+            var atts = {
+                id:  this.apiId
+            };
+            swfobject.embedSWF(url,
+                 this.apiId, "100%", "100%", "8", null, null, params, atts);
         },
 
         getEmbedUrl : function () {
@@ -170,9 +151,14 @@
 
         onReady : function () {
             var video = $(this.video);
-            var obj = video.find("object").get(0);
-            var embed = video.find("embed").get(0);
-            this.youtube = obj['playVideo'] != null ? obj : embed;
+
+            this.youtube = document.getElementById( this.apiId );
+
+            if(! this.youtube.playVideo ) {
+                this.error = "unabled to find youtube player";
+                return;
+            }
+
             // flash implemented, works in IE?
             // player.addEventListener(event:String, listener:String):Void
             this.youtube.addEventListener("onStateChange", this.getCallbackString("onStateChange") );
@@ -181,10 +167,7 @@
 
 
         onStateChange : function (state) {
-            /*
-            http://code.google.com/apis/youtube/js_api_reference.html#Events
-             */
-
+            // http://code.google.com/apis/youtube/js_api_reference.html#Events
             switch(state) {
                 case -1: // unstarted
                     break;
@@ -202,11 +185,12 @@
                     this.video.dispatch("pause");
                     break;
                 case 3: // buffering
+                    this.startDurationCheck();
+                    this.startTimeCheck(); // check while paused to handle event-less seeks
                     break;
                 case 5: // queued
                     this.video.dispatch("canplay");
                     this.video.dispatch("loadeddata");
-                    this.startTimeCheck();
                     break;
             }
         },
@@ -219,7 +203,7 @@
 
             this._timeCheckInterval = setInterval(function () {
                 self.onTimeUpdate();
-            }, 500);
+            }, this.updateMsec);
 
             // set an initial value, too
             this.updateTime();
@@ -237,16 +221,20 @@
 
         updateTime : function () {
             this.__currentTime = this.youtube.getCurrentTime();
+            console.log("TIME: " + this.__currentTime);
         },
 
         startDurationCheck : function () {
             var self = this;
+            if( this.__duration )
+                return;
+
             if( this._durationCheckInterval ) {
                 return;
             }
             this._durationCheckInterval = setInterval(function () {
                 self.onDurationCheck();
-            }, 1000);
+            }, this.updateMsec);
         },
 
         onDurationCheck : function () {
@@ -316,14 +304,17 @@
 
         load : function () {
             this.preload = true;
+
             if( ! this.youtube )
+                return;
+
+            if( this.youtube.getPlayerState() != -1 )
                 return;
 
             var src = this.src();
             // kickstart the buffering so we get the duration
             this.youtube.playVideo();
             this.youtube.pauseVideo();
-            this.startDurationCheck();
         },
 
         play : function () {

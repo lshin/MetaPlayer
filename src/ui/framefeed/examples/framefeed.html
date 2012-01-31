@@ -31,6 +31,9 @@
     <!--Dependency: Popcorn -->
     <script src="../../../../external/popcorn/popcorn.js" type="text/javascript"></script>
 
+    <!-- Dependency: swfobject -->
+    <script src="../../../../external/swfobject/swfobject.js" type="text/javascript"></script>
+
     <!-- Core: Ramp -->
     <script src="../../../core/metaplayer.js"></script>
     <script src="../../../core/utils/util.event.js"></script>
@@ -53,7 +56,7 @@
 
 </head>
 <body>
-<h3>Metaplayer &raquo; Captions Plugin</h3>
+<h3>Metaplayer &raquo; FrameFeed Plugin</h3>
 
 <div id='target'></div>
 <div id='feedheader'>
@@ -67,33 +70,34 @@
 <div id='feed'></div>
 
 <script type="text/javascript">
+    var feed, video, pop;
 
-    var feed = MetaPlayer.framefeed("#feed");
+    $( function () {
 
-    var video = MetaPlayer.youtube("#target", { chromeless : false });
-    video.preload = false;
-    video.src = "http://www.youtube.com/v/Ip2ZGND1I9Q?version=3";
-    //        video.muted = true;
-    video.volume = 0;
+        feed = MetaPlayer.framefeed("#feed");
 
-    var pop = Popcorn( video );
+        video = MetaPlayer.youtube("#target", { chromeless : false });
+        video.preload = false;
+        video.src = "http://www.youtube.com/v/Ip2ZGND1I9Q?version=3";
+        //        video.muted = true;
+        video.volume = 0;
 
+        pop = Popcorn( video );
+        // generate a few iframe color boxes
+        var i, hex, maxHex = parseInt("ffffff",16) + 1;
+        for( i = 0; i < 100; i++) {
+            var highlight = ( i % 3 == 2 );
+            pop.framefeed ({
+                target : "#feed",
+                url : "items/test.html#" + (  highlight ? "ff8888" : "8888ff"),
+                text : highlight ? "one" : "two",
+                height: highlight ? 150 : 100,
+                start : i * 5
+            });
+        }
+        pop.play();
 
-    // generate a few iframe color boxes
-    var i, hex, maxHex = parseInt("ffffff",16) + 1;
-    for( i = 0; i < 100; i++) {
-        var highlight = ( i % 3 == 2 );
-        pop.framefeed ({
-            target : "#feed",
-            url : "items/test.html#" + (  highlight ? "ff8888" : "8888ff"),
-            text : highlight ? "one" : "two",
-            height: highlight ? 200 : 100,
-            start : i * 5
-        });
-    }
-
-    pop.play();
-
+    })
 </script>
 
 </body>
