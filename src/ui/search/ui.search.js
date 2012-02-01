@@ -3,14 +3,20 @@
 (function () {
 
     var $ = jQuery;
-    var Popcorn = window.Popcorn;
 
     var defaults = {
         cssPrefix : "mp-search",
         tags : true,
         query : "",
         seekBeforeSec : 1,
-        placeholderText : "Search transcript..."
+        context : 3,
+        strings : {
+            'tagHeader' : "In this video:",
+            'searchPlaceholder' : "Search transcript...",
+            'ellipsis' : "...",
+            'resultsHeader' : "Showing {{count}} {{results}}:",
+            'results' : function (dict) { return "result" + (dict['count'] == 1 ? "" : "s")}
+        }
     };
 
     var SearchBox = function (target, player, service, options) {
@@ -33,7 +39,7 @@
         this.service = service;
 
         if( typeof player == "string")
-            player = $(player).get(0);;
+            player = $(player).get(0);
 
         if( player.currentTime != undefined && player.play )
             this.player = player;
@@ -56,6 +62,23 @@
         return SearchBox(target, this.video, this.service, options);
     });
 
+    SearchBox.getPhrase = function (words, offset, context){
+        if( typeof words == "string" )
+            words = words.split(' ');
+
+        var len = context * 2 + 1;
+
+        var start = 0;
+        if(  words.length - offset <= context ) {
+            start = words.length - len;
+        }
+        else if( offset > context ){
+            start = offset-context;
+        }
+
+        return words.slice( start, start + len)
+    },
+
     SearchBox.prototype = {
 
         createMarkup : function (){
@@ -68,19 +91,23 @@
             var ti = $('<input type="text" />');
             ti.addClass( this.cssName('input') );
             ti.val( this.config.query );
-            ti.attr('placeholder', this.config.placeholderText);
+            ti.attr('placeholder',  this.getString("searchPlaceholder") );
             f.append(ti);
 
             var sm = this.create('submit', 'a');
             sm.append( this.create('submit-label', 'span') );
             f.append(sm);
 
-            var rs = this.create('results');
-            c.append(rs);
+            this.create('results')
+                .appendTo(c);
+
+            this.create('tags')
+                .appendTo(c);
 
             this.container = c;
             t.append(this.container);
         },
+
         addListeners : function () {
             var self = this;
 
@@ -110,17 +137,32 @@
         },
 
         onTags : function (e, tags) {
-            var all = $(tags).map(function () {
-                return this.term;
+            var box = this.find("tags");
+            var self = this;
+
+            box.empty();
+
+            this.create('tag-header')
+                .text( this.getString("tagHeader") )
+                .appendTo(box);
+
+            $.each(tags, function (i, tag) {
+                var cell = $("<div></div>")
+                    .addClass( self.cssName("tag") )
+                    .appendTo(box);
+
+                $("<span></span>")
+                    .addClass( self.cssName("tag-label") )
+                    .text(tag.term)
+                    .click( function () {
+                        self.search(tag.term);
+                    })
+                    .appendTo(cell)
             });
-
-            var current = this.find('input').val();
-
-            if( this.config.tags && ! current )
-                this.search( all.toArray().join(' ' ) );
-            else
-                this.onSearch();
         },
+
+
+
 
         onSearch : function (e) {
             var q = this.find('input').val();
@@ -129,24 +171,29 @@
 
         search : function (query) {
             this.clear();
-            if(! query)
+            if(! query) {
+                this.find("tags").show();
                 return;
+            }
             this.service.search(query);
         },
 
         clear : function () {
             var r = this.find('results');
             r.empty();
+            this.find("tags").show();
         },
 
         onSearchResult : function (e,response) {
             this.clear();
+            this.find("tags").hide();
 
             var r = this.find('results');
-            if( response.results.length == 0 ) {
-                r.text("no results");
-                return;
-            }
+
+            $("<div></div>")
+                .addClass( this.cssName("result-count") )
+                .text( this.getString("resultsHeader", { count : response.results.length }) )
+                .appendTo(r);
 
             var self = this;
             $.each(response.results, function (i, result){
@@ -156,21 +203,36 @@
                 time.text( Ramp.format.seconds( result.start) )
                 el.append(time);
 
-                var phrase = self.create('text');
+                var words = [], offset;
                 $.each(result.words, function (i, word){
-                    var w = word.text;
+                    var w = $('<span>')
+                        .text(word.text);
                     if( word.match ){
-                        w = $('<span>');
-                        w.addClass( self.cssName('match') );
-                        w.text(word.text);
+                        offset = i;
+                        w.addClass( self.cssName('match') )
                     }
-                    phrase.append(w)
-                    phrase.append(" ")
+                    words.push( w.get(0) );
                 });
-                el.append(phrase);
-                r.append(el);
-            });
 
+                var phrase = SearchBox.getPhrase(words, offset, self.config.context );
+
+                $.each(phrase, function (i, word) {
+                    el.append( word );
+                    if( i + 1 < phrase.length )
+                        el.append(" ");
+                });
+
+                var ellipses = self.getString("ellipsis");
+                el.appendTo(r)
+                    .prepend(ellipses)
+                    .append(ellipses);
+
+            });
+        },
+
+        getString : function (name, dict) {
+            var template = $.extend({}, this.config.strings, dict);
+            return MetaPlayer.format.replace( this.config.strings[name], template)
         },
 
         /* util */

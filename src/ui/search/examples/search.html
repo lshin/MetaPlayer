@@ -65,7 +65,11 @@
         var player = MetaPlayer('#target')
                 .ramp()
                 .html5()
-                .searchbox("#search");
+                .searchbox("#search", {
+                    strings : {
+                        ellipsis : ""
+                    }
+                });
 
         player.load("ramp:/advisor:48920875");
 
