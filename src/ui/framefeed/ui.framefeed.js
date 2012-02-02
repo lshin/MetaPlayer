@@ -41,7 +41,6 @@
         this.dispatcher.listen("metaq", function (e, metaq) {
             $.each(metaq.framefeed, function (e, obj) {
                 var o = $.extend({ 'target': target}, obj);
-                console.log([obj.url, o]);
                 popcorn.framefeed(o);
             });
         });
@@ -61,33 +60,36 @@
 
         filter: function (query) {
             this.query = query;
-            $(this.target).find("div")
-                .stop()
-                .height(0)
-                .css('opacity',0);
+
             this.render();
         },
 
         render : function  () {
             var self = this;
             $.each(this.items, function (i, val) {
-                if ( ! self.filtered(val) && val.active ){
+                if( self.filtered(val) || ! val.active ){
+                    val.item.stop()
+                        .height(0)
+                        .css('opacity',0);
+                }
+                else {
                     val.item.stop().
                         height(val.height)
                         .animate({
                             opacity: 1
                         }, self.config.filterMsec);
                 }
+
             })
         },
 
         filtered : function (obj) {
-            return ( this.query && obj.text && ! obj.text.match(this.query) );
+            return ( this.query && (! obj.tags || ! obj.tags.match(this.query) ) );
         },
 
         focus : function (obj) {
             obj.active = true;
-            this.frame(obj);
+            this.frame(obj, true);
         },
 
         blur : function (obj) {
@@ -95,15 +97,14 @@
             obj.item.stop().height(0).css('opacity', 0);
         },
 
-        frame : function (obj) {
+        frame : function (obj, animate) {
             if( typeof obj == "string" ){
                 obj = { url :  obj };
             }
 
-            var url =  ( this.config.baseUrl )
-                ? this.config.baseUrl + obj.url
-                :  obj.url;
-
+            var url = obj.url;
+            if(! url.match('^http') && this.config.baseUrl )
+                url = this.config.baseUrl + url;
 
             if( this.seen[url] && this.seen[url].start != obj.start && ! this.config.duplicates) {
                 return;
@@ -135,7 +136,11 @@
 
             // if user has scrolled down, fade in
             var scroll = $(this.target).scrollTop();
-            if( scroll > 0 ){
+            if( ! animate ){
+                obj.item.height(obj.height);
+                obj.item.css("opacity", 1);
+            }
+            else if( scroll > 0 ){
                 obj.item.height(obj.height)
                     .animate({
                         opacity: 1
