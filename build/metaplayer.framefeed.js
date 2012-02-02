@@ -21,7 +21,9 @@ all copies or substantial portions of the Software.
     var defaults = {
         cssPrefix : "mp-ff",
         filterMsec : 500,
-        revealMsec : 1500
+        revealMsec : 1500,
+        duplicates : false,
+        baseUrl : ""
     };
 
     var FrameFeed = function (target, options) {
@@ -39,12 +41,28 @@ all copies or substantial portions of the Software.
 
         this.config = $.extend(true, {}, defaults, options);
         this.target = target;
+        this.seen= {};
         this.init();
 
         FrameFeed.instances[ this.target.id ] = this;
     };
 
     FrameFeed.instances = {};
+
+
+    MetaPlayer.addPlugin("framefeed", function (target, options){
+
+        var popcorn = this.popcorn;
+        this.dispatcher.listen("metaq", function (e, metaq) {
+            $.each(metaq.framefeed, function (e, obj) {
+                var o = $.extend({ 'target': target}, obj);
+                console.log([obj.url, o]);
+                popcorn.framefeed(o);
+            });
+        });
+
+        return FrameFeed(target, options);
+    });
 
     MetaPlayer.framefeed = FrameFeed;
 
@@ -97,12 +115,22 @@ all copies or substantial portions of the Software.
                 obj = { url :  obj };
             }
 
+            var url =  ( this.config.baseUrl )
+                ? this.config.baseUrl + obj.url
+                :  obj.url;
+
+
+            if( this.seen[url] && this.seen[url].start != obj.start && ! this.config.duplicates) {
+                return;
+            }
+            this.seen[url] = obj;
+
             this.render();
 
             if( ! obj.item ){
                 var frame = $("<iframe frameborder='0'></iframe>")
-                    .attr("src", obj.url)
-                    .attr("scrolling", false)
+                    .attr("src", url)
+                    .attr("scrolling", "no")
                     .attr("marginheight", 0)
                     .attr("marginwidth", 0)
                     .attr("height", obj.height);

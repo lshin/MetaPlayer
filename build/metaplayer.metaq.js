@@ -147,7 +147,7 @@ all copies or substantial portions of the Software.
         _schedule : function (type, options){
             var fn = this.popcorn[type];
             if( fn  )
-                fn.call(this.popcorn, options);
+                fn.call(this.popcorn, $.extend({}, options) );
         }
     };
 

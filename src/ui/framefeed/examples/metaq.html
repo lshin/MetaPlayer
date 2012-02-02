@@ -18,10 +18,9 @@
         }
 
         #feed {
-            background:  gray;
             margin-left: 610px;
             height: 275px;
-            width: 300px;
+            width: 310px;
         }
     </style>
 
@@ -55,6 +54,9 @@
 
     <!-- Media Plugin: Flowplayer -->
     <script src="../../../players/flowplayer/player.flowplayer.js"></script>
+
+    <!-- Media Plugin: html5 -->
+    <script src="../../../players/html5/player.html5.js"></script>
 
     <!-- UI : MetaQ  -->
     <script src="../../../ui/metaq/ui.metaq.js"></script>
@@ -91,16 +93,19 @@
     $( function () {
         
     player = MetaPlayer("#target")
-            .flowplayer({
-                autoplay: true,
-                swfUrl : "../../../../external/flowplayer/flowplayer-3.2.7.swf"
-            })
+//            .flowplayer({
+//                swfUrl : "../../../../external/flowplayer/flowplayer-3.2.7.swf"
+//            })
+            .html5()
             .controls({ renderTags : false })
             .ramp()
-            .metaq({
-                framefeed : { overrides : { target : "#feed" } }
+            .metaq()
+            .framefeed("#feed", {
+                revealMsec : 5000,
+                baseUrl : "/thechewpoc/themename/1.0"
             });
 
+        player.video.autoplay = true;
         player.load("ramp:/thechewpoc:51416098");
         
 

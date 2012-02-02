@@ -522,7 +522,9 @@
 .mp-search-submit-label:after {
     content : "Search";
 }
-.mp-search-results {
+.mp-search-results,
+.mp-search-tags
+{
     position: absolute;
     top: 42px;
     bottom: 0;
@@ -531,6 +533,8 @@
     padding: 5px 10px;
     font-size: .8em;
     overflow: auto;
+}
+.mp-search-result-count {
 }
 .mp-search-result {
     border-top:  1px solid #aaa;
@@ -560,6 +564,19 @@
     font-weight: bold;
 }
 
+.mp-search-tags {
+}
+
+.mp-search-tag {
+    white-space: nowrap;
+    float: left;
+    width: 50%;
+}
+.mp-search-tag-label {
+    cursor: pointer;
+    color: blue;
+    text-decoration: underline;
+}
 .vjs-fullscreen {
     position: fixed !important;
     width: 100% !important;
@@ -798,6 +815,7 @@
     width: 100%;
     position: absolute;
     bottom: 0;
+    margin-bottom:10px;
 }.metaplayer {
     position: relative;
     top: 0;
