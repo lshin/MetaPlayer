@@ -18,6 +18,7 @@
         renderTags : true,
         renderMetaq : false,
         autoHide : false,
+        animate : true,
         showBelow : true
     };
 
@@ -305,7 +306,8 @@
             this.find('play').toggleClass( this.cssName('pause'), ! this.video.paused );
             this.find('time-duration').html(' / ' + this.formatTime( duration ) );
 
-            this.renderAnnotations();
+            if( this.annotations.modified )
+                this.renderAnnotations();
 
             var msec = this.config.trackIntervalMsec;
 
@@ -417,28 +419,47 @@
                 marker.addClass( this.cssName(cssClass) );
 
             overlay.append(marker);
+            this.annotations.modified = true;
             this.annotations.push({
+                rendered: false,
                 start : start,
                 end : end,
                 el : marker,
                 cssClass : cssClass
             });
+
+            this.renderAnnotations();
+
             return marker;
+
         },
 
         renderAnnotations : function () {
             var duration = this.video.duration;
             if( ! duration )
                 return;
+
+            var videoHeight = $(this.video).height();
             $(this.annotations).each( function (i, annotation) {
+
                 var trackPercent = annotation.start / duration * 100;
                 annotation.el.css('left', trackPercent + "%");
                 if( annotation.end ) {
                     var widthPercent = (annotation.end - annotation.start) / duration * 100;
                     annotation.el.css('width', widthPercent + "%");
                 }
+                console.log([annotation.rendered, annotation.el.position().top ])
+
+                if(! annotation.rendered ){
+                    var easing = $.easing.easeOutBounce ? "easeOutBounce" : "linear";
+                     annotation.el.css('top', -videoHeight).animate({ top : 0 }, (1300 + Math.random() * 500), easing);
+                    annotation.rendered = true;
+                }
+
                 annotation.el.show();
+
             });
+            this.annotations.modified = false;
         },
 
         removeAnnotations : function (className) {
