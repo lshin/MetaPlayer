@@ -33,7 +33,10 @@ all copies or substantial portions of the Software.
         renderTags : true,
         renderMetaq : false,
         autoHide : false,
-        animate : true,
+        annotationAnimate : true,
+        annotationEasing : '',
+        annotationMsec : 1200,
+        annotationEntropy : 1,
         showBelow : true
     };
 
@@ -183,6 +186,7 @@ all copies or substantial portions of the Software.
             var self = this;
             var searchClass = 'query';
 
+            console.log("clear search ", response);
             this.removeAnnotations( searchClass );
 
             $.each(response.results, function (i, result){
@@ -455,6 +459,7 @@ all copies or substantial portions of the Software.
                 return;
 
             var videoHeight = $(this.video).height();
+            var config = this.config;
             $(this.annotations).each( function (i, annotation) {
 
                 var trackPercent = annotation.start / duration * 100;
@@ -463,11 +468,10 @@ all copies or substantial portions of the Software.
                     var widthPercent = (annotation.end - annotation.start) / duration * 100;
                     annotation.el.css('width', widthPercent + "%");
                 }
-                console.log([annotation.rendered, annotation.el.position().top ])
-
-                if(! annotation.rendered ){
-                    var easing = $.easing.easeOutBounce ? "easeOutBounce" : "linear";
-                     annotation.el.css('top', -videoHeight).animate({ top : 0 }, (1300 + Math.random() * 500), easing);
+                if(! annotation.rendered && config.annotationAnimate ){
+                    annotation.el.css('top', -videoHeight).animate({ top : 0 },
+                        (config.annotationMsec + ( Math.random() * config.annotationEntropy * config.annotationMsec)),
+                        config.annotationEasing || ($.easing.easeOutBounce ? "easeOutBounce" : "linear" ) );
                     annotation.rendered = true;
                 }
 

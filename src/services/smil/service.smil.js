@@ -218,7 +218,8 @@
                     results : []
                 };
                 this.dispatch("search", response);
-                callback.call(scope, response);
+                if( callback )
+                    callback.call(scope, response);
                 return;
             }
 

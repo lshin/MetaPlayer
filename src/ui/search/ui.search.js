@@ -170,10 +170,8 @@
         },
 
         search : function (query) {
-            this.clear();
             if(! query) {
-                this.find("tags").show();
-                return;
+                this.clear();
             }
             this.service.search(query);
         },

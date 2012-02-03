@@ -30,7 +30,7 @@
 
     MetaPlayer.social = Social;
 
-    MetaPlayer.addPlugin("socia l", function (target, options) {
+    MetaPlayer.addPlugin("social", function (target, options) {
         return Social(target, this.service, options);
     });
 

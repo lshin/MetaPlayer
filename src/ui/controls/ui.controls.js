@@ -20,8 +20,8 @@
         autoHide : false,
         annotationAnimate : true,
         annotationEasing : '',
-        annotationMsec : 1000,
-        annotationEntropy : 1.5,
+        annotationMsec : 1200,
+        annotationEntropy : 1,
         showBelow : true
     };
 
@@ -171,6 +171,7 @@
             var self = this;
             var searchClass = 'query';
 
+            console.log("clear search ", response);
             this.removeAnnotations( searchClass );
 
             $.each(response.results, function (i, result){
