@@ -1489,6 +1489,10 @@
         fpConfig : {
             clip : {
                 scaling : "fit"
+            },
+            canvas : {
+                backgroundColor : "#0000000",
+                backgroundGradient : "none"
             }
         }
     };

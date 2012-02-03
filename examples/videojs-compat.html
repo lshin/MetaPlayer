@@ -56,13 +56,16 @@
 
 <script type="text/javascript">
     var player, vjs;
-    player = Ramp.flowplayer('#target', "ramp:/pca:36234882", {
-        swfUrl : "../external/flowplayer/flowplayer-3.2.7.swf"
-    });
-    player.controls = false;
+    player = MetaPlayer('#target')
+            .flowplayer( {
+                swfUrl : "../external/flowplayer/flowplayer-3.2.7.swf"
+            })
+            .ramp()
+            .load("ramp:/pca:36234882");
 
-    player.addEventListener("loadeddata", function(){
-        vjs = VideoJS.setup([player], {
+    player.video.controls = false;
+    player.video.addEventListener("loadstart", function(){
+        vjs = VideoJS.setup([player.video], {
             controlsHiding : false
         });
     });
@@ -73,7 +76,7 @@
        $('#target').addClass( $(this).val() );
 
       // vidoejs play/pause doesn't re-render on css switch, so kick it
-      player.pause(); player.play();
+      player.video.pause(); player.video.play();
     })
 </script>
 
