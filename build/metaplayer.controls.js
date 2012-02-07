@@ -186,7 +186,6 @@ all copies or substantial portions of the Software.
             var self = this;
             var searchClass = 'query';
 
-            console.log("clear search ", response);
             this.removeAnnotations( searchClass );
 
             $.each(response.results, function (i, result){

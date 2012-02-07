@@ -170,9 +170,6 @@
         },
 
         search : function (query) {
-            if(! query) {
-                this.clear();
-            }
             this.service.search(query);
         },
 
@@ -183,10 +180,17 @@
         },
 
         onSearchResult : function (e,response) {
+
             this.clear();
+
+            if( ! response.query.length ) {
+                return;
+            }
+
             this.find("tags").hide();
 
             var r = this.find('results');
+
 
             $("<div></div>")
                 .addClass( this.cssName("result-count") )

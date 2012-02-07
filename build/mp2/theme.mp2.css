@@ -451,10 +451,15 @@
 .transcript-caption:hover {
     text-decoration: underline;
 }
-.transcript-text {
+.transcript-caption {
+    color: #999;
 }
 .transcript-focus {
-    text-decoration: underline;
+    color: black;
+}
+.transcript-search {
+    font-weight: bold;
+    color: orange;
 }
 .metaplayer-captions {
     color: white;

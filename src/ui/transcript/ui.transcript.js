@@ -9,9 +9,15 @@
         cssPrefix : "transcript",
         focusMs : 750,
         fadeMs : 1000,
-        opacity: .4,
+        opacity: 1,
         timestamps : true,
         breaks : true
+    };
+
+    // case insensative find
+    $.expr[':'].tx_contains = function(a, i, m) {
+        return $(a).text().toUpperCase()
+            .indexOf(m[3].toUpperCase()) >= 0;
     };
 
     var Transcript = function (target, player, options) {
@@ -23,8 +29,9 @@
         }
         if( typeof target == "string" && Transcript.instances[target] ) {
             var self = Transcript.instances[target];
-            if( player && player.play )
-                self.player = player;
+            if(player && player.play ) {
+                self.setPlayer( player );
+            }
             return self;
         }
 
@@ -32,7 +39,7 @@
             return new Transcript(target, player, options);
 
         this.target = target;
-        this.player = player;
+        this.setPlayer( player );
         this.config = $.extend(true, {}, defaults, options);
 
         this.init();
@@ -79,6 +86,33 @@
             });
         },
 
+        setPlayer : function ( player ) {
+            if( this.player )
+                return;
+
+            this.player = player;
+            var self = this;
+            $(this.player).bind("search", function (e) {
+                var terms = e.originalEvent.data;
+                self.search(terms);
+            })
+        },
+
+        search : function (terms) {
+            if( typeof terms == "string" )
+                terms = [terms];
+
+            var searchCss = this.cssName("search");
+            this.find('search').removeClass(searchCss);
+
+            var self = this;
+            var matches = [];
+            $.each(terms, function (i, term) {
+                var found = self.find("caption").find("." + self    .cssName('text') + " span:tx_contains(" + term + ")");
+                found.addClass( searchCss );
+            });
+        },
+
         append :  function (options) {
             var el = this.create("caption", this.config.breaks ? 'div' : 'span');
 
@@ -88,9 +122,20 @@
                 el.append(ts);
             }
 
-            var text = this.create("text", 'span');
-            text.text( options.text );
-            el.append(text);
+
+            var phrase = $('<span></span>')
+                .addClass( this.cssName("text") )
+                .appendTo(el);
+
+            var terms = options.text.split(/\s+/);
+            $.each(terms, function (i, term) {
+                $('<span></span>')
+                    .text( term )
+                    .appendTo(phrase);
+                $(document.createTextNode(' '))
+                    .appendTo(phrase);
+
+            });
 
             el.data('options', options);
             el.css('opacity', this.config.opacity);
