@@ -221,7 +221,6 @@
 
         updateTime : function () {
             this.__currentTime = this.youtube.getCurrentTime();
-            console.log("TIME: " + this.__currentTime);
         },
 
         startDurationCheck : function () {

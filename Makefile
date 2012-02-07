@@ -15,7 +15,7 @@ CORE_MIN=$(CORE:.js=.min.js)
 
 ALL_SERVICES=service.mrss service.smil 
 ALL_PLAYERS=player.html5 player.flowplayer player.youtube
-ALL_UI=ui.controls ui.overlay ui.transcript ui.captions ui.search ui.videojs ui.endcap ui.social ui.embed ui.metaq ui.framefeed
+ALL_UI=ui.controls ui.overlay ui.transcript ui.captions ui.search ui.videojs ui.endcap ui.social ui.embed ui.metaq ui.framefeed ui.headlines
 ALL_THEME=theme.mp2
 
 compile=$(CLOSURE) $(CLOSURE_FLAGS) --js=$1 >  $2
