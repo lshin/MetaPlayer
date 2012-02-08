@@ -96,7 +96,7 @@
         onScroll : function(e) {
             var x = e.originalEvent.wheelDeltaX || e.originalEvent.delta || 0;
             var y = e.originalEvent.wheelDeltaY || e.originalEvent.delta || 0;
-            this.scrollBy(x/2, y/2);
+            this.scrollBy(-x, -y);
             e.preventDefault();
         },
 
