@@ -8,11 +8,12 @@
     var $ = jQuery;
 
     var defaults = {
-        scrollDelta : 5
+        inertial : false  // beta
     };
     var ScrollBar = function (container, options) {
         this.config = $.extend(true, {}, defaults, options);
         this.init(container);
+        this.inertiaY = 0;
     };
 
     var eventX = function (e) {
@@ -77,7 +78,7 @@
                 .bind("mousewheel", function (e){
                     self.onScroll(e);
                 })
-                .bind(" touchstart", function (e) {
+                .bind("mousedown touchstart", function (e) {
                     self.onTouchStart(e);
                 });
 
@@ -94,7 +95,6 @@
         scrollBy : function (x, y){
             var sl = this.scroller.scrollLeft();
             var st = this.scroller.scrollTop();
-
             this.setScroll( sl + x ,  st + y);
         },
 
@@ -107,7 +107,6 @@
         render: function () {
             var bh = this.body.height();
             var ph = this.parent.height();
-            var kh =  ph - ( (bh - ph) / bh * ph );
             var kh =  Math.min( ph - ( (bh - ph) / bh * ph ), ph)
 
             var perY = this.scroller.scrollTop() /  ( bh - ph );
@@ -121,25 +120,48 @@
         onTouchStart : function (e) {
 
             this.touching = {
-                x : eventX(e) + this.scroller.scrollLeft(),
-                y : eventY(e) + this.scroller.scrollTop()
+                lastX : this.scroller.scrollLeft(),
+                lastY : this.scroller.scrollTop()
             };
 
+            this.touching.x = eventX(e) + this.touching.lastX;
+            this.touching.y = eventY(e) + this.touching.lastY;
+
             $(document)
-                .bind(" touchmove", this._touchMove )
-                .bind(" touchend", this._touchStop );
+                .bind("mousemove touchmove", this._touchMove )
+                .bind("mouseup touchend", this._touchStop );
 
             e.stopPropagation();
             e.preventDefault();
+
+            if( this.config.inertial ) {
+                var self = this;
+                this.inertiaInterval = setInterval( function() {
+                    self.onInertiaUpdate();
+                },30);
+            }
+        },
+
+        onInertiaUpdate : function () {
+            this.inertiaY = this.inertiaY * .9;
+
+            if( this.touching ) {
+                return;
+            }
+
+            if( this.inertiaY < 1 )
+                clearInterval( this.inertiaInterval );
+
+            this.scrollBy(0, this.inertiaY);
         },
 
         onTouchStop : function (e) {
 
-
              $(document)
-                .unbind(" touchmove", this._touchMove )
-                .unbind(" touchend", this._touchStop );
+                .unbind("mousemove touchmove", this._touchMove )
+                .unbind("mouseup touchend", this._touchStop );
             this.touching = null;
+
 
         },
 
@@ -147,10 +169,16 @@
             var x = (eventX(e) - this.touching.x) * -1;
             var y = (eventY(e) - this.touching.y) * -1;
 
+            this.inertiaY += y - this.touching.lastY;
+
+            this.touching.lastX = x;
+            this.touching.lastY = y;
             this.setScroll(x, y);
         },
 
         onKnobStart : function (e, inverse) {
+            this.scroller.stop();
+
             this.dragging = {
                 x : eventX(e) - this.knob.position().left,
                 y : eventY(e) -  this.knob.position().top
@@ -175,6 +203,7 @@
         onKnobMove : function (e) {
             var x = (eventX(e) - this.dragging.x);
             var y = (eventY(e) - this.dragging.y);
+
 
             var bh = this.body.height();
             var ph = this.parent.height();
