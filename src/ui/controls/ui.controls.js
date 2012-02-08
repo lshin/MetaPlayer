@@ -139,7 +139,7 @@
             if( this.config.renderMetaq )
                 d.listen("metaq", this._onMetaq, this);
 
-            d.listen("metadata", this.onMetaData, this);
+            d.listen("trackchange", this.onTrackChange, this);
             d.listen("search", this.onSearch, this);
         },
 
@@ -163,7 +163,7 @@
             this.renderAnnotations();
         },
 
-        onMetaData: function (e, metadata) {
+        onTrackChange: function (e, track) {
             this.clearAnnotations();
         },
 

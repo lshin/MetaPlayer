@@ -24,7 +24,7 @@ all copies or substantial portions of the Software.
         cssPrefix : 'metaplayer-overlay',
         template : 'templates/ui.overlay.tmpl.html',
         captions : false,
-        mouseDelayMsec : 500,
+        mouseDelayMsec : 1000,
         seekBeforeSec : 1,
         hideOnEnded : true
     };

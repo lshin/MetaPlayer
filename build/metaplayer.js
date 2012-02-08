@@ -1920,6 +1920,7 @@
             });
 
             clip.onBeforeSeek( function (clip) {
+
                 self.dispatcher.dispatch("seeking");
                 self.dispatcher.dispatch("timeupdate");
 
@@ -1931,6 +1932,7 @@
             });
 
             clip.onSeek( function (clip) {
+                this.__currentTimeCache = 0;
                 self.__seeking = null;
                 if( ! self.paused() )
                     self.dispatcher.dispatch("seeked");
@@ -2141,6 +2143,7 @@
             if( val !== undefined ) {
                 this.__src = val;
                 this.__loaded  = false;
+                this.__duration  = NaN;
                 var fp = this._flowplayer;
                 if( fp.isLoaded() ) {
                     fp.setClip({

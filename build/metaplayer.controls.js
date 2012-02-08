@@ -154,7 +154,7 @@ all copies or substantial portions of the Software.
             if( this.config.renderMetaq )
                 d.listen("metaq", this._onMetaq, this);
 
-            d.listen("metadata", this.onMetaData, this);
+            d.listen("trackchange", this.onTrackChange, this);
             d.listen("search", this.onSearch, this);
         },
 
@@ -178,7 +178,7 @@ all copies or substantial portions of the Software.
             this.renderAnnotations();
         },
 
-        onMetaData: function (e, metadata) {
+        onTrackChange: function (e, track) {
             this.clearAnnotations();
         },
 
