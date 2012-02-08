@@ -100,7 +100,7 @@
 
         search : function (terms) {
             if( typeof terms == "string" )
-                terms = [terms];
+                terms = terms.split(/\s+/);
 
             var searchCss = this.cssName("search");
             this.find('search').removeClass(searchCss);

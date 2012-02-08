@@ -136,7 +136,7 @@
 
             // if user has scrolled down, fade in
             var scroll = $(this.target).scrollTop();
-            if( ! animate ){
+            if( ! animate ){      tran
                 obj.item.height(obj.height);
                 obj.item.css("opacity", 1);
             }
