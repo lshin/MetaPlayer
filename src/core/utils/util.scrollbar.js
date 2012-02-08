@@ -78,7 +78,7 @@
                 .bind("mousewheel", function (e){
                     self.onScroll(e);
                 })
-                .bind("mousedown touchstart", function (e) {
+                .bind((this.config.mouseDrag ? "mousedown" : '') + " touchstart", function (e) {
                     self.onTouchStart(e);
                 });
 

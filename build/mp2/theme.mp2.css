@@ -481,6 +481,7 @@
     height: 100%;
     width: 100%;
 }
+
 .mp-search-form {
     position: absolute;
     top: 10px;
@@ -488,6 +489,7 @@
     right: 0;
     height: 32px;
 }
+
 .mp-search-input {
     position: absolute;
     right: 100px;
@@ -502,6 +504,7 @@
     font-size: 16px;
     margin: 0;
 }
+
 .mp-search-submit {
     width: 89px;
     display: block;
@@ -526,6 +529,19 @@
 .mp-search-submit-label:after {
     content : "Search";
 }
+
+.mp-search-close {
+    position    : absolute;
+    right: 10px;
+    top: 46px;
+    width: 13px;
+    height: 13px;
+    color: blue;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 15px;
+}
+
 .mp-search-results,
 .mp-search-tags
 {

@@ -30,7 +30,8 @@ all copies or substantial portions of the Software.
             'searchPlaceholder' : "Search transcript...",
             'ellipsis' : "...",
             'resultsHeader' : "Showing {{count}} {{results}}:",
-            'results' : function (dict) { return "result" + (dict['count'] == 1 ? "" : "s")}
+            'results' : function (dict) { return "result" + (dict['count'] == 1 ? "" : "s")},
+            'clear' : "x"
         }
     };
 
@@ -66,6 +67,7 @@ all copies or substantial portions of the Software.
 
         this.createMarkup();
         this.addListeners();
+        this.clear();
     };
 
     SearchBox.instances = {};
@@ -113,8 +115,17 @@ all copies or substantial portions of the Software.
             sm.append( this.create('submit-label', 'span') );
             f.append(sm);
 
-            this.create('results')
+            var results = this.create('results')
                 .appendTo(c);
+
+            var self = this;
+            this.create("close")
+                .text( this.getString("clear") )
+                .bind("click", function (e){
+                    self.onClose();
+                })
+                .appendTo(c);
+
 
             this.create('tags')
                 .appendTo(c);
@@ -177,8 +188,6 @@ all copies or substantial portions of the Software.
         },
 
 
-
-
         onSearch : function (e) {
             var q = this.find('input').val();
             this.search(q);
@@ -189,9 +198,13 @@ all copies or substantial portions of the Software.
         },
 
         clear : function () {
-            var r = this.find('results');
-            r.empty();
+            var r = this.find('results').empty();
+            this.find('close').hide();
             this.find("tags").show();
+        },
+
+        onClose : function () {
+            this.clear();
         },
 
         onSearchResult : function (e,response) {
@@ -204,6 +217,7 @@ all copies or substantial portions of the Software.
 
             this.find("tags").hide();
 
+            this.find('close').show();
             var r = this.find('results');
 
 
