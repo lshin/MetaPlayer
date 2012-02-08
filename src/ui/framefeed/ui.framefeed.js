@@ -78,12 +78,14 @@
             $.each(this.items, function (i, val) {
                 if( self.filtered(val) || ! val.active ){
                     val.item.stop()
+                        .show()
                         .height(0)
                         .css('opacity',0);
                 }
                 else {
-                    val.item.stop().
-                        height(val.height)
+                    val.item.stop()
+                        .show()
+                        .height(val.height)
                         .animate({
                             opacity: 1
                         }, self.config.filterMsec);
@@ -104,7 +106,9 @@
 
         blur : function (obj) {
             obj.active = false;
-            obj.item.stop().height(0).css('opacity', 0);
+            obj.item.stop().height(0)
+                .css('opacity', 0)
+                .hide();
             this.dispatch("blur")
         },
 
@@ -137,6 +141,7 @@
                     .addClass( this.cssName("box") )
                     .prependTo( this.target )
                     .height(0)
+                    .hide()
                     .css('opacity', 0)
                     .append(frame);
 
@@ -149,6 +154,7 @@
             // if user has scrolled down, fade in
             var scroll = $(this.target).scrollTop();
             var self = this;
+            obj.item.show();
 
             if( ! animate ){
                 obj.item.height(obj.height);
