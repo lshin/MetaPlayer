@@ -767,6 +767,7 @@
     var $ = jQuery;
 
     var defaults = {
+        mouseDrag : false,
         inertial : false  // beta
     };
     var ScrollBar = function (container, options) {
@@ -790,7 +791,12 @@
             var children = this.parent[0].childNodes;
 
             this.body = $("<div></div>")
+                .addClass("mp-scroll-body")
+                .bind("resize DOMSubtreeModified size change", function(e) {
+                    self.onResize(e);
+                })
                 .append( children );
+
 
             this.scroller = $("<div></div>")
                 .css("width", "100%")
@@ -834,12 +840,14 @@
 
             this.parent
                 .css("position", "relative")
+                .css("overflow", "visible")
                 .bind("mousewheel", function (e){
                     self.onScroll(e);
                 })
                 .bind((this.config.mouseDrag ? "mousedown" : '') + " touchstart", function (e) {
                     self.onTouchStart(e);
                 });
+
 
             this.setScroll(0,0);
         },
@@ -864,6 +872,9 @@
         },
 
         render: function () {
+            if( ! this.body ) {
+                return;
+            }
             var bh = this.body.height();
             var ph = this.parent.height();
             var kh =  Math.min( ph - ( (bh - ph) / bh * ph ), ph)
@@ -874,6 +885,10 @@
                 .toggle( kh < ph )
                 .height(kh)
                 .css('top', knobY);
+        },
+
+        onResize : function () {
+            this.render();
         },
 
         onTouchStart : function (e) {
@@ -889,9 +904,6 @@
             $(document)
                 .bind("mousemove touchmove", this._touchMove )
                 .bind("mouseup touchend", this._touchStop );
-
-            e.stopPropagation();
-            e.preventDefault();
 
             if( this.config.inertial ) {
                 var self = this;
@@ -933,6 +945,8 @@
             this.touching.lastX = x;
             this.touching.lastY = y;
             this.setScroll(x, y);
+            e.stopPropagation();
+            e.preventDefault();
         },
 
         onKnobStart : function (e, inverse) {

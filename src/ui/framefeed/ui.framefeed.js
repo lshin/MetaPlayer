@@ -25,11 +25,20 @@
             return new FrameFeed(target, options);
 
         this.config = $.extend(true, {}, defaults, options);
-        this.target = target;
-        this.seen= {};
+
+
+        this.target = $("<div></div>")
+            .addClass( this.cssName("scroller") )
+            .width("100%")
+            .height("100%")
+            .appendTo(target);
+
+        this.seen = {};
         this.init();
 
-        FrameFeed.instances[ this.target.id ] = this;
+        this.dispatcher = MetaPlayer.dispatcher(this);
+
+        FrameFeed.instances[ target.id ] = this;
     };
 
     FrameFeed.instances = {};
@@ -60,8 +69,8 @@
 
         filter: function (query) {
             this.query = query;
-
             this.render();
+            this.dispatch("filter")
         },
 
         render : function  () {
@@ -90,11 +99,13 @@
         focus : function (obj) {
             obj.active = true;
             this.frame(obj, true);
+            this.dispatch("focus")
         },
 
         blur : function (obj) {
             obj.active = false;
             obj.item.stop().height(0).css('opacity', 0);
+            this.dispatch("blur")
         },
 
         frame : function (obj, animate) {
@@ -105,6 +116,7 @@
             var url = obj.url;
             if(! url.match('^http') && this.config.baseUrl )
                 url = this.config.baseUrl + url;
+
 
             if( this.seen[url] && this.seen[url].start != obj.start && ! this.config.duplicates) {
                 return;
@@ -136,6 +148,8 @@
 
             // if user has scrolled down, fade in
             var scroll = $(this.target).scrollTop();
+            var self = this;
+
             if( ! animate ){
                 obj.item.height(obj.height);
                 obj.item.css("opacity", 1);
@@ -146,16 +160,17 @@
                         opacity: 1
                     }, this.config.revealMsec);
                 $(this.target).scrollTop( scroll + obj.height );
-
             }
             // else scroll and fade in
             else {
                 obj.item.animate({
                     height: obj.height,
                     opacity: 1
-                }, this.config.revealMsec);
+                }, this.config.revealMsec, function () {
+                    self.dispatch("size");
+                });
             }
-
+            self.dispatch("size");
         },
 
         clear : function () {

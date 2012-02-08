@@ -70,7 +70,12 @@
 </div>
 
 <div id="sb3" class="test">
-    Maecenas pretium, est in tristique laoreet, est sapien interdum ante, nec pulvinar orci lorem a urna. Sed varius elit vel ipsum egestas quis gravida quam tempor. Mauris pellentesque imperdiet orci non blandit. Etiam laoreet enim ut massa condimentum sed venenatis arcu aliquam. Quisque eu elit eget arcu sodales pharetra. Fusce ut ante ac orci molestie suscipit id vel felis. Phasellus consequat sagittis ante nec pharetra.
+    <div id="sb3_body">
+        Maecenas pretium, est in tristique laoreet, est sapien interdum ante, nec pulvinar orci lorem a urna. Sed varius elit vel ipsum egestas quis gravida quam tempor. Mauris pellentesque imperdiet orci non blandit. Etiam laoreet enim ut massa condimentum sed venenatis arcu aliquam. Quisque eu elit eget arcu sodales pharetra. Fusce ut ante ac orci molestie suscipit id vel felis. Phasellus consequat sagittis ante nec pharetra.
+        <div id="moretext" style="display: none;">
+            Maecenas pretium, est in tristique laoreet, est sapien interdum ante, nec pulvinar orci lorem a urna. Sed varius elit vel ipsum egestas quis gravida quam tempor. Mauris pellentesque imperdiet orci non blandit. Etiam laoreet enim ut massa condimentum sed venenatis arcu aliquam. Quisque eu elit eget arcu sodales pharetra. Fusce ut ante ac orci molestie suscipit id vel felis. Phasellus consequat sagittis ante nec pharetra.
+        </div>
+    </div>
 </div>
 
 
@@ -82,14 +87,24 @@
     </div>
 </div>
 
-
+<div>
+    <a href="#" id="more">more</a>
+</div>
 <script type="text/javascript">
-    var sb1 = MetaPlayer.scrollbar('#sb1', {
-        inertial : true
-    });
-    var sb2 = MetaPlayer.scrollbar('#sb2');
-    var sb3 = MetaPlayer.scrollbar('#sb3');
-    var sb4 = MetaPlayer.scrollbar('#sb4');
+    $(function () {
+
+        $("#more").click( function () {
+//            $('#copy').clone().prependTo( '#sb3_body');
+            $("#moretext").show();
+        });
+        var sb1 = MetaPlayer.scrollbar('#sb1', {
+            inertial : true
+        });
+        var sb2 = MetaPlayer.scrollbar('#sb2');
+        var sb3 = MetaPlayer.scrollbar('#sb3');
+        var sb4 = MetaPlayer.scrollbar('#sb4');
+
+    })
 
 </script>
 

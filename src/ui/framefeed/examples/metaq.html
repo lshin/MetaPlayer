@@ -45,6 +45,7 @@
     <script src="../../../core/utils/util.timer.js"></script>
     <script src="../../../core/utils/util.format.js"></script>
     <script src="../../../core/utils/util.ui.js"></script>
+    <script src="../../../core/utils/util.scrollbar.js"></script>
     <script src="../../../core/playlist/player.playlist.js"></script>
     <script src="../../../core/layout/core.layout.js"></script>
     <link href="../../../core/layout/core.layout.css" rel="stylesheet" type="text/css">
@@ -88,14 +89,11 @@
 <div id='feed'></div>
 
 <script type="text/javascript">
-    var player;
+    var player, scroll;
 
     $( function () {
         
     player = MetaPlayer("#target")
-//            .flowplayer({
-//                swfUrl : "../../../../external/flowplayer/flowplayer-3.2.7.swf"
-//            })
             .html5()
             .controls({ renderTags : false })
             .ramp()
@@ -107,7 +105,10 @@
         player.video.autoplay = true;
         player.load("ramp:/thechewpoc:51416098");
         
-
+        scroll = MetaPlayer.scrollbar("#feed");
+        player.framefeed.listen("size", function () {
+            scroll.render();
+        });
     })
 </script>
 
