@@ -70,7 +70,6 @@
         filter: function (query) {
             this.query = query;
             this.render();
-            this.dispatch("filter")
         },
 
         render : function  () {
@@ -91,7 +90,8 @@
                         }, self.config.filterMsec);
                 }
 
-            })
+            });
+            this.dispatch("size")
         },
 
         filtered : function (obj) {
@@ -101,7 +101,6 @@
         focus : function (obj) {
             obj.active = true;
             this.frame(obj, true);
-            this.dispatch("focus")
         },
 
         blur : function (obj) {
@@ -109,7 +108,7 @@
             obj.item.stop().height(0)
                 .css('opacity', 0)
                 .hide();
-            this.dispatch("blur")
+            this.dispatch("size")
         },
 
         frame : function (obj, animate) {

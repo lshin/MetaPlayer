@@ -85,7 +85,6 @@ all copies or substantial portions of the Software.
         filter: function (query) {
             this.query = query;
             this.render();
-            this.dispatch("filter")
         },
 
         render : function  () {
@@ -106,7 +105,8 @@ all copies or substantial portions of the Software.
                         }, self.config.filterMsec);
                 }
 
-            })
+            });
+            this.dispatch("size")
         },
 
         filtered : function (obj) {
@@ -116,7 +116,6 @@ all copies or substantial portions of the Software.
         focus : function (obj) {
             obj.active = true;
             this.frame(obj, true);
-            this.dispatch("focus")
         },
 
         blur : function (obj) {
@@ -124,7 +123,7 @@ all copies or substantial portions of the Software.
             obj.item.stop().height(0)
                 .css('opacity', 0)
                 .hide();
-            this.dispatch("blur")
+            this.dispatch("size")
         },
 
         frame : function (obj, animate) {

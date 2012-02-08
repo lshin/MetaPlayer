@@ -112,7 +112,7 @@
             this.render();
         },
 
-        render: function () {
+        render: function (animate) {
             if( ! this.body ) {
                 return;
             }
@@ -122,14 +122,25 @@
 
             var perY = this.scroller.scrollTop() /  ( bh - ph );
             var knobY = (ph - kh) * perY;
+
             this.knob
-                .toggle( kh < ph )
-                .height(kh)
-                .css('top', knobY);
+                .toggle( kh < ph );
+
+            if( animate ){
+                this.knob.stop().animate({
+                    height : kh,
+                    top : knobY
+                })
+            }
+            else {
+                this.knob.stop()
+                    .height(kh)
+                    .css('top', knobY);
+            }
         },
 
         onResize : function () {
-            this.render();
+            this.render(true);
         },
 
         onTouchStart : function (e) {

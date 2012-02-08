@@ -94,8 +94,7 @@
     $(function () {
 
         $("#more").click( function () {
-//            $('#copy').clone().prependTo( '#sb3_body');
-            $("#moretext").show();
+            $("#moretext").clone().show().appendTo( '#sb3_body')
         });
         var sb1 = MetaPlayer.scrollbar('#sb1', {
             inertial : true
