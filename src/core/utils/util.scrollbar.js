@@ -29,13 +29,8 @@
             var self = this;
             var children = this.parent[0].childNodes;
 
-            if(  children.length == 1 && children[0].nodeType == 1 ) {
-                this.body = $(children[0])
-            }
-            else {
-                this.body = $("<div></div>")
-                    .append( children )
-            }
+            this.body = $("<div></div>")
+                .append( children );
 
             this.scroller = $("<div></div>")
                 .css("width", "100%")
@@ -112,12 +107,13 @@
         render: function () {
             var bh = this.body.height();
             var ph = this.parent.height();
-            var kh = ( bh - ph  ) / bh * ph;
+            var kh =  ph - ( (bh - ph) / bh * ph );
+            var kh =  Math.min( ph - ( (bh - ph) / bh * ph ), ph)
 
             var perY = this.scroller.scrollTop() /  ( bh - ph );
             var knobY = (ph - kh) * perY;
             this.knob
-                .toggle( kh > 0 )
+                .toggle( kh < ph )
                 .height(kh)
                 .css('top', knobY);
         },
