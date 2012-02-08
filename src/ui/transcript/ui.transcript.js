@@ -123,8 +123,12 @@
             }
 
 
+            var self = this;
             var phrase = $('<span></span>')
                 .addClass( this.cssName("text") )
+                .click( function () {
+                    self.player.currentTime = options.start;
+                })
                 .appendTo(el);
 
             var terms = options.text.split(/\s+/);

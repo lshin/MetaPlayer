@@ -115,7 +115,7 @@ all copies or substantial portions of the Software.
 
         search : function (terms) {
             if( typeof terms == "string" )
-                terms = [terms];
+                terms = terms.split(/\s+/);
 
             var searchCss = this.cssName("search");
             this.find('search').removeClass(searchCss);
@@ -138,8 +138,12 @@ all copies or substantial portions of the Software.
             }
 
 
+            var self = this;
             var phrase = $('<span></span>')
                 .addClass( this.cssName("text") )
+                .click( function () {
+                    self.player.currentTime = options.start;
+                })
                 .appendTo(el);
 
             var terms = options.text.split(/\s+/);
