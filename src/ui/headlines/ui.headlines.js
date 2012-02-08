@@ -42,7 +42,7 @@
         this.dispatcher.listen("metaq", function (e, metaq) {
             $.each(metaq.headlines, function (e, obj) {
                 var o = $.extend({ 'target': target}, obj);
-                popcorn.framefeed(o);
+                popcorn.headlines(o);
             });
         });
 

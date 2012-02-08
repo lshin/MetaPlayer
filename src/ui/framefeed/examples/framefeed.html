@@ -74,7 +74,9 @@
 
     $( function () {
 
-        feed = MetaPlayer.framefeed("#feed");
+        feed = MetaPlayer.framefeed("#feed", {
+            duplicates : true
+        });
 
         video = MetaPlayer.youtube("#target", { chromeless : false });
         video.preload = false;
@@ -90,7 +92,7 @@
             pop.framefeed ({
                 target : "#feed",
                 url : "items/test.html#" + (  highlight ? "ff8888" : "8888ff"),
-                text : highlight ? "one" : "two",
+                tags : highlight ? "one" : "two",
                 height: highlight ? 150 : 100,
                 start : i * 5
             });
