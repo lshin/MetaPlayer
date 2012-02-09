@@ -29,12 +29,12 @@
     ScrollBar.prototype = {
         init : function (parent) {
             this.parent = $(parent);
-
             var self = this;
             var children = this.parent[0].childNodes;
 
             this.body = $("<div></div>")
                 .addClass("mp-scroll-body")
+                .css("position", "relative")
                 .bind("resize DOMSubtreeModified size change", function(e) {
                     self.onResize(e);
                 })
@@ -106,6 +106,10 @@
             var sl = this.scroller.scrollLeft();
             var st = this.scroller.scrollTop();
             this.scrollTo( sl + x ,  st + y, duration);
+        },
+
+        scrollTop : function () {
+            return this.scroller.scrollTop();
         },
 
         scrollTo : function (x, y, duration){

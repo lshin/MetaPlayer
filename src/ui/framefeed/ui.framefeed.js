@@ -33,6 +33,7 @@
             .height("100%")
             .appendTo(target);
 
+        this.scrollbar = MetaPlayer.scrollbar(target);
         this.seen = {};
         this.init();
 
@@ -71,7 +72,8 @@
             this.hideAll();
             this.query = query;
             this.render();
-            $(this.target).scrollTop(0);
+            this.scrollbar.scrollTo(0);
+
         },
 
         hideAll : function  () {
@@ -87,7 +89,7 @@
             $.each(this.items, function (i, val) {
                 self.renderItem(val);
             });
-            this.dispatch("size")
+            this.scrollbar.render();
         },
 
         filtered : function (obj) {
@@ -103,7 +105,7 @@
         blur : function (obj) {
             obj.active = false;
             this.hideItem(obj);
-            this.dispatch("size")
+            this.scrollbar.render();
         },
 
 
@@ -173,7 +175,7 @@
             }
             obj.item.show();
 
-            var scroll = $(this.target).scrollTop();
+            var scroll = this.scrollbar.scrollTop();
             var self = this;
 
             if( scroll > 0 || ! duration ){
@@ -185,7 +187,11 @@
                     }, this.config.filterMsec );
 
                 if( scroll && duration) {
-                    $(this.target).scrollTop( scroll + obj.height );
+                    console.log(["scroll", this.scrollbar.scrollTop() ]);
+                    console.log(["scroll to ", scroll + obj.height]);
+                    this.scrollbar.scrollTo( 0 , scroll + obj.height );
+                    console.log(["scroll post", this.scrollbar.scrollTop() ]);
+
                 }
             }
             // else scroll and fade in
@@ -194,7 +200,7 @@
                     height: obj.height,
                     opacity: 1
                 }, duration, function () {
-                    self.dispatch("size");
+                    self.scrollbar.render();
                 });
             }
             self.dispatch("size");

@@ -56,9 +56,9 @@
 }
 
 .mp-search-close {
-    position    : absolute;
-    right: 10px;
-    top: 46px;
+    position : absolute;
+    right: 15px;
+    top: 0px;
     width: 13px;
     height: 13px;
     color: blue;
@@ -67,18 +67,34 @@
     font-size: 15px;
 }
 
-.mp-search-results,
 .mp-search-tags
 {
-    position: absolute;
+    position: absolute !important;
     top: 42px;
     bottom: 0;
     left: 0;
     right: 0;
     padding: 5px 10px;
     font-size: .8em;
-    overflow: auto;
 }
+.mp-search-results
+{
+    position: absolute !important;
+    top: 42px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-size: .8em;
+}
+
+.mp-search-results .mp-scroll-body {
+    padding: 5px 15px 5px 15px;
+}
+.mp-search-results .mp-scroll-knob {
+    right: 2px !important;
+    width: 8px !important;
+}
+
 .mp-search-result-count {
 }
 .mp-search-result {

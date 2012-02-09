@@ -7,19 +7,19 @@
             background:  #eee;
         }
         #target {
-            width: 600px;
+            width: 500px;
             height: 300px;
             background:  #333;
             float: left
         }
         #feedheader {
             height: 25px;
-            margin-left: 610px;
+            margin-left: 510px;
         }
 
         #feed {
             background:  gray;
-            margin-left: 610px;
+            margin-left: 510px;
             height: 275px;
             width: 300px;
         }
@@ -38,6 +38,7 @@
     <script src="../../../core/metaplayer.js"></script>
     <script src="../../../core/utils/util.event.js"></script>
     <script src="../../../core/utils/util.proxy.js"></script>
+    <script src="../../../core/utils/util.scrollbar.js"></script>
     <script src="../../../core/utils/util.script.js"></script>
     <script src="../../../core/utils/util.timer.js"></script>
     <script src="../../../core/utils/util.format.js"></script>
@@ -94,11 +95,14 @@
                 url : "items/test.html?i=" + i + "#" + (  highlight ? "ff8888" : "8888ff"),
                 tags : highlight ? "one" : "two",
                 height: highlight ? 150 : 100,
-                start : i * 4
+                start : i * 10
             });
         }
-        pop.play();
 
+        video.addEventListener("loadeddata", function  () {
+            video.currentTime = 42;
+            video.pause();
+        })
     })
 </script>
 

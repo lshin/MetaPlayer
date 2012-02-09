@@ -51,6 +51,9 @@
         SearchBox.instances[id] = this;
 
         this.createMarkup();
+
+        this.scrollbar = MetaPlayer.scrollbar( this.results );
+
         this.addListeners();
         this.clear();
     };
@@ -100,17 +103,8 @@
             sm.append( this.create('submit-label', 'span') );
             f.append(sm);
 
-            var results = this.create('results')
+            this.results = this.create('results')
                 .appendTo(c);
-
-            var self = this;
-            this.create("close")
-                .text( this.getString("clear") )
-                .bind("click", function (e){
-                    self.onClose();
-                })
-                .appendTo(c);
-
 
             this.create('tags')
                 .appendTo(c);
@@ -183,7 +177,7 @@
         },
 
         clear : function () {
-            var r = this.find('results').empty();
+            var r = this.scrollbar.body.empty();
             this.find('close').hide();
             this.find("tags").show();
         },
@@ -203,7 +197,7 @@
             this.find("tags").hide();
 
             this.find('close').show();
-            var r = this.find('results');
+            var r = this.scrollbar.body;
 
 
             $("<div></div>")
@@ -212,6 +206,14 @@
                 .appendTo(r);
 
             var self = this;
+            this.create("close")
+                .text( this.getString("clear") )
+                .bind("click", function (e){
+                    self.onClose();
+                })
+                .appendTo(r);
+
+
             $.each(response.results, function (i, result){
                 var el = self.create('result');
                 el.data('start', result.start);
