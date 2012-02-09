@@ -48,7 +48,9 @@
     <div id='target'></div>
 
     <script type="text/javascript">
-        var player = MetaPlayer('#target')
+        var player = MetaPlayer('#target', {
+            linkAdvance : true
+        })
                 .html5({ autoplay : true })
                 .ramp()
                 .controls({
@@ -57,7 +59,7 @@
                 })
 //                .load("ramp:/advisor:48920875");
 
-        player.load("ramp:/thechewpoc:51416098");
+        player.load("ramp:/thechewpoc:51416033");
 
         player.video.muted = true;
     </script>

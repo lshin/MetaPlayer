@@ -31,12 +31,11 @@
     var MetaPlayer = function (target, options ) {
 
         if( ! (this instanceof MetaPlayer ) )
-            return new MetaPlayer( target );
+            return new MetaPlayer( target, options );
 
         this._plugins = [];
 
         var layout = MetaPlayer.layout(target);
-
 
         this.target = $(target).get(0);
         this.dom = layout.base;

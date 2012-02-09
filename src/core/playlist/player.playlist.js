@@ -7,6 +7,7 @@
         applySources : true,
         selectSource : true,
         autoAdvance : true,
+        linkAdvance : false,
         autoPlay : true,
         autoBuffer : true,
         related: true,
@@ -27,8 +28,8 @@
         this.autoplay = this.config.autoPlay;
         this.preload = this.config.autoBuffer;
         this.advance = this.config.autoAdvance;
+        this.linkAdvance = this.config.linkAdvance;
 
-//        this.dispatcher = MetaPlayer.dispatcher();
         this.dispatcher = MetaPlayer.dispatcher(video);
 
         this._addDataListeners(this.video);
@@ -207,6 +208,13 @@
 
             if( this.index() == this.tracks().length - 1 ) {
                 this.dispatcher.dispatch('playlistComplete');
+            }
+
+            var t = this.nextTrack();
+            var link = t.link || t.linkURL;
+            if( this.linkAdvance && link ) {
+                window.top.location = link;
+                return;
             }
             this.next();
         }
