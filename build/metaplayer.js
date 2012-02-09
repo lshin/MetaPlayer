@@ -31,12 +31,11 @@
     var MetaPlayer = function (target, options ) {
 
         if( ! (this instanceof MetaPlayer ) )
-            return new MetaPlayer( target );
+            return new MetaPlayer( target, options );
 
         this._plugins = [];
 
         var layout = MetaPlayer.layout(target);
-
 
         this.target = $(target).get(0);
         this.dom = layout.base;
@@ -219,6 +218,7 @@
         applySources : true,
         selectSource : true,
         autoAdvance : true,
+        linkAdvance : false,
         autoPlay : true,
         autoBuffer : true,
         related: true,
@@ -239,8 +239,8 @@
         this.autoplay = this.config.autoPlay;
         this.preload = this.config.autoBuffer;
         this.advance = this.config.autoAdvance;
+        this.linkAdvance = this.config.linkAdvance;
 
-//        this.dispatcher = MetaPlayer.dispatcher();
         this.dispatcher = MetaPlayer.dispatcher(video);
 
         this._addDataListeners(this.video);
@@ -300,7 +300,21 @@
         },
 
         next  : function () {
-            this.index( this._index + 1 )
+
+            var i = this._index + 1;
+            var t = this.track(i);
+
+            t.link = "http://www.google.com";
+
+            if( this.linkAdvance ) {
+                var link = t.link || t.linkURL;
+                if( link ) {
+                    window.top.location = link;
+                    return;
+                }
+            }
+
+            this.index(i )
         },
 
         previous : function () {
@@ -420,6 +434,7 @@
             if( this.index() == this.tracks().length - 1 ) {
                 this.dispatcher.dispatch('playlistComplete');
             }
+
             this.next();
         }
 

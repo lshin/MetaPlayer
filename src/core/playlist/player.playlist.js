@@ -89,7 +89,21 @@
         },
 
         next  : function () {
-            this.index( this._index + 1 )
+
+            var i = this._index + 1;
+            var t = this.track(i);
+
+            t.link = "http://www.google.com";
+
+            if( this.linkAdvance ) {
+                var link = t.link || t.linkURL;
+                if( link ) {
+                    window.top.location = link;
+                    return;
+                }
+            }
+
+            this.index(i )
         },
 
         previous : function () {
@@ -210,12 +224,6 @@
                 this.dispatcher.dispatch('playlistComplete');
             }
 
-            var t = this.nextTrack();
-            var link = t.link || t.linkURL;
-            if( this.linkAdvance && link ) {
-                window.top.location = link;
-                return;
-            }
             this.next();
         }
 

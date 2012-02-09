@@ -85,26 +85,13 @@ all copies or substantial portions of the Software.
         filter: function (query) {
             this.query = query;
             this.render();
+            $(this.target).scrollTop(0);
         },
 
         render : function  () {
             var self = this;
             $.each(this.items, function (i, val) {
-                if( self.filtered(val) || ! val.active ){
-                    val.item.stop()
-                        .hide()
-                        .height(0)
-                        .css('opacity',0);
-                }
-                else {
-                    val.item.stop()
-                        .show()
-                        .height(val.height)
-                        .animate({
-                            opacity: 1
-                        }, self.config.filterMsec);
-                }
-
+                self.renderItem(val);
             });
             this.dispatch("size")
         },
@@ -115,6 +102,7 @@ all copies or substantial portions of the Software.
 
         focus : function (obj) {
             obj.active = true;
+            this.render();
             this.frame(obj, true);
         },
 
@@ -142,52 +130,70 @@ all copies or substantial portions of the Software.
             }
             this.seen[url] = obj;
 
-            this.render();
+            var self = this;
 
             if( ! obj.item ){
+                obj.loadAnimate = true;
                 var frame = $("<iframe frameborder='0'></iframe>")
                     .attr("src", url)
                     .attr("scrolling", "no")
                     .attr("marginheight", 0)
                     .attr("marginwidth", 0)
+                    .bind("load", function () {
+                        obj.loaded = true;
+                        self.renderItem(obj,
+                            obj.loadAnimate ? self.config.revealMsec : null);
+                    })
                     .attr("height", obj.height);
 
                 obj.item = $("<div></div>")
                     .addClass( this.cssName("box") )
                     .prependTo( this.target )
-                    .height(0)
-                    .hide()
-                    .css('opacity', 0)
                     .append(frame);
 
+                this.hideItem( obj );;
                 this.items.push(obj);
             }
+        },
 
-            if( this.filtered(obj) )
+        hideItem : function (obj) {
+            obj.item
+                .height(0)
+                .hide()
+                .css('opacity', 0)
+        },
+
+        renderItem : function (obj, duration) {
+            obj.item.stop();
+            obj.loadAnimate = false;
+
+            if( ! obj.active || ! obj.loaded || this.filtered(obj) ){
+                this.hideItem(obj);
                 return;
-
-            // if user has scrolled down, fade in
-            var scroll = $(this.target).scrollTop();
-            var self = this;
+            }
             obj.item.show();
 
-            if( ! animate ){
-                obj.item.height(obj.height);
-                obj.item.css("opacity", 1);
-            }
-            else if( scroll > 0 ){
-                obj.item.height(obj.height)
+            var scroll = $(this.target).scrollTop();
+            var self = this;
+
+            if( scroll > 0 || ! duration ){
+                // fade in without height animation
+                obj.item
+                    .height(obj.height)
                     .animate({
                         opacity: 1
-                    }, this.config.revealMsec);
-                $(this.target).scrollTop( scroll + obj.height );
+                    }, this.config.revealMsec );
+
+                if( scroll && duration) {
+                    $(this.target).scrollTop( scroll + obj.height );
+                }
             }
             // else scroll and fade in
             else {
                 obj.item.animate({
                     height: obj.height,
                     opacity: 1
-                }, this.config.revealMsec, function () {
+                }, duration, function () {
                     self.dispatch("size");
                 });
             }
