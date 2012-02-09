@@ -51,8 +51,14 @@
         var player = MetaPlayer('#target')
                 .html5({ autoplay : true })
                 .ramp()
-                .controls()
-                .load("ramp:/advisor:48920875");
+                .controls({
+                    renderTags: false,
+                    renderMetaq : true
+                })
+//                .load("ramp:/advisor:48920875");
+
+        player.load("ramp:/thechewpoc:51416098");
+
         player.video.muted = true;
     </script>
 </body>

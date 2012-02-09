@@ -37,6 +37,7 @@ all copies or substantial portions of the Software.
         annotationEasing : '',
         annotationMsec : 1200,
         annotationEntropy : 1,
+        annotationSpacing : .5,
         showBelow : true
     };
 
@@ -440,8 +441,8 @@ all copies or substantial portions of the Software.
             this.annotations.modified = true;
             this.annotations.push({
                 rendered: false,
-                start : start,
-                end : end,
+                start : parseFloat( start ),
+                end : parseFloat( end ) || null,
                 el : marker,
                 cssClass : cssClass
             });
@@ -459,7 +460,18 @@ all copies or substantial portions of the Software.
 
             var videoHeight = $(this.video).height();
             var config = this.config;
-            $(this.annotations).each( function (i, annotation) {
+            var last;
+            var spacing = this.config.annotationSpacing
+            var sorted = this.annotations.sort( Controls.annotationSort );
+            $(sorted).each( function (i, annotation) {
+
+                if( last && (last.start + spacing > annotation.start) ){
+                    annotation.el.hide();
+                    return;
+                }
+                annotation.el.show();
+                last = annotation;
+
 
                 var trackPercent = annotation.start / duration * 100;
                 annotation.el.css('left', trackPercent + "%");
@@ -557,5 +569,15 @@ all copies or substantial portions of the Software.
         }
 
     };
+
+    Controls.annotationSort = function (a, b) {
+        var as = parseFloat( a.start );
+        var bs = parseFloat( b.start );
+        if( bs > as )
+            return -1;
+        if( as > bs )
+            return 1;
+        return 0;
+    }
 
 })();
