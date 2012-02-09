@@ -92,7 +92,7 @@ all copies or substantial portions of the Software.
             $.each(this.items, function (i, val) {
                 if( self.filtered(val) || ! val.active ){
                     val.item.stop()
-                        .show()
+                        .hide()
                         .height(0)
                         .css('opacity',0);
                 }
@@ -125,6 +125,7 @@ all copies or substantial portions of the Software.
                 .hide();
             this.dispatch("size")
         },
+
 
         frame : function (obj, animate) {
             if( typeof obj == "string" ){

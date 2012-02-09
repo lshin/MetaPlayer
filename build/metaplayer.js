@@ -767,6 +767,8 @@
     var $ = jQuery;
 
     var defaults = {
+        fixedHeight : false,
+        minHeight : 20, //px
         mouseDrag : false,
         inertial : false  // beta
     };
@@ -849,7 +851,7 @@
                 });
 
 
-            this.setScroll(0,0);
+            this.scrollTo(0,0);
         },
 
         onScroll : function(e) {
@@ -859,37 +861,66 @@
             e.preventDefault();
         },
 
-        scrollBy : function (x, y){
+        scrollBy : function (x, y, duration){
             var sl = this.scroller.scrollLeft();
             var st = this.scroller.scrollTop();
-            this.setScroll( sl + x ,  st + y);
+            this.scrollTo( sl + x ,  st + y, duration);
         },
 
-        setScroll : function (x, y){
-            this.scroller.scrollLeft(x);
-            this.scroller.scrollTop(y);
-            this.render();
+        scrollTo : function (x, y, duration){
+
+            var max = this.body.height() - this.parent.height();
+            var at_max = ( max > 0 && this.scroller.scrollTop() + 1 >= max ); // allow rounding fuzzyiness
+
+             if( y > max  )
+                y = max;
+
+            if( y < 0 )
+                y = 0;
+
+            this.scroller.stop();
+
+            if( duration && !at_max ){
+                var self = this;
+                this._scrollY = y;
+                this.scroller.animate({
+                    scrollLeft : x,
+                    scrollTop : y
+                }, duration, function () {
+                    self._scrollY = null;
+                });
+                this.render(duration);
+            }
+            else {
+                this.scroller.scrollLeft(x);
+                this.scroller.scrollTop(y);
+                this.render();
+            }
         },
 
-        render: function (animate) {
+        render: function (duration) {
             if( ! this.body ) {
                 return;
             }
             var bh = this.body.height();
             var ph = this.parent.height();
-            var kh =  Math.min( ph - ( (bh - ph) / bh * ph ), ph)
+            var kh =  Math.min( ph - ( (bh - ph) / bh * ph ), ph);
 
-            var perY = this.scroller.scrollTop() /  ( bh - ph );
+            if( kh < this.config.minHeight || this.config.fixedHeight )
+                kh = this.config.minHeight;
+
+            var y = (this._scrollY != null) ? this._scrollY : this.scroller.scrollTop();
+            var perY = y /  ( bh - ph );
             var knobY = (ph - kh) * perY;
 
             this.knob
                 .toggle( kh < ph );
 
-            if( animate ){
+            if( duration ){
                 this.knob.stop().animate({
                     height : kh,
                     top : knobY
-                })
+                }, duration)
             }
             else {
                 this.knob.stop()
@@ -899,7 +930,7 @@
         },
 
         onResize : function () {
-            this.render(true);
+            this.render(1000);
         },
 
         onTouchStart : function (e) {
@@ -955,7 +986,7 @@
 
             this.touching.lastX = x;
             this.touching.lastY = y;
-            this.setScroll(x, y);
+            this.scrollTo(x, y);
             e.stopPropagation();
             e.preventDefault();
         },
@@ -994,7 +1025,7 @@
             var kh = this.knob.height();
 
             var perY = y / (ph - kh);
-            this.setScroll(x, perY * (bh -ph) );
+            this.scrollTo(x, perY * (bh -ph) );
         }
 
     };

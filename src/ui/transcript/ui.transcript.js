@@ -60,9 +60,13 @@
         init : function (){
             this.container = this.create();
             this.scroller = this.create('scroller');
+
+
             this._captions = {};
             $(this.target).append( this.container );
             $(this.container).append( this.scroller );
+
+            this.scrollbar = MetaPlayer.scrollbar( this.container );
         },
 
         addListeners : function (e) {
@@ -150,6 +154,7 @@
         clear : function () {
             $(this.scroller).empty();
             this._captions = {};
+            this.scrollbar.render();
         },
 
         focus : function (options) {
@@ -158,8 +163,9 @@
             el.toggleClass( this.cssName('focus'), true );
 
             var top = el.position().top - (this.container.height() / 2);
-            if( ! this.mousing )
-                this.container.animate({ scrollTop: top }, 1000);
+            if( ! this.mousing ) {
+                this.scrollbar.scrollTo(0 , top, 1000 );
+            }
         },
 
         blur : function (options) {
