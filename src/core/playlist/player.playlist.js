@@ -93,8 +93,6 @@
             var i = this._index + 1;
             var t = this.track(i);
 
-            t.link = "http://www.google.com";
-
             if( this.linkAdvance ) {
                 var link = t.link || t.linkURL;
                 if( link ) {

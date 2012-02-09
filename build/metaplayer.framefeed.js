@@ -83,9 +83,18 @@ all copies or substantial portions of the Software.
         },
 
         filter: function (query) {
+            this.hideAll();
             this.query = query;
             this.render();
             $(this.target).scrollTop(0);
+        },
+
+        hideAll : function  () {
+            var self = this;
+            $.each(this.items, function (i, val) {
+                self.hideItem(val);
+            });
+            this.dispatch("size")
         },
 
         render : function  () {
@@ -101,16 +110,14 @@ all copies or substantial portions of the Software.
         },
 
         focus : function (obj) {
-            obj.active = true;
             this.render();
+            obj.active = true;
             this.frame(obj, true);
         },
 
         blur : function (obj) {
             obj.active = false;
-            obj.item.stop().height(0)
-                .css('opacity', 0)
-                .hide();
+            this.hideItem(obj);
             this.dispatch("size")
         },
 
@@ -154,6 +161,9 @@ all copies or substantial portions of the Software.
                 this.hideItem( obj );;
                 this.items.push(obj);
             }
+            else {
+                this.renderItem(obj, this.config.revealMsec);
+            }
         },
 
         hideItem : function (obj) {
@@ -171,6 +181,11 @@ all copies or substantial portions of the Software.
                 this.hideItem(obj);
                 return;
             }
+
+            var rendered = obj.item.css('opacity') == 1;
+            if( rendered ){
+                return;
+            }
             obj.item.show();
 
             var scroll = $(this.target).scrollTop();
@@ -182,7 +197,7 @@ all copies or substantial portions of the Software.
                     .height(obj.height)
                     .animate({
                         opacity: 1
-                    }, this.config.revealMsec );
+                    }, this.config.filterMsec );
 
                 if( scroll && duration) {
                     $(this.target).scrollTop( scroll + obj.height );

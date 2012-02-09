@@ -304,8 +304,6 @@
             var i = this._index + 1;
             var t = this.track(i);
 
-            t.link = "http://www.google.com";
-
             if( this.linkAdvance ) {
                 var link = t.link || t.linkURL;
                 if( link ) {
@@ -1840,8 +1838,8 @@
             options = el;
             el = $("<div></div>").appendTo(this.video);
         }
-
-        return FlowPlayer(el, options).video;
+        this.flowplayer = FlowPlayer(el, options);
+        return this.flowplayer.video;
     });
 
     FlowPlayer.prototype = {

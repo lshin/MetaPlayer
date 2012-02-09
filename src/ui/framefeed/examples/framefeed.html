@@ -91,10 +91,10 @@
             var highlight = ( i % 3 == 2 );
             pop.framefeed ({
                 target : "#feed",
-                url : "items/test.html#" + (  highlight ? "ff8888" : "8888ff"),
+                url : "items/test.html?i=" + i + "#" + (  highlight ? "ff8888" : "8888ff"),
                 tags : highlight ? "one" : "two",
                 height: highlight ? 150 : 100,
-                start : i * 3
+                start : i * 4
             });
         }
         pop.play();

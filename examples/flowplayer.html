@@ -47,26 +47,26 @@
         $( function () {
 
 
-                var fp = $f( 'video',
-            {
-                src: "../external/flowplayer/flowplayer-3.2.7.swf",
-                wmode: "transparent"
-            },
-            {
-                clip : {
-                    scaling : "fit"
-                },
-                playlist : []
-            });
+            var fp = $f( 'video',
+                    {
+                        src: "../external/flowplayer/flowplayer-3.2.7.swf",
+                        wmode: "transparent"
+                    },
+                    {
+                        clip : {
+                            scaling : "fit"
+                        },
+                        playlist : []
+                    });
 
     player = MetaPlayer("#target")
             .flowplayer( fp )
-            .ramp()
-            .metaq()
-            .overlay()
-            .endcap()
-            .controls()
-            .load("ramp:/advisor:48920875");
+                    .ramp()
+                    .metaq()
+                    .overlay()
+                    .endcap()
+                    .controls()
+                    .load("ramp:/advisor:48920875");
 
         });
 

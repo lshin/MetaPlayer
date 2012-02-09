@@ -68,8 +68,8 @@
             options = el;
             el = $("<div></div>").appendTo(this.video);
         }
-
-        return FlowPlayer(el, options).video;
+        this.flowplayer = FlowPlayer(el, options);
+        return this.flowplayer.video;
     });
 
     FlowPlayer.prototype = {
