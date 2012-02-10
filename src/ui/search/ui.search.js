@@ -236,7 +236,6 @@
                     words.push( w.get(0) );
                 });
 
-                debugger;
                 var phrase = SearchBox.getPhrase(words, offset, self.config.context );
 
                 $.each(phrase, function (i, word) {
