@@ -14,7 +14,7 @@
             'tagHeader' : "In this video:",
             'searchPlaceholder' : "Search transcript...",
             'ellipsis' : "...",
-            'resultsHeader' : "Showing {{count}} {{results}}:",
+            'resultsHeader' : "Showing {{count}} {{results}} for \"{{query}}\":",
             'results' : function (dict) { return "result" + (dict['count'] == 1 ? "" : "s")},
             'clear' : "x"
         }
@@ -186,7 +186,7 @@
             this.clear();
         },
 
-        onSearchResult : function (e,response) {
+        onSearchResult : function (e, response) {
 
             this.clear();
 
@@ -194,6 +194,7 @@
                 return;
             }
 
+            console.log(response);
             this.find("tags").hide();
 
             this.find('close').show();
@@ -202,7 +203,10 @@
 
             $("<div></div>")
                 .addClass( this.cssName("result-count") )
-                .text( this.getString("resultsHeader", { count : response.results.length }) )
+                .text( this.getString("resultsHeader", {
+                    count : response.results.length,
+                    query : response.query.join(" ")
+                }))
                 .appendTo(r);
 
             var self = this;
@@ -232,6 +236,7 @@
                     words.push( w.get(0) );
                 });
 
+                debugger;
                 var phrase = SearchBox.getPhrase(words, offset, self.config.context );
 
                 $.each(phrase, function (i, word) {

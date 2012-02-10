@@ -29,7 +29,7 @@ all copies or substantial portions of the Software.
             'tagHeader' : "In this video:",
             'searchPlaceholder' : "Search transcript...",
             'ellipsis' : "...",
-            'resultsHeader' : "Showing {{count}} {{results}}:",
+            'resultsHeader' : "Showing {{count}} {{results}} for \"{{query}}\":",
             'results' : function (dict) { return "result" + (dict['count'] == 1 ? "" : "s")},
             'clear' : "x"
         }
@@ -201,7 +201,7 @@ all copies or substantial portions of the Software.
             this.clear();
         },
 
-        onSearchResult : function (e,response) {
+        onSearchResult : function (e, response) {
 
             this.clear();
 
@@ -217,7 +217,10 @@ all copies or substantial portions of the Software.
 
             $("<div></div>")
                 .addClass( this.cssName("result-count") )
-                .text( this.getString("resultsHeader", { count : response.results.length }) )
+                .text( this.getString("resultsHeader", {
+                    count : response.results.length,
+                    query : response.query.join(" ")
+                }))
                 .appendTo(r);
 
             var self = this;
