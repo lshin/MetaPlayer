@@ -178,6 +178,9 @@
             var maybe = [];
             var sources = [];
 
+            if( ! this.config.selectSource )
+                return;
+
             $.each(transcodes, function (i, source) {
                 video.appendChild( self._createSource(source.url, source.type) );
 
@@ -189,11 +192,10 @@
                     probably.push(source.url);
                 else
                     maybe.push(source.url);
-
             });
 
             var src = probably.shift() || maybe .shift();
-            if( src)
+            if( src )
                 this._setSrc(src);
         },
 

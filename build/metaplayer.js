@@ -389,6 +389,9 @@
             var maybe = [];
             var sources = [];
 
+            if( ! this.config.selectSource )
+                return;
+
             $.each(transcodes, function (i, source) {
                 video.appendChild( self._createSource(source.url, source.type) );
 
@@ -400,11 +403,10 @@
                     probably.push(source.url);
                 else
                     maybe.push(source.url);
-
             });
 
             var src = probably.shift() || maybe .shift();
-            if( src)
+            if( src )
                 this._setSrc(src);
         },
 
@@ -1305,6 +1307,8 @@
     var $ = jQuery;
 
     var defaults = {
+        msQuotes : true,
+        forceRelative : true,
         playlistService : "/device/services/mp2-playlist?e={e}"
     };
 
@@ -1321,9 +1325,6 @@
         this.dispatcher.listen("trackchange", this._onTrackChange, this);
     };
 
-    SmilService.msQuotes = true;
-    SmilService.rebase = true;
-
     MetaPlayer.ramp = function (options) {
         return SmilService(null, options);
     };
@@ -1332,19 +1333,6 @@
         this.service = SmilService(this.video, options);
     });
 
-    SmilService.parseUrl = function ( url, obj ) {
-        var parts = url.split(':');
-        if( obj == undefined)
-            obj = {};
-        if( parts[0] !== "ramp" )
-            obj.url = url;
-        else {
-            obj.rampHost = parts[1];
-            obj.rampId = parts[2];
-        }
-        return obj;
-    };
-
     SmilService.prototype = {
         _onTrackChange : function (e, track) {
             if(! track ) {
@@ -1352,7 +1340,7 @@
             }
 
             if( typeof track == "string" ) {
-                track = SmilService.parseUrl(track);
+                track = this.parseUrl(track);
             }
 
             if( track && track.rampId ){
@@ -1365,7 +1353,7 @@
 
             // parse format:  "ramp:publishing.ramp.com/ramp:1234"
             if( typeof track == "string" ) {
-                track = SmilService.parseUrl(track);
+                track = this.parseUrl(track);
             }
 
             if( ! track.rampId ) {
@@ -1449,7 +1437,7 @@
             // transcodes
             media.transcodes.push({
                 name : "default",
-                type : SmilService.resolveType( video.attr('src') ),
+                type : this.resolveType( video.attr('src') ),
                 url : video.attr('src')
             });
 
@@ -1458,7 +1446,7 @@
                 var code = $(transcode);
                 media.transcodes.push({
                     name : code.attr('name'),
-                    type : code.attr('type') || SmilService.resolveType( code.attr('content') ),
+                    type : code.attr('type') || this.resolveType( code.attr('content') ),
                     url : code.attr('content')
                 });
             });
@@ -1481,7 +1469,7 @@
                 $(metaq).find('param').each( function (i, val) {
                     var param = $(val);
                     var name =  param.attr('name');
-                    var text =  SmilService.deSmart( param.text() );
+                    var text =  self.deSmart( param.text() );
                     if( name == "code" ) {
                         var code = $.parseJSON( text );
                         $.extend(true, event, code);
@@ -1497,7 +1485,7 @@
             });
 
             var smilText = $(node).find("smilText");
-            media.captions = SmilService.parseCaptions(smilText);
+            media.captions = this.parseCaptions(smilText);
 
             return media;
         },
@@ -1506,7 +1494,7 @@
 
             var url = this._data.metadata.searchapi;
 
-            if( SmilService.rebase ) {
+            if( this.config.forceRelative ) {
                 url = url.replace(/^(.*\/\/[\w.]+)/, ""); // make match local domain root
             }
 
@@ -1534,172 +1522,188 @@
                     console.error("Load search error: " + textStatus + ", url: " + url);
                 },
                 success : function (response, textStatus, jqXHR) {
-                    var results = SmilService.parseSearch(response);
+                    var results = this.parseSearch(response);
                     this.dispatch("search", results);
                     if( callback )
                         callback.call(scope, results);
                 }
             });
-        }
-    };
-    SmilService.parseSearch = function (xml) {
-        var node = $(xml);
-        var ret = {
-            query : [],
-            results : []
-        };
+        },
 
-        var terms = node.find('SearchTerms Term');
-        terms.each(function() {
-            ret.query.push( SmilService.deSmart( $(this).text() ) );
-        });
-
-        var snippets = node.find('Snippets Snippet');
-        snippets.each( function (i, snip) {
-            var node = $(snip);
-            var s = {
-                start : node.attr('time'),
-                words : []
+        parseSearch : function (xml) {
+            var node = $(xml);
+            var self = this;
+            var ret = {
+                query : [],
+                results : []
             };
-            var words = node.find('T');
-            $.each(words, function (i, word){
-                var el = $(word);
-                s.words.push({
-                    match : Boolean( el.find('MQ').length ),
-                    start : el.attr('s'),
-                    text : SmilService.deSmart( el.text() )
-                })
+
+            var terms = node.find('SearchTerms Term');
+            terms.each(function() {
+                ret.query.push( self.deSmart( $(this).text() ) );
             });
-            ret.results.push(s);
-        });
-        return ret;
-    },
 
-    SmilService.parseCaptions = function (xml) {
-        // static factory constructor
-        var nodes = $(xml).contents();
-        var cues  = [
-        ];
+            var snippets = node.find('Snippets Snippet');
+            snippets.each( function (i, snip) {
+                var node = $(snip);
+                var s = {
+                    start : node.attr('time'),
+                    words : []
+                };
+                var words = node.find('T');
+                $.each(words, function (i, word){
+                    var el = $(word);
+                    s.words.push({
+                        match : Boolean( el.find('MQ').length ),
+                        start : el.attr('s'),
+                        text : self.deSmart( el.text() )
+                    })
+                });
+                ret.results.push(s);
+            });
+            return ret;
+        },
 
-        var current = {
-            text : '',
-            start: 0,
-            offset : 0
-        };
+        parseCaptions : function (xml) {
+            // static factory constructor
+            var self = this;
+            var nodes = $(xml).contents();
+            var cues  = [
+            ];
 
-        var previous;
-
-        var getStart = function (node, lastCue) {
-            var el = $(node);
-            var parseSeconds = SmilService.parseSeconds;
-
-
-            var begin = el.attr('begin');
-            if( begin != null )
-                return parseSeconds(begin);
-
-            var _next = el.attr('next');
-            if( _next != null )
-                return parseSeconds(_next) + lastCue.start;
-        };
-
-        var handleNode = function (node, text) {
-            var start = getStart(node);
-            previous = current;
-            previous.end = start;
-            if( text )
-                previous.text += text ;
-            cues.push(previous);
-            current = {
-                text: '',
-                start : start,
-                offset : current.offset+1
+            var current = {
+                text : '',
+                start: 0,
+                offset : 0
             };
-        };
 
-        nodes.each( function ( i, node ){
-            var text = nodes[i].data;
-            if( node.tagName === undefined ){
-                if( SmilService.msQuotes ) {
-                    text = SmilService.deSmart(text);
+            var previous;
+
+            var getStart = function (node, lastCue) {
+                var el = $(node);
+                var parseSeconds = this.parseSeconds;
+
+
+                var begin = el.attr('begin');
+                if( begin != null )
+                    return self.parseSeconds(begin);
+
+                var _next = el.attr('next');
+                if( _next != null )
+                    return self.parseSeconds(_next) + lastCue.start;
+            };
+
+            var handleNode = function (node, text) {
+                var start = getStart(node);
+                previous = current;
+                previous.end = start;
+                if( text )
+                    previous.text += text ;
+                cues.push(previous);
+                current = {
+                    text: '',
+                    start : start,
+                    offset : current.offset+1
+                };
+            };
+
+            nodes.each( function ( i, node ){
+                var text = nodes[i].data;
+                if( node.tagName === undefined ){
+                    if( self.config.msQuotes ) {
+                        text = self.deSmart(text);
+                    }
+                    current.text += text;
+                    return;
                 }
-                current.text += text;
-                return;
+
+                switch (node.tagName) {
+                    case "smil:clear":
+                    case "clear":
+                        handleNode(node);
+                        break;
+
+                    case "smil:tev":
+                    case "tev":
+                        handleNode(node);
+                        break;
+
+                    case "smil:br":
+                    case "br":
+                        handleNode(node, "<br />" );
+                        break;
+
+                    case "smil:div":
+                    case "smil:p":
+                    case "smil:span":
+                    default:
+                        throw "unsupported tag";
+                    // unsupported...
+                }
+            });
+
+            if( current.text )
+                cues.push(current);
+
+            return cues;
+        },
+
+        parseSeconds : function (str) {
+            // http://www.w3.org/TR/smil/smil-timing.html#Timing-ClockValueSyntax
+            var lastChar = str.substr(-1);
+            var val = parseFloat(str);
+
+            if( lastChar == "s")
+                return val;
+
+            if( lastChar == "m")
+                return val * 60;
+
+            if( lastChar == "h")
+                return val * 3600;
+
+            var sec = 0;
+            var p = str.split(':');
+            for (var i = 0; i < Math.min(p.length, 4); i++)
+                sec += Math.pow(60, i) * parseFloat(p[i]);
+            return sec;
+        },
+
+        parseUrl : function ( url, obj ) {
+            var parts = url.split(':');
+            if( obj == undefined)
+                obj = {};
+            if( parts[0] !== "ramp" )
+                obj.url = url;
+            else {
+                obj.rampHost = parts[1];
+                obj.rampId = parts[2];
+            }
+            return obj;
+        },
+
+        deSmart : function (text) {
+            return text.replace(/\xC2\x92/, "\u2019" );
+        },
+
+        resolveType : function ( url ) {
+            var ext = url.substr( url.lastIndexOf('.') + 1 );
+
+            if( url.match("www.youtube.com") ) {
+                return "video/youtube"
             }
 
-            switch (node.tagName) {
-                case "smil:clear":
-                case "clear":
-                    handleNode(node);
-                    break;
+            if( ext == "ogv")
+                return "video/ogg";
 
-                case "smil:tev":
-                case "tev":
-                    handleNode(node);
-                    break;
-
-                case "smil:br":
-                case "br":
-                    handleNode(node, "<br />" );
-                    break;
-
-                case "smil:div":
-                case "smil:p":
-                case "smil:span":
-                default:
-                    throw "unsupported tag";
-                // unsupported...
-            }
-        });
-
-        if( current.text )
-            cues.push(current);
-
-        return cues;
-    };
-
-    SmilService.parseSeconds = function (str) {
-        // http://www.w3.org/TR/smil/smil-timing.html#Timing-ClockValueSyntax
-        var lastChar = str.substr(-1);
-        var val = parseFloat(str);
-
-        if( lastChar == "s")
-            return val;
-
-        if( lastChar == "m")
-            return val * 60;
-
-        if( lastChar == "h")
-            return val * 3600;
-
-        var sec = 0;
-        var p = str.split(':');
-        for (var i = 0; i < Math.min(p.length, 4); i++)
-            sec += Math.pow(60, i) * parseFloat(p[i]);
-        return sec;
-    };
-
-    SmilService.deSmart = function (text) {
-       return text.replace(/\xC2\x92/, "\u2019" );
-    };
-
-    SmilService.resolveType = function ( url ) {
-        var ext = url.substr( url.lastIndexOf('.') + 1 );
-
-        if( url.match("www.youtube.com") ) {
-            return "video/youtube"
-        }
-
-        if( ext == "ogv")
-            return "video/ogg";
-
-        // none of these seem to work on ipad4
-        if( ext == "m3u8" )
+            // none of these seem to work on ipad4
+            if( ext == "m3u8" )
             // return  "application.vnd.apple.mpegurl";
             // return  "vnd.apple.mpegURL";
-            return  "application/application.vnd.apple.mpegurl";
+                return  "application/application.vnd.apple.mpegurl";
 
-        return "video/"+ext;
+            return "video/"+ext;
+        }
     };
 
 

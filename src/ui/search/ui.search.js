@@ -194,7 +194,6 @@
                 return;
             }
 
-            console.log(response);
             this.find("tags").hide();
 
             this.find('close').show();
