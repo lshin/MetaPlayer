@@ -4,7 +4,7 @@
 
     var defaults = {
         msQuotes : true,
-        forceRelative : true,
+        forceRelative : false,
         playlistService : "/device/services/mp2-playlist?e={e}"
     };
 
