@@ -1425,6 +1425,7 @@
                 related : []
             };
 
+            var self = this;
             var video = $(node).find('video');
 
             // metadata
@@ -1437,7 +1438,7 @@
             // transcodes
             media.transcodes.push({
                 name : "default",
-                type : this.resolveType( video.attr('src') ),
+                type : self.resolveType( video.attr('src') ),
                 url : video.attr('src')
             });
 
@@ -1446,7 +1447,7 @@
                 var code = $(transcode);
                 media.transcodes.push({
                     name : code.attr('name'),
-                    type : code.attr('type') || this.resolveType( code.attr('content') ),
+                    type : code.attr('type') || self.resolveType( code.attr('content') ),
                     url : code.attr('content')
                 });
             });
