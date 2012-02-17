@@ -270,10 +270,10 @@
                 this.__readyState = 4;
             }
 
-            if( src.match(/^http:/) )
-                this.youtube.cueVideoByUrl( src );
-            else
-                this.youtube.cueVideoById( src );
+            if( src.match("^http") ){
+                var videoId = src.match( /www.youtube.com\/(watch\?v=|v\/)(\w+)/ )[2];
+            }
+            this.youtube.cueVideoById( videoId || src );
 
             if( this.autoplay )
                 this.play();
