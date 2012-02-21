@@ -9,7 +9,7 @@
     <script src="../../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
 
     <!--Dependency: Flowplayer-->
-    <script src="../../../../external/ovp/ovp.js"></script>
+    <script src="../../../../external/ovp/ovp-1.2.js"></script>
 
     <!-- Core: Ramp -->
     <script src="../../../core/metaplayer.js"></script>
@@ -52,18 +52,17 @@
 <script type="text/javascript">
 
 var config = {
-    //"strategy" : {"order":["HTML5","Flash","Silverlight"]},
-    "strategy" : {"order":["Flash","HTML5","Silverlight"]},
-    'controls': {'src_img':'http://lshin.ramp.com/mp3/external/ovp/images/pixel.png'},
+    "strategy" : {"order":["HTML5","Flash","Silverlight"]},
+    'controls': {'src_img':'../../../../external/ovp/images/pixel.png'},
     'players' : {
         "Flash":{
-            "src":"../../../../external/ovp/ovp.swf",
+            "src":"../../../../external/ovp/ovp-2.1.6.swf",
             "minver":"9",
             "controls":false,
             "plugins":[]
         },
         "Silverlight":{
-            "src":"../../../../external/ovp/ovp.xap",
+            "src":"../../../../external/ovp/ovp-2.3.1.xap",
             "minver":"4.0",
             "controls":false,
             "plugins":[]
@@ -72,8 +71,8 @@ var config = {
     },
     'ovpConfig' : {
         'sources' : [
-            {'src':'http://lshin.ramp.com/videos/trailer.mp4','type':'video/mp4'},
-            {'src':'http://lshin.ramp.com/videos/trailer.ogv', 'type':'video/ogg'}
+            {'src':'http://media.w3.org/2010/05/sintel/trailer.mp4','type':'video/mp4'},
+            {'src':'http://media.w3.org/2010/05/sintel/trailer.ogv', 'type':'video/ogg'}
         ],
         'posterimg':'http://media.w3.org/2010/05/sintel/poster.png',
         'width' : '100%',

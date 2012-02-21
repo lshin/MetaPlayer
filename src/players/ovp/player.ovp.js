@@ -12,8 +12,8 @@
         ovp_container_class:'ovp',
         controller_keepalive_seconds: 5,
         players : {
-            "Flash":{"src":"ovp.swf","minver":"10","controls":false, "plugins":[]},
-            "Silverlight":{"src":"ovp.xap","minver":"4.0","controls":false, "plugins":[]},
+            "Flash":{"src":"ovp-2.1.6.swf","minver":"10","controls":false, "plugins":[]},
+            "Silverlight":{"src":"ovp-2.3.1.xap","minver":"4.0","controls":false, "plugins":[]},
             "HTML5":{"minver":"0","controls":false}
         },
         status_timer : 250,
