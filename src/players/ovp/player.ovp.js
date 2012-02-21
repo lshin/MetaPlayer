@@ -71,13 +71,11 @@
     };
 
     OVPlayer.prototype = {
-        _render: function (el) {
-            
+        _render: function (el) { 
             var presetplay = this.config.immediately;
             if (! presetplay ) this.config.immediately = true;
             ovp.init(this.config);
             this.config.immediately = presetplay;
-            
             return ovp.render(el, this.config.ovpConfig)[0];
         },
         
@@ -96,9 +94,7 @@
             if(typeof this._ovp.player !== "object")
                 return;
             this.video.dispatch('loadstart');
-            
             this._loadtimer.stop();
-            
             this._onReady();
             this._startDurationCheck();
         },
@@ -231,7 +227,6 @@
          * controls()
          */
         paused : function () {
-            console.log(this.__paused);
             return this.__paused;
         },
         duration : function () {
