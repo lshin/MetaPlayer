@@ -48,6 +48,7 @@
         this.__controls = false;
         this.__volume = 1;
         this.__muted = false;
+        this.__src = "";
 
         this._ovp = this._render($(el).get(0));
         this.video = this.attach( this._ovp.getContainer() );
@@ -124,9 +125,9 @@
             var duration = this._ovp.getDuration();
             if( duration > 0 ) {
                 this.__duration = duration;
+                this.video.dispatch("loadeddata");
                 this.video.dispatch("loadedmetadata");
                 this.video.dispatch("durationchange");
-                this.video.dispatch("loadeddata");
                 clearInterval( this._durationCheckInterval );
                 this._durationCheckInterval = null;
             }
@@ -140,6 +141,7 @@
                 this.video.dispatch("timeupdate");
             } else {
                 this.__paused = true;
+                this.dispatcher.dispatch("pause");
             }
             
             if ( this._ovp.isEnded() ) {
@@ -159,12 +161,13 @@
             var then = this.__currentTimeCache;
             var diff = now - then;
 
-            if( then && diff< this.config.status_timer )
+            if( then && diff < this.config.status_timer )
                 return this.__currentTime + (diff / 1000); // approx our position
             else
                 this.__currentTimeCache = now;
-
-            this.__currentTime = this._ovp.getCurrentTime();
+            
+            var ovpCurrentTime = this._ovp.getCurrentTime();
+            this.__currentTime = ( ovpCurrentTime < 0 )? 0 : ovpCurrentTime;
             return this.__currentTime;
         },
         doSeek : function (time) {
@@ -197,17 +200,19 @@
          *
          */
         load : function () {
-            console.log("player load");
+            if (! this._ovp.player )
+                return;
+            
+            var src = this.src();
+            // start to play video.
         },
         play : function () {
-            this._ovp.playpause();
             this.__paused = false;
+            this._ovp.playpause();
         },
         pause : function () {
-            console.log("click paused");
             this.__paused = true;
             this._ovp.playpause();
-            this.dispatcher.dispatch("pause");
         },
         canPlayType : function (val) {
             // In ovp, it has to be changed the video sources before it checks.
@@ -274,13 +279,17 @@
                 this.__volume = val;
                 if( ! this._ovp )
                     return val;
+                // ovp doesn't support to change any volume level.
                 this._ovp.mutetoggle();
                 this.video.dispatch("volumechange");
             }
             return this.__volume;
         },
         src : function (val) {
-            // need to be implemented.
+            if( val !== undefined ) {
+                this.__src = val;
+            }
+            return this.__src
         },
         controls : function (val) {
             if( typeof val !== 'undefined' ) {
