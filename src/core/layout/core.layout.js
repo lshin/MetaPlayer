@@ -40,13 +40,13 @@
         var base;
         var stage = t.find('.mp-video');
         var video = t.find('video');
-        var isVideo = ! (target.currentTime == null);
+        var isVideo = (target.play instanceof Function);
 
         // set up main wrapper
         if( isVideo ){
             base = $('<div></div>')
                 .addClass('metaplayer')
-                .appendTo( t.parent() );
+                .insertAfter( t );
 
             // assume they've set the dimensions on the target
             base.width( t.width() );
