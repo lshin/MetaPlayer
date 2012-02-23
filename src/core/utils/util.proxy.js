@@ -92,6 +92,8 @@
         // iOS: can't do DOM objects
         // use DOM where possible
         getProxyObject : function ( dom ) {
+
+            // All modern browsers (and ie8)
             if( ! dom )
                 dom = document.createElement("div");
 
@@ -102,11 +104,10 @@
             catch(e){
             }
 
-            // dom to be flushed out as needed
+            // iOS, fake as best we can
             var target = {
                 parentNode : dom.parentNode
             };
-
             try {
                 Object.defineProperty(target, "__proptest", {} );
                 return target;
@@ -114,24 +115,27 @@
             catch(e){
             }
 
-
             throw "Object.defineProperty not defined";
         },
 
         proxyPlayer : function (source, target) {
             var proxy = Ramp.proxy.getProxyObject(target);
 
-            Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
-                " paused played controls autoplay preload src ended readyState",
+            Proxy.mapProperty("duration currentTime volume muted seeking" +
+                " paused controls autoplay preload src ended readyState",
                 proxy, source);
 
             Proxy.proxyFunction("load play pause canPlayType" ,source, proxy);
 
-            Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
-                "loadeddata loadedmetadata canplay loadstart durationchange volumechange " +
-                "ended error",source, proxy);
+            Proxy.proxyPlayerEvents(source, proxy);
 
             return proxy;
+        },
+
+        proxyPlayerEvents : function (source, target){
+            Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
+                "loadeddata loadedmetadata canplay loadstart durationchange volumechange " +
+                "ended error",source, target);
         }
     };
 
