@@ -10,8 +10,8 @@
         focusMs : 750,
         fadeMs : 1000,
         opacity: 1,
-        timestamps : true,
-        breaks : true
+        timestamps : false,
+        breaks : false
     };
 
     // case insensative find
@@ -52,6 +52,15 @@
 
 
     MetaPlayer.addPlugin("transcript", function (target, options) {
+        var popcorn = this.popcorn;
+
+        this.dispatcher.listen("captions", function (e, captions) {
+            $.each(captions, function (e, obj) {
+                var o = $.extend({ 'target': target}, obj);
+                popcorn.transcript(o);
+            });
+        });
+
         return Transcript( target, this.video, options);
     });
 
