@@ -28,14 +28,11 @@
 
     var Controls = function (player, options) {
 
-        if( !(this instanceof Controls) )
-            return new Controls(player, options);
-
         this.config = $.extend(true, {}, defaults, options);
 
-        this.container = $(this.config.container || $(player.video).parents('.metaplayer') );
+        this.container = $(this.config.container ||  player.layout.base );
+        this.player = player;
         this.video = player.video;
-        this.dispatcher = player.dispatcher;
 
         this.annotations = [];
         this.video.controls = false;
@@ -68,12 +65,8 @@
             this.toggle(false, 0);
     };
 
-    MetaPlayer.controls = function (video, options) {
-        return Controls(this, options);
-    };
-
     MetaPlayer.addPlugin("controls", function (options) {
-        return Controls(this, options);
+        this.controls = new Controls(this, options);
     });
 
     Controls.prototype = {
@@ -132,19 +125,20 @@
             });
         },
 
-        addDataListeners : function (player) {
-            var d = this.dispatcher;
+        addDataListeners : function () {
+            var metadata = this.player.metadata;
             if( this.config.renderTags )
-                d.listen("tags", this.onTags, this);
+                metadata.listen( MetaPlayer.MetaData.DATA, this.onTags, this);
 
-            if( this.config.renderMetaq )
-                d.listen("metaq", this._onMetaq, this);
+            var playlist = this.player.playlist;
+            playlist.listen("trackchange", this.onTrackChange, this);
 
-            d.listen("trackchange", this.onTrackChange, this);
-            d.listen("search", this.onSearch, this);
+            var search = this.player.search;
+            search.listen("search", this.onSearch, this);
         },
 
-        onTags : function (e, tags) {
+        onTags : function (e) {
+            var tags = e.data.ramp.tags;
             var self = this;
             $.each(tags, function (i, tag){
                 $.each(tag.timestamps, function (j, time){
