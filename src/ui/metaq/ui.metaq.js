@@ -5,18 +5,17 @@
     var Popcorn = window.Popcorn;
 
     var defaults = {
-        subtitles : true
     };
 
-    var PopcornLoader = function (video, options) {
-        if( !(this instanceof PopcornLoader) )
-            return new PopcornLoader(video, options);
+    var MetaQ = function (player, options) {
+        if( !(this instanceof MetaQ) )
+            return new MetaQ(player, options);
 
         if( ! (window.Popcorn && Popcorn instanceof Function) )
-            throw "required: PopcornJS"
+            return;
 
-        this.popcorn = video.getTrackEvents ? video : Popcorn(video);
-        this.dispatcher = MetaPlayer.dispatcher(video);
+        this.popcorn = player.popcorn;
+        this.dispatcher = player.dispatcher;
 
         this.config = $.extend(true, {}, defaults, options);
 
@@ -26,28 +25,41 @@
         this.addDataListeners();
     };
 
-    MetaPlayer.addPlayer("popcorn", function (popcorn, options) {
-       this.popcorn = popcorn;
-       return popcorn.media;
-    });
-
     MetaPlayer.addPlugin('metaq', function (options) {
-        var metaq = PopcornLoader(this.video, options);
-        this.popcorn = metaq.popcorn;
-        return metaq;
+        return MetaQ(this, options);
     });
+    
+    MetaPlayer.metaq = MetaQ;
 
-    PopcornLoader.prototype = {
+
+    // clones a popcorn event definition
+    MetaQ.clone = function (popcorn, fromPlugin, toPlugin ) {
+        var events = popcorn.getTrackEvents()
+        $.each(events, function (i, e) {
+            if( e._natives.type == fromPlugin ) {
+                popcorn[toPlugin]( MetaQ.clone(e) );
+            }
+        })
+    };
+
+    // clones a popcorn event definition
+    MetaQ.cloneEvent = function (event, overrides) {
+        var clone = $.extend({}, event, overrides );
+
+        for( var k in clone ){
+            if( k[0] == "_" ) {
+                delete clone[k]
+            }
+        }
+        delete clone.id;
+        delete clone.effect;
+        delete clone.compose;
+    },
+
+    MetaQ.prototype = {
         addDataListeners : function () {
-            this.dispatcher.listen("captions", this._onCaptions, this);
             this.dispatcher.listen("metaq", this._onMetaq, this);
             this.dispatcher.listen("trackchange", this._onTrackChange, this);
-        },
-
-        _onCaptions : function (e, captions) {
-            var self = this;
-            if( this.config.subtitles )
-                $.extend(this.metaq, { subtitle : captions });
         },
 
         _onMetaq : function (e, metaq) {
