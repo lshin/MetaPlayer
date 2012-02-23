@@ -38,8 +38,7 @@
         if(!(this instanceof OVPlayer))
             return new OVPlayer(el, options);
 
-        this.config = $.extend(true, {}, defaults, options);
-        this.dispatcher = MetaPlayer.dispatcher(el);     
+        this.config = $.extend(true, {}, defaults, options); 
         this.__readyState = 0;
         this.__paused = (! this.config.immediately);
         this.__duration = NaN;
@@ -49,12 +48,14 @@
         this.__volume = 1;
         this.__muted = false;
         this.__src = "";
-
-        this._ovp = this._render($(el).get(0));
-        this.video = this.attach( this._ovp.getContainer() );
+        
+        this._ovp = this._render( $(el).get(0) );
+        this.video = this._ovp.getWrapperNode();
+        MetaPlayer.proxy.proxyPlayer( this, this.video );
+        this.dispatcher = MetaPlayer.dispatcher( this.video );
+        
         this.video.player = this;
         this._setControls();
-        
         this._addEventListeners();
     };
 
@@ -94,16 +95,16 @@
         _onBeforeLoad : function () {
             if(typeof this._ovp.player !== "object")
                 return;
-            this.video.dispatch('loadstart');
-            this._loadtimer.stop();
+            this.dispatcher.dispatch('loadstart');
+            this._loadtimer.reset();
             this._onReady();
             this._startDurationCheck();
         },
         _onReady : function () {
             this._statustimer.start();
             this.__readyState = 4;
-            this.video.dispatch("loadeddata");
-            this.video.dispatch("canplay");
+            this.dispatcher.dispatch("loadeddata");
+            this.dispatcher.dispatch("canplay");
             this.load();
             
             this.video.pause();
@@ -125,9 +126,9 @@
             var duration = this._ovp.getDuration();
             if( duration > 0 ) {
                 this.__duration = duration;
-                this.video.dispatch("loadeddata");
-                this.video.dispatch("loadedmetadata");
-                this.video.dispatch("durationchange");
+                this.dispatcher.dispatch("loadeddata");
+                this.dispatcher.dispatch("loadedmetadata");
+                this.dispatcher.dispatch("durationchange");
                 clearInterval( this._durationCheckInterval );
                 this._durationCheckInterval = null;
             }
@@ -136,17 +137,15 @@
         _onStatus : function () {
             if ( this._ovp.isPlaying() ) {
                 this.__paused = false;
-                this.video.dispatch("playing");
-                this.video.dispatch("play");
-                this.video.dispatch("timeupdate");
+                this.dispatcher.dispatch("playing");
+                this.dispatcher.dispatch("play");
+                this.dispatcher.dispatch("timeupdate");
+            } else if ( this._ovp.isEnded() ){
+                this.__paused = true;
+                this.dispatcher.dispatch("ended");
             } else {
                 this.__paused = true;
                 this.dispatcher.dispatch("pause");
-            }
-            
-            if ( this._ovp.isEnded() ) {
-                this.__paused = true;
-                this.video.dispatch("ended");
             }
         },
         _setControls : function () {
@@ -172,7 +171,7 @@
         },
         doSeek : function (time) {
             this.__seeking = true;
-            this.video.dispatch("seeking");
+            this.dispatcher.dispatch("seeking");
             this._ovp.seekTo( time );
             this.__currentTime = time;
 
@@ -182,8 +181,8 @@
             setTimeout (function () {
                 self.updateTime(); // trigger a time update
                 self.__seeking = false;
-                self.video.dispatch("seeked");
-                self.video.dispatch("timeupdate");
+                self.dispatcher.dispatch("seeked");
+                self.dispatcher.dispatch("timeupdate");
             }, 1500)
         },
         updateTime : function () {
@@ -268,7 +267,7 @@
                     this._ovp.mutetoggle();
                 else
                     this._ovp.mutetoggle();
-                this.video.dispatch("volumechange");
+                this.dispatcher.dispatch("volumechange");
                 return val;
             }
 
@@ -281,7 +280,7 @@
                     return val;
                 // ovp doesn't support to change any volume level.
                 this._ovp.mutetoggle();
-                this.video.dispatch("volumechange");
+                this.dispatcher.dispatch("volumechange");
             }
             return this.__volume;
         },
@@ -296,12 +295,6 @@
                 this.__controls = val;
             }
             return this.__controls;
-        },
-        attach : function (target) {
-            target = MetaPlayer.proxy.getProxyObject(target);
-            this.dispatcher.attach(target);
-            MetaPlayer.proxy.proxyPlayer(this, target);
-            return target;
         }
     };
 })();
