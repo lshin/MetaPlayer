@@ -5,8 +5,13 @@
     var $ = jQuery;
     var Popcorn = window.Popcorn;
 
+    var pluginName = "subtitle";
+
     var defaults = {
-        cssPrefix : "metaplayer-captions"
+        cssPrefix : "metaplayer-captions",
+        pluginName :pluginName,  // override to use another popcorn plugin
+        renderer : pluginName,  // override to use another popcorn plugin
+        detectTextTracks : false  // beta, popcorn parser issues
     };
 
     var Captions = function (target, options) {
@@ -31,7 +36,18 @@
         if( !(this instanceof Captions) )
             return new Captions(target, options);
 
-        this.target = target;
+        this.config = $.extend({}, defaults, options);
+
+        if( target.getTrackEvents ) {
+            this.popcorn = target;
+            this.target = target.media;
+        }
+        else
+            this.target = target;
+
+        if( this.config.detectTextTracks )
+            this.findTrackElements();
+
         this.config = $.extend(true, {}, defaults, options);
 
         this.init();
@@ -42,16 +58,61 @@
     Captions.instances = {};
     Captions._count = 0;
 
+    MetaPlayer.addPlugin("captions", function (options){
+        var popcorn = this.popcorn;
+        var captions = Captions(this.popcorn, options);
+
+        var plugin = captions.config.renderer;
+        if( ! (popcorn[plugin] instanceof Function) )
+            throw "popcorn plugin does not exist: " + plugin;
+
+        this.dispatcher.listen("captions", function (e, captions) {
+            $.each(captions, function (e, obj) {
+                popcorn[plugin].call(popcorn, obj);
+            });
+        });
+    });
+
+
+    // allow loading of subtitle files explicitly
+    MetaPlayer.addPlugin("srt", function (url){
+        this.popcorn.parseSRT(url);
+    });
+
     Captions.prototype = {
         init : function (){
+            if( this.config.renderer != pluginName )
+                return;
+
             this.container = this.create();
-//            this.container.append('&nbsp;'); // holds height
+
             this._captions = {};
 
+            var target;
             if( this.target.getTrackEvents )
-                $(this.target.media.parentNode).append( this.container );
+                target = this.target.media;
             else
-                $(this.target).append( this.container );
+                target = this.target;
+
+            $(this.target.parentNode).append( this.container );
+
+        },
+
+        findTrackElements : function (){
+            var popcorn = this.popcorn;
+            if( ! (popcorn.parseSRT instanceof Function) ){
+                return;
+            }
+
+            var tracks = $(this.target).find('track[kind="subtitle"]');
+            $.each( tracks, function (i, track) {
+                var src = $(track).attr('src');
+                var ext = src.substr( src.lastIndexOf('.') );
+                if( ext == ".srt" ) {
+                    popcorn.parseSRT(src);
+                    return false;
+                }
+            })
         },
 
         append :  function (options) {
@@ -60,7 +121,7 @@
 
         focus : function (options) {
             var el = this.create("text", 'div');
-            el.text( options.text );
+            el.html( options.text );
             this._captions[ options.start ] = el;
             this.container.append(el);
         },
@@ -92,7 +153,7 @@
     };
 
     if( Popcorn ) {
-        Popcorn.plugin( "subtitle" , {
+        Popcorn.plugin( pluginName , {
             _setup: function( options ) {
                 Captions(this);
             },
