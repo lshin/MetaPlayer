@@ -29,10 +29,14 @@
     <script src="../../../core/utils/util.ui.js"></script>
     <script src="../../../core/playlist/player.playlist.js"></script>
     <script src="../../../core/layout/core.layout.js"></script>
+    <script src="../../../core/metadata/core.metadata.js"></script>
+    <script src="../../../core/search/core.search.js"></script>
+    <script src="../../../core/cues/core.cues.js"></script>
+
     <link href="../../../core/layout/core.layout.css" rel="stylesheet" type="text/css">
 
     <!-- Service Plugin: RAMP -->
-    <script src="../../../services/smil/service.smil.js"></script>
+    <script src="../../../services/ramp/service.ramp.js"></script>
 
     <!-- Media Plugin: HTML5 -->
     <script src="../../../players/html5/player.html5.js"></script>
@@ -48,16 +52,14 @@
 
 </head>
 <body>
-    <h3>Metaplayer &raquo; Captions Plugin</h3>
+    <h3>Metaplayer &raquo; Captions </h3>
 
     <div id='target'></div>
 
     <script type="text/javascript">
         var player = Ramp('#target')
-                .html5()
-                .ramp()
-                .metaq()
-                .load("ramp:/pca:36234882");
+                .ramp("ramp:/advisor:48920875")
+                .captions()
     </script>
 </body>
 </html>

@@ -84,13 +84,6 @@
             }
         }
 
-        // video-dependent core plugins
-        if( this.video ){
-            // video gets a Popcorn instance, if available
-            if( ! this.popcorn && Popcorn != null )
-                this.popcorn = Popcorn(this.video);
-        }
-
         // start loading after this execution block, can be triggered earlier by load()
         // makes sure all plugins have initialized before startup sequence
         var self = this;
@@ -203,6 +196,10 @@
 
             if( this.video && ! this.playlist )
                 this.playlist = new MetaPlayer.Playlist(this, this.config.playlist);
+
+            if( this.video && ! this.popcorn && Popcorn != null )
+                this.popcorn = Popcorn(this.video);
+
 
             // run the plugins, any video will have been initialized by now
             var self = this;

@@ -5,12 +5,11 @@
     var $ = jQuery;
     var Popcorn = window.Popcorn;
 
-    var pluginName = "subtitle";
+    var pluginName = "captions";
 
     var defaults = {
         cssPrefix : "metaplayer-captions",
         pluginName :pluginName,  // override to use another popcorn plugin
-        renderer : pluginName,  // override to use another popcorn plugin
         detectTextTracks : false  // beta, popcorn parser issues
     };
 
@@ -45,9 +44,6 @@
         else
             this.target = target;
 
-        if( this.config.detectTextTracks )
-            this.findTrackElements();
-
         this.config = $.extend(true, {}, defaults, options);
 
         this.init();
@@ -55,35 +51,24 @@
         Captions.instances[id] = this;
     };
 
+    MetaPlayer.Captions = Captions;
+
     Captions.instances = {};
     Captions._count = 0;
 
     MetaPlayer.addPlugin("captions", function (options){
+
         var popcorn = this.popcorn;
-        var captions = Captions(this.popcorn, options);
+        this.captions = Captions(popcorn, options);
 
-        var plugin = captions.config.renderer;
-        if( ! (popcorn[plugin] instanceof Function) )
-            throw "popcorn plugin does not exist: " + plugin;
+        if( ! (popcorn[pluginName] instanceof Function) )
+            throw "popcorn plugin does not exist: " + pluginName;
 
-        this.dispatcher.listen("captions", function (e, captions) {
-            $.each(captions, function (e, obj) {
-                popcorn[plugin].call(popcorn, obj);
-            });
-        });
-    });
-
-
-    // allow loading of subtitle files explicitly
-    MetaPlayer.addPlugin("srt", function (url){
-        this.popcorn.parseSRT(url);
+        this.cues.enable( pluginName );
     });
 
     Captions.prototype = {
         init : function (){
-            if( this.config.renderer != pluginName )
-                return;
-
             this.container = this.create();
 
             this._captions = {};

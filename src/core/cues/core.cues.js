@@ -33,7 +33,7 @@
     Cues.prototype = {
         /**
          * Bulk adding of cue lists to a uri.
-         * @param cuelists a dictionary of cue array, indexed by cue type.
+         * @param cuelists a dictionary of cue arrays, indexed by type.
          * @param uri (optional) Data uri, or last load() uri.
          */
         setCueLists : function ( cuelists , uri) {
@@ -41,6 +41,15 @@
             $.each(cuelists, function(type, cues){
                 self.setCues(type, cues, uri)
             });
+        },
+
+        /**
+         * Returns a dictionary of cue arrays, indexed by type.
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        getCueLists : function ( uri) {
+            var guid = uri || this.player.metadata.getFocusUri();
+            return this._cues[guid];
         },
 
         /**
@@ -82,16 +91,25 @@
             return this._cues[guid][type];
         },
 
+        /**
+         * Enables popcorn events for a cue type
+         * @param type Cue type
+         * @param overrides Optional object with properties to define in each popcorn event, such as target
+         * @param rules (advanced) Optional rules hash for cloning, sequencing, and more.
+         */
         enable : function (type, overrides, rules) {
-
             var r = $.extend({}, this._rules[type], rules);
             r.overrides = $.extend({}, r.overrides, overrides);
             r.enabled = true;
             this._rules[type] = r;
 
-            this._renderCues(type, this.getCues( r.clone || this.type) )
+            this._renderCues(type, this.getCues( r.clone || type) )
         },
 
+        /**
+         * Disables popcorn events for a cue type
+         * @param type Cue type
+         */
         disable : function (type) {
             if( ! type )
                 return;

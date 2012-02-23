@@ -116,6 +116,9 @@
         destroy : function  () {
             this.dispatcher.destroy();
             delete this.player;
+            delete this._callbacks;
+            delete this._data;
+            delete this.config;
         },
 
         // registers a callback
@@ -139,7 +142,7 @@
 
             if( this._callbacks[uri] ) {
                 $.each( this._callbacks[uri] || [], function (i, callback ) {
-                    callback.apply(callback.scope, data);
+                    callback.fn.call(callback.scope, data);
                 });
                 delete this._callbacks[uri];
             }
