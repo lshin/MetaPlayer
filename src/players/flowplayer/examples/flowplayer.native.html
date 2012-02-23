@@ -59,30 +59,26 @@
 
 <script>
 
-    var fp = $f( 'video',
-            {
-                src: "../../../../external/flowplayer/flowplayer-3.2.7.swf",
-                wmode: "transparent"
-            },
-            {
-                clip : {
-                    scaling : "fit"
-                },
-                playlist : []
-            });
+    var sintel = "http://media.w3.org/2010/05/sintel/trailer.mp4";
+    var popcorn = "http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.mp4";
 
+    var fp = $f( 'video', "../../../../external/flowplayer/flowplayer-3.2.7.swf", {
+        clip : {
+            scaling : "fit",
+            url : sintel,
+            autoBuffering: false,
+            autoPlay: false
+        }
+    }).load();
 
-    fp.ipad();
-    fp.load();
-
-    var video = Ramp.flowplayer(fp);
-    video.preload = false;
-    video.src = "http://media.w3.org/2010/05/sintel/trailer.mp4";
+    var video = MetaPlayer.flowplayer(fp);
 
 </script>
+
 <button onclick="video.load()">video.load()</button>
 <button onclick="video.play()">video.play()</button>
 <button onclick="video.pause()">video.pause()</button>
+<button onclick="video.src = popcorn">video.src</button>
 
 </body>
 </html>

@@ -68,7 +68,7 @@
     <link href="../../../themes/mp2/theme.endcap.css" rel="stylesheet"  type="text/css">
 
     <style>
-        #target {
+        #video {
             width: 600px;
             height: 300px;
             background:  gray;
@@ -100,16 +100,14 @@
                 playlist : []
             });
 
-    player = MetaPlayer("#target")
-            .flowplayer( fp )
-            .ramp()
-            .metaq()
+    player = MetaPlayer( MetaPlayer.flowplayer(fp) )
             .overlay()
             .endcap()
             .controls()
-//            .load("ramp:/advisor:48920875");
-    player.load("ramp:/thechewpoc:51416098");
+            .captions()
+            .ramp("ramp:/thechewpoc:51416098");
 
+    player.video.autoplay = true;
 
 
 </script>

@@ -133,8 +133,17 @@
 
 
             // apply src from before we were loaded, if any
-            if( this.__src )
+            if( this.__src ) {
                 this.src( this.__src );
+            }
+            else {
+                var c = fp.getClip(0);
+                if( c ){
+                    this._addClipListeners(c);
+                    this.__src = c.url;
+                }
+
+            }
 
             self.dispatcher.dispatch('loadstart');
 
@@ -144,6 +153,9 @@
 
         _addClipListeners : function (clip) {
             var self = this;
+
+            if( ! clip )
+                return;
 
             clip.onBeforeBegin( function (clip) {
                 return true;
@@ -184,6 +196,7 @@
             });
 
             clip.onPause( function (clip) {
+
                 self._setPlaying(false);
                 self._setReady();
             });
@@ -211,6 +224,7 @@
                 if( ! self.paused() )
                     self.dispatcher.dispatch("seeked");
             });
+
         },
 
         _setReady : function (){
