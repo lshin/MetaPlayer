@@ -22,11 +22,17 @@
 
         var ramp = this._ramp;
 
-        if( url )
-           ramp._currentUrl = url;
+        if( url ) {
+            if(! this.ready )
+                ramp._currentUrl = url;
+            else
+                ramp.load( url , true);
+        }
 
         if( options )
             ramp.config = $.extend(ramp.config, options);
+
+        return this;
     });
 
     RampService.prototype = {
@@ -102,12 +108,13 @@
         setItems : function (items, isPlaylist) {
             var metadata = this.player.metadata;
             var playlist = this.player.playlist;
+            var cues = this.player.cues;
 
             // first item contains full info
             var first = items[0];
             var guid = this.toUrl(first.metadata);
             metadata.setData( first.metadata, guid );
-            metadata.setCueLists( first.cues, guid  );
+            cues.setCueLists( first.cues, guid  );
 
             // subsequent items contain metadata only, no transcodes, tags, etc.
             // they require another lookup when played, so disable caching by metadata

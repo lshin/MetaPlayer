@@ -30,11 +30,6 @@
      */
     Cues.CUES = "cues";
 
-    // register with framework as a plugin
-    MetaPlayer.addPlugin("cues", function (options) {
-        this.cues = new Cues(this, options);
-    });
-
     Cues.prototype = {
         /**
          * Bulk adding of cue lists to a uri.
@@ -87,10 +82,24 @@
             return this._cues[guid][type];
         },
 
-        schedule : function (type, overrides, rules) {
-            this._rules[type] = $.extend({}, this._rules[type], rules);
-            this._rules[type].overrides = $.extend({}, this._rules[type].overrides, overrides);
-            this._rules[type].enabled = true;
+        enable : function (type, overrides, rules) {
+
+            var r = $.extend({}, this._rules[type], rules);
+            r.overrides = $.extend({}, r.overrides, overrides);
+            r.enabled = true;
+            this._rules[type] = r;
+
+            this._renderCues(type, this.getCues( r.clone || this.type) )
+        },
+
+        disable : function (type) {
+            if( ! type )
+                return;
+
+            if( this._rules[type] )
+                this._rules[type].enabled = false;
+
+            this._removeEvents(type);
         },
 
         /**
@@ -159,12 +168,13 @@
             this._dispatchCues( e.uri );
         },
 
-        _removeEvents : function () {
+        _removeEvents : function ( type ) {
             var popcorn = this.player.popcorn;
             if( popcorn ) {
                 var events = popcorn.getTrackEvents();
                 $.each(events, function (i, e){
-                    popcorn.removeTrackEvent(e._id);
+                    if( !type || type == e._natives.type )
+                        popcorn.removeTrackEvent(e._id);
                 });
             }
         },

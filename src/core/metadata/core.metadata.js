@@ -43,11 +43,6 @@
     MetaData.DATA = "data";
 
 
-    // register with framework as a plugin
-    MetaPlayer.addPlugin("metadata", function (options) {
-        this.metadata = new MetaData(this, options);
-    });
-
     MetaData.prototype = {
 
         /**

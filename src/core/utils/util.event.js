@@ -113,6 +113,10 @@
         },
 
         dispatchEvent : function (eventObject) {
+
+//            if( eventObject.type != "timeupdate")
+//                   console.log(eventObject.type, eventObject);
+
             var l = this._listeners[eventObject.type] || [];
             for(var i=0; i < l.length; i++ ){
                 if( eventObject.cancelBubble ) // via stopPropagation()

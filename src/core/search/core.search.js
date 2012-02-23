@@ -6,7 +6,7 @@
         forceRelative : false
     };
 
-    var RampSearch = function (player, options){
+    var Search = function (player, options){
         this.config = $.extend({}, defaults, options);
 
         this.player = player;
@@ -16,13 +16,13 @@
         this.player.listen(MetaPlayer.DESTROY, this.destroy, this);
     };
 
-    MetaPlayer.RampSearch = RampSearch;
+    MetaPlayer.Search = Search;
 
     MetaPlayer.addPlugin("search", function (options) {
-        return new RampSearch(this);
+        return new Search(this);
     });
 
-    RampSearch.prototype = {
+    Search.prototype = {
         query : function (query, callback, scope) {
             var data = this.player.metadata.getData();
             if(! data.ramp.searchapi )
