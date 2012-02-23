@@ -21,9 +21,9 @@
 
         this.config = $.extend({}, defaults, options);
 
+        this.player = player;
         this.video = player.video;
         this.dispatcher = player.dispatcher;
-        this.service = player.service;
         this.popcorn = player.popcorn;
         this.playlist = player.playlist;
 
@@ -63,12 +63,12 @@
                 this.find('close-btn').show();
 
             if( Ramp.embed ) {
-                this.embed = Ramp.embed( this.find('embed'), this.service );
+                this.embed = Ramp.embed( this.find('embed'), this.dispatcher );
                 this.find('embed').show();
             }
 
             if( Ramp.social )
-                Ramp.social( this.find('social'), this.service );
+                Ramp.social( this.find('social'), this.dispatcher );
         },
 
         addUIListeners : function () {
@@ -103,7 +103,7 @@
 
             this.find('results-close').click( function (e) {
                 self.find('search-input').val('');
-                self.service.search('', self.onSearchResult, self);
+                self.player.service.search('', self.onSearchResult, self);
             });
 
             var volume_bg = this.find('volume-bg');
@@ -149,9 +149,7 @@
         },
 
         addServiceListeners : function () {
-            if( ! this.service )
-                return;
-            this.service.listen("tags", this.onTags, this);
+            this.dispatcher.listen("tags", this.onTags, this);
         },
 
         onTags : function (e, tags) {
@@ -205,7 +203,7 @@
 
         doSearch : function () {
             var q = this.find('search-input').val();
-            this.service.search(q, this.onSearchResult, this);
+            this.player.service.search(q, this.onSearchResult, this);
         },
 
         onSearchResult : function (response) {
