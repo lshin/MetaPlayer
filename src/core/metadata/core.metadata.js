@@ -13,6 +13,7 @@
         this.config = $.extend({}, defaults, options);
         this.dispatcher = MetaPlayer.dispatcher(this);
         this._data = {};
+        this._cues = {};
         this._callbacks = {};
         this._lastUri = null;
     };
@@ -33,9 +34,17 @@
      */
     MetaData.DATA = "data";
 
+    /**
+     * Fired when new cues are received as a result of a load() request.
+     * @name CUES
+     * @event
+     * @param data The cues from a resulting load() request.
+     */
+    MetaData.CUES = "cues";
+
     // register with framework as a plugin
     MetaPlayer.addPlugin("metadata", function (options) {
-        return new MetaData(options);
+        this.metadata = new MetaData(options);
     });
 
     MetaData.prototype = {
@@ -52,9 +61,12 @@
             else
                 this._lastUri = uri;
 
+            console.log("LOAD ", uri)
+
             // cache hit gets response immediately, otherwise request data via LOAD
             if( this._data[uri] && this._data[uri]._cached ) {
                 this._response(uri);
+                this._dispatchCues(uri)
                 return true;
             }
 
@@ -75,19 +87,99 @@
          * @param uri Optional argument specifying media guid. Defaults to last load() uri.
          */
         getData : function ( uri ){
-            return this._data[ uri || this._lastUri ];
+            var guid = uri || this._lastUri;
+            return this._data[guid]
         },
 
         /**
-         * sets the data for a URI, triggering DATA if the uri has focus
-         * @param uri
+         * Sets the data for a URI, triggering DATA if the uri has focus.
          * @param data
+         * @param uri (optional) Data uri, or last load() uri.
          * @param cache (optional) allow lookup of item on future calls to load(), defaults true.
          */
-        setData : function ( uri, data, cache ){
-            this._data[uri] = data;
-            this._data[uri]._cached = ( cache == null ||  cache ) ? true : false;
-            this._response(uri);
+        setData : function (data, uri, cache ){
+            var guid = uri || this._lastUri;
+            this._data[guid] = $.extend(true, {}, this._data[guid], data);
+            this._data[guid]._cached = ( cache == null ||  cache ) ? true : false;
+            this._response(guid);
+        },
+
+        /**
+         * Bulk adding of cue lists to a uri.
+         * @param cuelists a dictionary of cue array, indexed by cue type.
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        setCueLists : function ( cuelists , uri) {
+            var self = this;
+            $.each(cuelists, function(type, cues){
+                self.setCues(type, cues, uri)
+            });
+        },
+
+        /**
+         * For a given cue type, adds an array of cues events, triggering a CUE event
+         * if the uri has focus.
+         * @param type The name of the cue list (eg: "caption", "twitter", etc)
+         * @param cues An array of cue obects.
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        setCues : function (type, cues , uri){
+            var guid = uri || this._lastUri;
+
+            if( ! this._cues[guid] )
+                this._cues[guid] = {};
+
+            this._cues[guid][type] = cues;
+            this._dispatchCues(guid, type)
+        },
+
+        /**
+         * Returns an array of caption cues events. Shorthand for getCues("caption")
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        getCaptions : function ( uri ){
+            return this.getCues("captions", uri);
+        },
+
+        /**
+         * Returns an array of cue objects for a given type.
+         * @param type The name of the cue list (eg: "caption", "twitter", etc)
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        getCues : function (type, uri) {
+            var guid = uri || this._lastUri;
+            if(! this._cues[guid]  || ! this._cues[guid][type])
+                return [];
+            return this._cues[guid][type];
+        },
+
+        // broadcasts cue data available for guid, if it matches the current focus uri
+        // defaults to all known cues, or can have a single type specified
+        _dispatchCues : function ( guid, type ) {
+            if( guid != this._lastUri )
+                return;
+
+            var self = this;
+            var cues = this.getCues();
+
+            var types = [];
+            if( type ) {
+                types.push(type)
+            }
+            else if( this._cues[guid] ){
+                types = $.map(this._cues[guid], function(cues, type) {
+                    return type;
+                });
+            }
+
+            $.each(types, function(i, type) {
+                var e = self.createEvent();
+                e.initEvent(MetaData.CUES, false, true);
+                e.uri = guid;
+                e.type = type;
+                e.cues = self.getCues(type);
+                self.dispatchEvent(e);
+            });
         },
 
         /**
@@ -110,11 +202,6 @@
         // handles setting data, firing event and callbacks as necessary
         _response : function ( uri ){
              var data = this._data[uri];
-
-            // if we don't' have a current uri, take our first data event to be the focus
-            if(! this._lastUri ) {
-                this._lastUri = uri;
-            }
 
             if( this._lastUri == uri ) {
                 var e = this.createEvent();
