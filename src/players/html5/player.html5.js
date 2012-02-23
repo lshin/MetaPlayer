@@ -25,12 +25,9 @@
         this._createMarkup(parent);
     };
 
-    MetaPlayer.html5 = function (video, options) {
-        return Html5Player(video, options).video;
-    };
-
     MetaPlayer.addPlayer("html5", function (options) {
-        return MetaPlayer.html5(this.video, options);
+        var html5 = new Html5Player(this.layout.stage, options);
+        this.video = html5.video;
     });
 
     Html5Player.prototype = {
