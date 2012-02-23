@@ -25,21 +25,22 @@
     <script src="../../../core/utils/util.ui.js"></script>
     <script src="../../../core/playlist/player.playlist.js"></script>
     <script src="../../../core/layout/core.layout.js"></script>
-    <link href="../../../core/layout/core.layout.css" rel="stylesheet" type="text/css">
+    <script src="../../../core/metadata/core.metadata.js"></script>
+    <script src="../../../core/search/core.search.js"></script>
+    <script src="../../../core/cues/core.cues.js"></script>
 
     <!-- Media Plugin: HTML5 -->
     <script src="../player.html5.js"></script>
 
 
+
 </head>
 <body>
 
-<h3>Metaplayer &raquo; HTML5Player Plugin</h3>
+<h3>Metaplayer &raquo; HTML5</h3>
 
-<div id="video">
-    <video id="foo" controls="controls" preload="true" autoplay="true">
-    </video>
-</div>
+<video id="video" controls="controls" autoplay="true">
+</video>
 
 <script type="text/javascript">
 
@@ -49,13 +50,8 @@
         "http://media.w3.org/2010/05/sintel/trailer.ogv"
     ];
 
-    var player = MetaPlayer("#video")
-            .playlist()
-            .html5()
-            .load();
-
+    var player = MetaPlayer("#video").load();
     player.playlist.queue( urls );
-
 
 </script>
 
