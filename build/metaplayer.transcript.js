@@ -25,8 +25,8 @@ all copies or substantial portions of the Software.
         focusMs : 750,
         fadeMs : 1000,
         opacity: 1,
-        timestamps : true,
-        breaks : true
+        timestamps : false,
+        breaks : false
     };
 
     // case insensative find
@@ -67,7 +67,8 @@ all copies or substantial portions of the Software.
 
 
     MetaPlayer.addPlugin("transcript", function (target, options) {
-        return Transcript( target, this.video, options);
+        this.cues.enable("transcript", { target : target }, { clone : "captions"} );
+        this.transcript = Transcript( target, this.video, options);
     });
 
 

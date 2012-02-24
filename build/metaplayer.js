@@ -1,48 +1,112 @@
 /**
-    Metaplayer - A media player framework for HTML5/JavaScript for use with RAMP services.
+ Metaplayer - A media player framework for HTML5/JavaScript for use with RAMP services.
 
-    Copyright (c) 2011 RAMP Holdings, Inc.
+ Copyright (c) 2011 RAMP Holdings, Inc.
 
-    Licensed under the MIT license: http://www.opensource.org/licenses/mit-license.php
+ Licensed under the MIT license: http://www.opensource.org/licenses/mit-license.php
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
 
-    Created: 2011 by Greg Kindel <gkindel@ramp.com>
+ Created: 2011 by Greg Kindel <greg@gkindel.com>
 
-    Dependencies: jQuery
+ Dependencies: jQuery
  */
 (function () {
 
-    var $ = jQuery;
+    var $ = window.jQuery;
+    var Popcorn = window.Popcorn;
 
     /**
      * Sets up player plugin container, playlist, and DOM scaffolding
      * @constructor
-     * @param target a DOM element, or jQuery selector (eg: "#mydiv")
+     * @target an HTML5 Media element
      */
-    var MetaPlayer = function (target, options ) {
-
-        if( ! (this instanceof MetaPlayer ) )
-            return new MetaPlayer( target, options );
-
-        this._plugins = [];
-
-        var layout = MetaPlayer.layout(target);
-
-        this.target = $(target).get(0);
-        this.dom = layout.base;
-        this.video = MetaPlayer.proxy.getProxyObject(layout.stage);
-        this.dispatcher = MetaPlayer.dispatcher( this.video );
-        this.playlist(options);
+    var defaults = {
+        debug : "",
+        useLayout : true,
+        useMetaData: true,
+        useCues: true,
+        useSearch: true
     };
+
+    var MetaPlayer = function (video, options ) {
+
+        if( ! (this instanceof MetaPlayer) )
+            return new MetaPlayer( video, options );
+
+        this.config = $.extend({}, defaults, options );
+
+        MetaPlayer.dispatcher(this);
+
+        this._plugins = {};
+        this._loadQueue = [];
+        this.target = video;
+
+        // metadata interface
+        if( this.config.useMetaData )
+            this.metadata = new MetaPlayer.MetaData(this, this.config );
+
+        // search interface
+        if( this.config.useSearch )
+            this.search = new MetaPlayer.Search(this, this.config );
+
+        // cues interface
+        if( this.config.useCues )
+            this.cues = new MetaPlayer.Cues(this, this.config );
+
+        // resolve video element from string, popcorn instance, or direct reference
+        if( video ) {
+            if( typeof video == "string")
+                video = $(video).get(0);
+
+            if( video.getTrackEvents instanceof Function ) {
+                // is popcorn instance
+                this.video = video.media;
+                this.popcorn = video;
+            }
+
+            else if( video.play instanceof Function ) {
+                // is already a media element
+                this.video = video;
+            }
+
+            // optional layout disabling, use at own risk for player UI layout
+            if( this.config.useLayout ) {
+                this.layout = MetaPlayer.layout(video);
+            }
+        }
+
+        // start loading after this execution block, can be triggered earlier by load()
+        // makes sure all plugins have initialized before startup sequence
+        var self = this;
+        setTimeout( function () {
+            self._load();
+        }, 0);
+    };
+
+    /**
+     * Fired when all plugins are loaded.
+     * @static
+     * @constant
+     * @event
+     */
+    MetaPlayer.READY = "ready";
+
+    /**
+     * Fired when player destructor called to allow plugins to clean up.
+     * @static
+     * @constant
+     * @event
+     */
+    MetaPlayer.DESTROY = "destroy";
 
     /**
      * Registers a non-playback plugin.
@@ -56,21 +120,21 @@
             throw "keyword unavailable: " + keyword;
 
         p[keyword] = function () {
-
             // wait for load()
-            if( this._plugins ) {
-                this._plugins.push({
+            if( ! this.ready ) {
+                this._loadQueue.push({
                     name : keyword,
                     args : arguments,
                     fn : callback
                 })
             }
             else { // post load(), fire now
-                callback.apply(this, arguments);
+                 callback.apply(this, arguments);
             }
             return this;
         };
     };
+
 
     /**
      * Registers a function as a playback plugin.
@@ -79,54 +143,363 @@
      */
     MetaPlayer.addPlayer = function (keyword, callback ) {
         var p = MetaPlayer.prototype;
+
         if( p[keyword] )
             throw "keyword unavailable: " + keyword;
 
         p[keyword] = function () {
-            var video =  callback.apply(this, arguments);
-            this.player( video );
+            callback.apply(this, arguments);
             return this;
         };
     };
 
+
     MetaPlayer.prototype = {
-        /**
-         * Manually set the video playback source.
-         * @param video
-         */
-        player : function (video) {
-            MetaPlayer.proxy.proxyPlayer(video, this.video);
-            this.currentPlayer = video;
-            return this;
+
+        destroy : function () {
+            this.dispatcher.dispatch( MetaPlayer.DESTROY );
+
+            delete this.plugins;
+            delete this._loadQueue;
+
+            // todo: iterate plugins, call destroy() if def
+            // these should be made plugins
+
+            delete this.layout;
+            delete this.popcorn;
+
+        },
+
+        log : function (args, tag ){
+            if( this.config.debug.indexOf(tag) < 0 )
+                return;
+
+            var arr = Array.prototype.slice.apply(args);
+            arr.unshift( tag.toUpperCase() );
+            console.log.apply(console, arr);
         },
 
         /**
-         * Initializes requested player plugins, optinally begins plabyack.
+         * Initializes requested player plugins, optionally begins playback.
          * @param url (optional) initial url or tracks
          */
-        load : function (url) {
+        _load : function () {
+
+            if (! this._loadQueue ) {
+                // load() was already called
+                return;
+            }
+
+            // fill in core interfaces were not implemented
+            if( ! this.video && this.layout )
+                this.html5();
+
+            if( this.video && ! this.playlist )
+                this.playlist = new MetaPlayer.Playlist(this, this.config.playlist);
+
+            if( this.video && ! this.popcorn && Popcorn != null )
+                this.popcorn = Popcorn(this.video);
+
+
+            // run the plugins, any video will have been initialized by now
             var self = this;
-            $( this._plugins ).each(function (i, plugin) {
-                self[plugin.name] = plugin.fn.apply(self, plugin.args);
+            $( this._loadQueue ).each(function (i, plugin) {
+                plugin.fn.apply(self, plugin.args);
             });
-            this._plugins = null;
+            this._loadQueue = null;
 
-            this.dispatcher.dispatch("ready");
 
-            if( url )
+            // let plugins do any setup which requires other plugins
+            this.dispatcher.dispatch( MetaPlayer.READY );
+
+            this.ready = true;
+        },
+
+        load : function (url) {
+            this._load();
+
+            if( url ) {
+                this.playlist.empty();
                 this.playlist.queue(url);
+            }
+
+            // calling load() explicitly will cause the player to apply sources;
+//            this.playlist.selectSource();
+
 
             return this;
         }
     };
-
 
     window.MetaPlayer = MetaPlayer;
     window.MPF = MetaPlayer;
     window.Ramp = MetaPlayer;
 })();
 
-/*
+(function () {
+
+    var $ = jQuery;
+
+    var defaults = {
+    };
+
+    var Cues = function (player, options){
+
+        this.config = $.extend({}, defaults, options);
+        MetaPlayer.dispatcher(this);
+        this._cues = {};
+
+        this._rules = {
+            // default rule mapping "captions" to popcorn "subtitle"
+            "subtitle" : { clone : "captions" }
+        };
+
+        this.player = player;
+        this._addListeners();
+    };
+
+    MetaPlayer.Cues = Cues;
+
+    /**
+     * Fired when cues are available for the focus uri.
+     * @name CUES
+     * @event
+     * @param data The cues from a resulting load() request.
+     * @param uri The focus uri
+     * @param plugin The cue type
+     */
+    Cues.CUES = "cues";
+
+    Cues.prototype = {
+        /**
+         * Bulk adding of cue lists to a uri.
+         * @param cuelists a dictionary of cue arrays, indexed by type.
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        setCueLists : function ( cuelists , uri) {
+            var self = this;
+            $.each(cuelists, function(type, cues){
+                self.setCues(type, cues, uri)
+            });
+        },
+
+        /**
+         * Returns a dictionary of cue arrays, indexed by type.
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        getCueLists : function ( uri) {
+            var guid = uri || this.player.metadata.getFocusUri();
+            return this._cues[guid];
+        },
+
+        /**
+         * For a given cue type, adds an array of cues events, triggering a CUE event
+         * if the uri has focus.
+         * @param type The name of the cue list (eg: "caption", "twitter", etc)
+         * @param cues An array of cue obects.
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        setCues : function (type, cues , uri){
+            var guid = uri || this.player.metadata.getFocusUri();
+
+            if( ! this._cues[guid] )
+                this._cues[guid] = {};
+
+            this._cues[guid][type] = cues;
+
+            this._dispatchCues(guid, type)
+        },
+
+        /**
+         * Returns an array of caption cues events. Shorthand for getCues("caption")
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        getCaptions : function ( uri ){
+            return this.getCues("captions", uri);
+        },
+
+        /**
+         * Returns an array of cue objects for a given type. If no type specified, acts
+         * as alias for getCueLists() returning a dictionary of all cue types and arrays.
+         * @param type The name of the cue list (eg: "caption", "twitter", etc)
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        getCues : function (type, uri) {
+            var guid = uri || this.player.metadata.getFocusUri();
+
+            if( ! type ) {
+                return this.getCueLists();
+            }
+
+            if(! this._cues[guid]  || ! this._cues[guid][type])
+                return [];
+            return this._cues[guid][type];
+        },
+
+        /**
+         * Enables popcorn events for a cue type
+         * @param type Cue type
+         * @param overrides Optional object with properties to define in each popcorn event, such as target
+         * @param rules (advanced) Optional rules hash for cloning, sequencing, and more.
+         */
+        enable : function (type, overrides, rules) {
+            var r = $.extend({}, this._rules[type], rules);
+            r.overrides = $.extend({}, r.overrides, overrides);
+            r.enabled = true;
+            this._rules[type] = r;
+
+            this._renderCues(type, this.getCues( r.clone || type) )
+        },
+
+        /**
+         * Disables popcorn events for a cue type
+         * @param type Cue type
+         */
+        disable : function (type) {
+            if( ! type )
+                return;
+
+            if( this._rules[type] )
+                this._rules[type].enabled = false;
+
+            this._removeEvents(type);
+        },
+
+        /**
+         * Frees external references for manual object destruction.
+         * @destructor
+         */
+        destroy : function  () {
+            this._removeEvents();
+            this.dispatcher.destroy();
+            delete this.player;
+        },
+
+        /* "private" */
+
+        // broadcasts cue data available for guid, if it matches the current focus uri
+        // defaults to all known cues, or can have a single type specified
+        // triggers attachment of popcorn events
+        _dispatchCues : function ( guid, type ) {
+
+            // only focus uri causes events
+            if( guid != this.player.metadata.getFocusUri() ) {
+                return;
+            }
+
+            var self = this;
+            var types = [];
+
+            // specific cue type to be rendered
+            if( type ) {
+                types.push(type)
+            }
+
+            // render all cues
+            else if( this._cues[guid] ){
+                types = $.map(this._cues[guid], function(cues, type) {
+                    return type;
+                });
+            }
+
+            $.each(types, function(i, type) {
+                var cues = self.getCues(type);
+
+                var e = self.createEvent();
+                e.initEvent(Cues.CUES, false, true);
+                e.uri = guid;
+                e.plugin = type;
+                e.cues = cues;
+
+                if( self.dispatchEvent(e) ) {
+                   // allow someone to cancel, blocking popcorn scheduling
+                    self._renderCues(type, cues)
+                }
+            });
+        },
+
+        _addListeners : function () {
+            var player = this.player;
+            var metadata = player.metadata;
+            player.listen( MetaPlayer.DESTROY, this.destroy, this);
+            metadata.listen( MetaPlayer.MetaData.FOCUS, this._onFocus, this)
+        },
+
+        _onFocus : function (e) {
+            //... remove all popcorn events because the track has changed
+            this._removeEvents();
+            this._dispatchCues( e.uri );
+        },
+
+        _removeEvents : function ( type ) {
+            var popcorn = this.player.popcorn;
+            if( popcorn ) {
+                var events = popcorn.getTrackEvents();
+                $.each(events, function (i, e){
+                    if( !type || type == e._natives.type )
+                        popcorn.removeTrackEvent(e._id);
+                });
+            }
+        },
+
+        _renderCues : function (type, cues){
+            var self = this;
+            this._scheduleCues(type, cues);
+
+            // additionally schedule any clones
+            $.each( this._rules, function (plugin, rules){
+                if( rules.clone == type ){
+                    self._scheduleCues(plugin, cues)
+                }
+            });
+        },
+
+        _scheduleCues : function (type, cues) {
+            var rules = this._rules[type] || {};
+            var lastCue;
+
+            if(! rules.enabled ) {
+                return;
+            }
+
+            // deep copy of cues
+            var events = $.extend(true, [], cues );
+
+            // "sequence" automatically fills in missing cue end times with next cue start
+            if( rules.sequence ) {
+                $.each(events, function (i, event) {
+                    if( lastCue )
+                        lastCue.end = event.start;
+                    lastCue = event;
+                });
+            }
+
+            // "duration" sets a fixed length for any cue
+            if( rules.duration ) {
+                $.each(events, function (i, event) {
+                    event.end = event.start + rules.duration;
+                });
+            }
+
+            // "overrides" allow for page-specific event overrides
+            if( rules.overrides ) {
+                $.each(events, function (i, event) {
+                    $.extend(true, event, rules.overrides)
+                });
+            }
+
+            // schedule with popcorn instance
+            var popcorn = this.player.popcorn;
+            if( popcorn && popcorn[type] instanceof Function  ) {
+                $.each(events, function(i, cue){
+                    popcorn[type].call(popcorn, $.extend({}, cue) );
+                });
+            }
+        }
+
+    };
+
+})();/*
  ui.base.js
  - establishes a basic html structure for adding player UI elements
  - ui elements can reliably position themselves using css
@@ -168,13 +541,13 @@
         var base;
         var stage = t.find('.mp-video');
         var video = t.find('video');
-        var isVideo = ! (target.currentTime == null);
+        var isVideo = (target.play instanceof Function);
 
         // set up main wrapper
         if( isVideo ){
             base = $('<div></div>')
                 .addClass('metaplayer')
-                .appendTo( t.parent() );
+                .insertAfter( t );
 
             // assume they've set the dimensions on the target
             base.width( t.width() );
@@ -215,45 +588,204 @@
     var $ = jQuery;
 
     var defaults = {
-        applySources : true,
+    };
+
+    var MetaData = function (player, options){
+        if( !(this instanceof MetaData ))
+            return new MetaData(options);
+
+        this.config = $.extend({}, defaults, options);
+        MetaPlayer.dispatcher(this);
+        this._data = {};
+        this._callbacks = {};
+        this._lastUri = null;
+    };
+
+    MetaPlayer.MetaData = MetaData;
+
+
+    /**
+     * Fired when a uri becomes the focus, broadcasting events on updates.
+     * @name FOCUS
+     * @event
+     * @param uri The new focus uri
+     */
+    MetaData.FOCUS = "focus";
+
+    /**
+     * Fired when MetaData needs a resource to be defined.
+     * @name LOAD
+     * @event
+     * @param uri Opaque string which can be used by a service to load metadata.
+     */
+    MetaData.LOAD = "load";
+
+    /**
+     * Fired when new metadata is received as a result of a load() request.
+     * @name LOAD
+     * @event
+     * @param data The metadata from a resulting load() request.
+     */
+    MetaData.DATA = "data";
+
+
+    MetaData.prototype = {
+
+        /**
+         * Request MetaData for an uri
+         * @param uri
+         * @param callback (optional)  If specified will suppress the DATA event
+         */
+        load : function ( uri, callback, scope) {
+            var e;
+
+            // calling  w/ a callback will not trigger a focus change or DATA events
+            if( callback ) {
+                this._queue(uri, callback, scope);
+            }
+
+            // no callback, let others know focus has changed, that a DATA event is coming
+            else {
+                this._lastUri = uri;
+                e = this.createEvent();
+                e.initEvent(MetaData.FOCUS);
+                e.uri = uri;
+                this.dispatchEvent(e);
+            }
+
+            if( this._data[uri] ){
+                // cache hit; already loaded. respond immediately
+                if( this._data[uri]._cached ) {
+                    this._response(uri);
+                    return true;
+                }
+                // load in progress, skip
+                else if ( this._data[uri]._loading ) {
+                    return true;
+                }
+            }
+
+            // flag as loading
+            if( ! this._data[uri] )
+                this._data[uri] = {};
+            this._data[uri]._loading =  (new Date()).getTime();
+
+            // send a loading request
+            e = this.createEvent();
+            e.initEvent(MetaData.LOAD, false, true);
+            e.uri = uri;
+
+            // see if anyone caught our request, return accordingly
+            var caught = ! this.dispatchEvent(e);
+            if( ! caught ) {
+                this._data[uri]._loading = false;
+            }
+            return caught;
+        },
+
+        /**
+         * Returns the uri for which events are currently being fired.
+         */
+        getFocusUri : function () {
+            return this._lastUri;
+        },
+
+        /**
+         * Returns any for a URI without causing an external lookup.
+         * @param uri Optional argument specifying media guid. Defaults to last load() uri.
+         */
+        getData : function ( uri ){
+            var guid = uri || this._lastUri;
+            return this._data[guid]
+        },
+
+        /**
+         * Sets the data for a URI, triggering DATA if the uri has focus.
+         * @param data
+         * @param uri (optional) Data uri, or last load() uri.
+         * @param cache (optional) allow lookup of item on future calls to load(), defaults true.
+         */
+        setData : function (data, uri, cache ){
+            var guid = uri || this._lastUri;
+            this._data[guid] = $.extend(true, {}, this._data[guid], data);
+            this._data[guid]._cached = ( cache == null ||  cache ) ? true : false;
+            this._response(guid);
+        },
+
+        /**
+         * Frees external references for manual object destruction.
+         * @destructor
+         */
+        destroy : function  () {
+            this.dispatcher.destroy();
+            delete this.player;
+            delete this._callbacks;
+            delete this._data;
+            delete this.config;
+        },
+
+        // registers a callback
+        _queue : function ( uri, callback, scope ) {
+            if( ! this._callbacks[uri] )
+                this._callbacks[uri] = [];
+            this._callbacks[uri].push({ fn : callback, scope : scope });
+        },
+
+        // handles setting data, firing event and callbacks as necessary
+        _response : function ( uri ){
+             var data = this._data[uri];
+
+            if( this._lastUri == uri ) {
+                var e = this.createEvent();
+                e.initEvent(MetaData.DATA, false, true);
+                e.uri = uri;
+                e.data = data;
+                this.dispatchEvent(e);
+            }
+
+            if( this._callbacks[uri] ) {
+                $.each( this._callbacks[uri] || [], function (i, callback ) {
+                    callback.fn.call(callback.scope, data);
+                });
+                delete this._callbacks[uri];
+            }
+        }
+    };
+
+
+})();
+(function () {
+
+    var $ = jQuery;
+
+    var defaults = {
+        sourceTags : true,
         selectSource : true,
-        autoAdvance : true,
         linkAdvance : false,
-        autoPlay : true,
+        autoAdvance : true,
         autoBuffer : true,
         related: true,
         loop : false
     };
 
-    var Playlist = function (video, options ){
-
-        if( !(this instanceof Playlist ))
-            return new Playlist(video, options);
+    var Playlist = function (player, options ){
 
         this.config = $.extend({}, defaults, options);
-        this.video = video;
-        this._haveRelated = false;
+        this.player = player;
         this._tracks = [];
         this._index = 0;
+
         this.loop = this.config.loop;
-        this.autoplay = this.config.autoPlay;
         this.preload = this.config.autoBuffer;
         this.advance = this.config.autoAdvance;
         this.linkAdvance = this.config.linkAdvance;
 
-        this.dispatcher = MetaPlayer.dispatcher(video);
+        MetaPlayer.dispatcher(this);
 
-        this._addDataListeners(this.video);
-        this._addMediaListeners(this.video);
+        this._addListeners();
     };
 
-    MetaPlayer.playlist = function (video, options) {
-        return Playlist( $(video).get(0), options);
-    };
-
-    MetaPlayer.addPlugin('playlist', function (options) {
-        return MetaPlayer.playlist(this.video, options);
-    });
+    MetaPlayer.Playlist = Playlist;
 
     Playlist.prototype = {
 
@@ -261,7 +793,7 @@
             i = this._resolveIndex(i);
             if( i != null ) {
                 this._index = i;
-                this.load( this.track() );
+                this._select( this.track() );
             }
             return this._index;
         },
@@ -279,21 +811,24 @@
             this.dispatcher.dispatch("playlistchange");
 
             if( wasEmpty )
-                this.load( this.track() )
+                this._select( this.track() )
         },
 
-        load : function (track) {
-            this.video.pause();
-
-            // let services cancel loading if they need to do something
-            var ok = this.dispatcher.dispatch("trackchange", track);
-            if( ok ) {
-                this._setSrc( track );
+        // begins the process of changing video source, starting with fetching metadata
+        _select : function ( uri ) {
+            this.dispatcher.dispatch("trackchange");
+            this.player.video.pause();
+            if(! this.player.metadata.load(uri) ){
+                // if have no data, and no one will look it up, just play the url
+                this._setSrc( uri );
             }
         },
 
         empty : function ( tracks ) {
+            this.player.video.pause();
+            this.player.video.src = "";
             this._tracks = [];
+            this.transcodes = null;
             this._index = 0;
             this.dispatcher.dispatch("playlistchange");
             this.dispatcher.dispatch("trackchange");
@@ -353,52 +888,55 @@
             return i;
         },
 
-        _addDataListeners : function (dispatcher) {
-            dispatcher.listen("metadata", this._onMetaData, this);
-            dispatcher.listen("transcodes", this._onTranscodes, this);
-            dispatcher.listen("related", this._onRelated, this);
-        },
+        _addListeners : function () {
+            var player = this.player;
+            var metadata = this.player.metadata;
+            var video = this.player.video;
 
-        _addMediaListeners : function () {
+            player.listen(MetaPlayer.DESTROY, this.destroy, this);
+            metadata.listen(MetaPlayer.MetaData.DATA, this._onMetaData, this);
+
             var self = this;
-            $(this.video).bind('ended error', function(e) {
+            $(player.video).bind('ended error', function(e) {
                 self._onEnded()
             });
         },
 
-        _onMetaData: function (e, metadata) {
-            var idx = this.index();
-            // replace a plain url with updated metadata
-            if ( typeof this._tracks[idx] == "string" ) {
-                this._tracks[idx] = metadata;
-            }
+
+        _onMetaData : function (e) {
+            this.transcodes = e.data.content;
+
+            if( this.config.sourceTags )
+                this.addSourceTags();
+
+            if( this.config.selectSource )
+                this.selectSource();
         },
 
-        _onRelated : function (e, related) {
-            if( this._haveRelated || ! this.config.related )
-                return;
-            this.queue( related );
-            this._haveRelated = true;
-        },
-
-        _onTranscodes : function (e, transcodes) {
+        addSourceTags : function  () {
             var self = this;
-            var video = this.video;
-            this.transcodes = transcodes;
+            var video = this.player.video;
+            $.each(this.transcodes, function (i, source) {
+                video.appendChild( self._createSource(source.url, source.type) );
+            });
+        },
+
+        selectSource : function () {
+            // sticky, for playlists
+            this.config.selectSource = true;
+
+            var self = this;
+            var video = this.player.video;
             var probably = [];
             var maybe = [];
-            var sources = [];
 
-            if( ! this.config.selectSource )
+            if( ! this.transcodes )
                 return;
 
-            $.each(transcodes, function (i, source) {
-                video.appendChild( self._createSource(source.url, source.type) );
-
+            $.each(this.transcodes, function (i, source) {
                 var canPlay = video.canPlayType(source.type);
                 if( ! canPlay )
                     return;
-
                 if( canPlay == "probably" )
                     probably.push(source.url);
                 else
@@ -411,12 +949,13 @@
         },
 
         _setSrc : function ( src ) {
-            this.video.src = src;
-            if( this.video.autoplay || this.index() > 0 ) {
-                this.video.play();
+            var video = this.player.video;
+            video.src = src;
+            if( video.autoplay || this.index() > 0 ) {
+                video.play();
             }
-            else if( this.video.preload ) {
-                this.video.load()
+            else if( video.preload ) {
+                video.load()
             }
         },
 
@@ -436,9 +975,130 @@
             }
 
             this.next();
+        },
+
+        destroy : function () {
+            this.dispatcher.destroy();
+            delete this.player;
         }
 
     };
+
+})();
+(function () {
+
+    var $ = jQuery;
+
+    var defaults = {
+        forceRelative : false
+    };
+
+    var Search = function (player, options){
+        this.config = $.extend({}, defaults, options);
+
+        this.player = player;
+        this.forceRelative = this.config.forceRelative;
+        MetaPlayer.dispatcher(this);
+
+        this.player.listen(MetaPlayer.DESTROY, this.destroy, this);
+    };
+
+    MetaPlayer.Search = Search;
+
+    MetaPlayer.addPlugin("search", function (options) {
+        return new Search(this);
+    });
+
+    Search.prototype = {
+        query : function (query, callback, scope) {
+            var data = this.player.metadata.getData();
+            if(! data.ramp.searchapi )
+                throw "no searchapi available";
+
+            this._queryAPI(data.ramp.searchapi, query, callback, scope)
+        },
+
+        destroy : function () {
+            this.dispatcher.destroy();
+            delete this.player;
+        },
+
+        _queryAPI : function (url, query, callback, scope) {
+
+            if( this.forceRelative ) {
+                url = url.replace(/^(.*\/\/[\w.]+)/, ""); // make match local domain root
+            }
+
+            var params = {
+                q : query
+            };
+
+            if( ! query ) {
+                this.setResults({ query : [], results : [] }, callback, scope);
+                return;
+            }
+
+            $.ajax(url, {
+                dataType : "xml",
+                timeout : 15000,
+                context: this,
+                data : params,
+                error : function (jqXHR, textStatus, errorThrown) {
+                    console.error("Load search error: " + textStatus + ", url: " + url);
+                },
+                success : function (response, textStatus, jqXHR) {
+                    var results = this.parseSearch(response, callback, scope);
+                    this.setResults(results, callback, scope);
+                }
+            });
+        },
+
+        setResults : function (results, callback, scope) {
+            console.log("setResults", results);
+            if( callback )
+                callback.call(scope, results);
+            else
+                this.dispatch("search", results);
+        },
+
+        parseSearch : function (xml) {
+            var node = $(xml);
+            var self = this;
+            var ret = {
+                query : [],
+                results : []
+            };
+
+            var terms = node.find('SearchTerms Term');
+            terms.each(function() {
+                ret.query.push( self._deSmart( $(this).text() ) );
+            });
+
+            var snippets = node.find('Snippets Snippet');
+            snippets.each( function (i, snip) {
+                var node = $(snip);
+                var s = {
+                    start : node.attr('time'),
+                    words : []
+                };
+                var words = node.find('T');
+                $.each(words, function (i, word){
+                    var el = $(word);
+                    s.words.push({
+                        match : Boolean( el.find('MQ').length ),
+                        start : el.attr('s'),
+                        text : self._deSmart( el.text() )
+                    })
+                });
+                ret.results.push(s);
+            });
+            return ret;
+        },
+
+        _deSmart : function (text) {
+            return text.replace(/\xC2\x92/, "\u2019" );
+        }
+    }
 
 })();
 (function () {
@@ -471,6 +1131,9 @@
         stopPropagation : function () {
             this.cancelBubble  = true;
         },
+        stopImmediatePropagation : function () {
+            this.cancelBubble  = true;
+        },
         preventDefault : function () {
             if( this.cancelable )
                 this.defaultPrevented = true;
@@ -496,10 +1159,18 @@
             }
 
             // and add our convenience functions
-            MetaPlayer.proxy.proxyFunction ( "listen forget dispatch",
+            MetaPlayer.proxy.proxyFunction ( "listen forget dispatch createEvent",
                 this, source);
 
             source.dispatcher = this;
+        },
+
+        destroy : function () {
+            delete this._listeners;
+            delete this.addEventListener;
+            delete this.removeEventListener;
+            delete this.dispatchEvent;
+            this.__destroyed = true; // for debugging / introspection
         },
 
         listen : function ( eventType, callback, scope) {
@@ -544,9 +1215,13 @@
         },
 
         dispatchEvent : function (eventObject) {
+
+//            if( eventObject.type != "timeupdate")
+//                   console.log(eventObject.type, eventObject);
+
             var l = this._listeners[eventObject.type] || [];
             for(var i=0; i < l.length; i++ ){
-                if( eventObject.cancelBubble )
+                if( eventObject.cancelBubble ) // via stopPropagation()
                     break;
                 l[i].call(l[i].scope || this, eventObject, eventObject.data )
             }
@@ -693,6 +1368,8 @@
         // iOS: can't do DOM objects
         // use DOM where possible
         getProxyObject : function ( dom ) {
+
+            // All modern browsers (and ie8)
             if( ! dom )
                 dom = document.createElement("div");
 
@@ -703,11 +1380,10 @@
             catch(e){
             }
 
-            // dom to be flushed out as needed
+            // iOS, fake as best we can
             var target = {
                 parentNode : dom.parentNode
             };
-
             try {
                 Object.defineProperty(target, "__proptest", {} );
                 return target;
@@ -715,24 +1391,27 @@
             catch(e){
             }
 
-
             throw "Object.defineProperty not defined";
         },
 
         proxyPlayer : function (source, target) {
             var proxy = Ramp.proxy.getProxyObject(target);
 
-            Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
-                " paused played controls autoplay preload src ended readyState",
+            Proxy.mapProperty("duration currentTime volume muted seeking" +
+                " paused controls autoplay preload src ended readyState",
                 proxy, source);
 
             Proxy.proxyFunction("load play pause canPlayType" ,source, proxy);
 
-            Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
-                "loadeddata loadedmetadata canplay loadstart durationchange volumechange " +
-                "ended error",source, proxy);
+            Proxy.proxyPlayerEvents(source, proxy);
 
             return proxy;
+        },
+
+        proxyPlayerEvents : function (source, target){
+            Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
+                "loadeddata loadedmetadata canplay loadstart durationchange volumechange " +
+                "ended error",source, target);
         }
     };
 
@@ -1308,52 +1987,74 @@
 
     var defaults = {
         msQuotes : true,
-        forceRelative : false,
         playlistService : "/device/services/mp2-playlist?e={e}"
     };
 
-    var SmilService = function (video, options) {
-        if( ! (this instanceof SmilService ))
-            return new SmilService(video, options);
-
-        this.config = $.extend({}, defaults, options);
-
-        this.dispatcher = MetaPlayer.dispatcher(video);
-        this.dispatcher.attach(this);
-
-        // if we're attached to video, update with track changes
-        this.dispatcher.listen("trackchange", this._onTrackChange, this);
+    var RampService = function (player, url, options) {
+        this.config = $.extend({}, defaults);
+        this.dispatcher = MetaPlayer.dispatcher(this);
+        this.player = player;
+        this._currentUrl = null;
+        this.player.listen( MetaPlayer.READY, this.onReady, this);
     };
 
-    MetaPlayer.ramp = function (options) {
-        return SmilService(null, options);
-    };
+    MetaPlayer.addPlugin("ramp", function (url, options) {
+        if(! this._ramp )
+            this._ramp =  new RampService(this, url);
 
-    MetaPlayer.addPlugin("ramp", function (options) {
-        this.service = SmilService(this.video, options);
+        var ramp = this._ramp;
+
+        if( url ) {
+            if(! this.ready )
+                ramp._currentUrl = url;
+            else
+                ramp.load( url , true);
+        }
+
+        if( options )
+            ramp.config = $.extend(ramp.config, options);
+
+        return this;
     });
 
-    SmilService.prototype = {
-        _onTrackChange : function (e, track) {
-            if(! track ) {
-                return;
-            }
+    RampService.prototype = {
 
-            if( typeof track == "string" ) {
-                track = this.parseUrl(track);
-            }
+        onReady  : function (e) {
+            this.player.metadata.listen( MetaPlayer.MetaData.LOAD,
+                this.onMetaDataLoad, this);
 
-            if( track && track.rampId ){
-                this.load(track);
+            this.player.metadata.listen( MetaPlayer.DESTROY,
+                this.onDestroy, this);
+
+            if( this._currentUrl )
+                this.load(this._currentUrl, true);
+        },
+
+        onMetaDataLoad : function (e) {
+            var uri = e.uri;
+            if( typeof uri == "string" && uri.match(/^ramp:/i) ){
+                this.load(uri);
+                // let others know we're on it.
+                e.stopPropagation();
                 e.preventDefault();
+            }
+            else {
+            // fall through to noop if not recognized
             }
         },
 
-        load : function ( track  ) {
+        onDestroy : function () {
+            this.dispatcher.destroy();
+            delete this.config;
+            delete this.player;
+        },
+
+        load : function ( uri, isPlaylist ) {
+            var track;
 
             // parse format:  "ramp:publishing.ramp.com/ramp:1234"
-            if( typeof track == "string" ) {
-                track = this.parseUrl(track);
+            if( typeof uri == "string" ) {
+                track = this.parseUrl(uri);
             }
 
             if( ! track.rampId ) {
@@ -1369,13 +2070,10 @@
             var url = host + this.config.playlistService.replace(/{e}/, this.mediaId);
 
             var params = {
-//                format: 'playlist',
-//                renderJSON: true
             };
 
             $.ajax(url, {
                 dataType : "xml",
-//                jsonp : "jsoncallback",
                 timeout : 15000,
                 context: this,
                 data : params,
@@ -1383,75 +2081,96 @@
                     console.error("Load playlist error: " + textStatus + ", url: " + url);
                 },
                 success : function (response, textStatus, jqXHR) {
-                    var data = this.parse(response);
-                    data.metadata.host = host;
-                    this.setData(data)
-
+                    var items = this.parse(response, host);
+                    this.setItems(items, isPlaylist);
                 }
             });
         },
 
-        setData : function (data) {
-            this._data = data;
-            var d = this.dispatcher;
-            d.dispatch('metadata', data.metadata);
-            d.dispatch('transcodes', data.transcodes);
-            d.dispatch('captions', data.captions);
-            d.dispatch('tags', data.tags);
-            d.dispatch('metaq', data.metaq);
-            d.dispatch('related', data.related);
+        setItems : function (items, isPlaylist) {
+            var metadata = this.player.metadata;
+            var playlist = this.player.playlist;
+            var cues = this.player.cues;
+
+            // first item contains full info
+            var first = items[0];
+            var guid = this.toUrl(first.metadata);
+            metadata.setData( first.metadata, guid );
+            cues.setCueLists( first.cues, guid  );
+
+            // subsequent items contain metadata only, no transcodes, tags, etc.
+            // they require another lookup when played, so disable caching by metadata
+            if( playlist && isPlaylist ) {
+                var self = this;
+                // add stub metadata
+                $.each(items.slice(1), function (i, item) {
+                    metadata.setData(item.metadata, self.toUrl(item.metadata), false);
+                });
+
+                // queue the uris
+                playlist.queue( $.map(items, function (item) {
+                    return self.toUrl(item.metadata)
+                }));
+            }
         },
 
-        parse : function (data) {
+        parse : function (data, host) {
             var self = this;
             var playlist = $(data).find('par').toArray();
-            var node = playlist.shift();
-
-            var media = this.parseMedia(node);
+            var media = [];
             $.each(playlist, function(i, node) {
-                media.related.push( self.parseMedia(node).metadata );
+                media.push( self.parseMedia(node, host) );
             });
-
             return media;
         },
 
-        parseMedia : function (node) {
-            var media = {
+        parseMedia : function (node, host) {
+            var item = {
                 metadata : {},
-                transcodes : [],
-                tags : [],
-                captions : [],
-                metaq : {},
-                related : []
+                cues : {}
             };
 
             var self = this;
             var video = $(node).find('video');
 
-            // metadata
-            media.metadata.title = video.attr('title');
+            // mrss metadata
+            item.metadata.title = video.attr('title');
+            item.metadata.description = video.find('metadata meta[name=description]').text();
+            item.metadata.thumbnail = video.find('metadata meta[name=thumbnail]').attr('content');
+            item.metadata.guid = video.find('metadata meta[name=rampId]').attr('content');
+            item.metadata.link = video.find('metadata meta[name=linkURL]').attr('content');
+
+            // other metadata
+            item.metadata.ramp = {
+                rampHost: host
+            };
             video.find('metadata meta').each( function (i, metadata){
                 var meta = $(metadata);
-                media.metadata[ meta.attr('name') ] = meta.attr('content') || meta.text();
+                item.metadata.ramp[ meta.attr('name') ] = meta.attr('content') || meta.text();
             });
 
-            // transcodes
-            media.transcodes.push({
+            // content & transcodes
+            item.metadata.content = [];
+            item.metadata.content.push({
                 name : "default",
+                url : video.attr('src'),
                 type : self.resolveType( video.attr('src') ),
-                url : video.attr('src')
+                isDefault : true
             });
 
             var transcodes = $(node).find("metadata[xml\\:id^=transcodes]");
             transcodes.find('meta').each(function (i, transcode){
                 var code = $(transcode);
-                media.transcodes.push({
+                item.metadata.content.push({
                     name : code.attr('name'),
                     type : code.attr('type') || self.resolveType( code.attr('content') ),
-                    url : code.attr('content')
+                    url : code.attr('content'),
+                    isDefault: false
                 });
             });
 
+            // jump tags
+            item.metadata.ramp.tags = [];
             var jumptags = $(node).find("seq[xml\\:id^=jumptags]");
             jumptags.find('ref').each(function (i, jump){
                 var tag = {};
@@ -1461,9 +2180,11 @@
                 });
                 if( tag.timestamps )
                     tag.timestamps = tag.timestamps.split(',');
-                media.tags.push(tag);
+                item.metadata.ramp.tags.push(tag);
             });
 
+            // event tracks / MetaQ
+            item.cues = {};
             var metaqs = $(node).find("seq[xml\\:id^=metaqs]");
             metaqs.find('ref').each(function (i, metaq){
                 var event = {};
@@ -1479,90 +2200,16 @@
                         event[ name ] = text;
 
                 });
-                if( ! media.metaq[event.plugin] )
-                    media.metaq[event.plugin] = [];
+                if( ! item.cues[event.plugin] )
+                    item.cues[event.plugin] = [];
 
-                media.metaq[event.plugin].push(event);
+                item.cues[event.plugin].push(event);
             });
 
+            // transcript
             var smilText = $(node).find("smilText");
-            media.captions = this.parseCaptions(smilText);
-
-            return media;
-        },
-
-        search : function ( query, callback, scope) {
-
-            var url = this._data.metadata.searchapi;
-
-            if( this.config.forceRelative ) {
-                url = url.replace(/^(.*\/\/[\w.]+)/, ""); // make match local domain root
-            }
-
-            var params = {
-                q : query
-            };
-
-            if( ! query ) {
-                var response = {
-                    query : [],
-                    results : []
-                };
-                this.dispatch("search", response);
-                if( callback )
-                    callback.call(scope, response);
-                return;
-            }
-
-            $.ajax(url, {
-                dataType : "xml",
-                timeout : 15000,
-                context: this,
-                data : params,
-                error : function (jqXHR, textStatus, errorThrown) {
-                    console.error("Load search error: " + textStatus + ", url: " + url);
-                },
-                success : function (response, textStatus, jqXHR) {
-                    var results = this.parseSearch(response);
-                    this.dispatch("search", results);
-                    if( callback )
-                        callback.call(scope, results);
-                }
-            });
-        },
-
-        parseSearch : function (xml) {
-            var node = $(xml);
-            var self = this;
-            var ret = {
-                query : [],
-                results : []
-            };
-
-            var terms = node.find('SearchTerms Term');
-            terms.each(function() {
-                ret.query.push( self.deSmart( $(this).text() ) );
-            });
-
-            var snippets = node.find('Snippets Snippet');
-            snippets.each( function (i, snip) {
-                var node = $(snip);
-                var s = {
-                    start : node.attr('time'),
-                    words : []
-                };
-                var words = node.find('T');
-                $.each(words, function (i, word){
-                    var el = $(word);
-                    s.words.push({
-                        match : Boolean( el.find('MQ').length ),
-                        start : el.attr('s'),
-                        text : self.deSmart( el.text() )
-                    })
-                });
-                ret.results.push(s);
-            });
-            return ret;
+            item.cues.captions = this.parseCaptions(smilText);
+            return item;
         },
 
         parseCaptions : function (xml) {
@@ -1683,6 +2330,10 @@
             return obj;
         },
 
+        toUrl : function ( item ) {
+            return "ramp:" + item.ramp.rampHost + ":" + item.ramp.rampId;
+        },
+
         deSmart : function (text) {
             return text.replace(/\xC2\x92/, "\u2019" );
         },
@@ -1709,6 +2360,7 @@
 
 
 })();
+
 (function () {
 
     var $ = jQuery;
@@ -1726,21 +2378,18 @@
         controls : true
     };
 
-    var Html5Player = function (el, options ){
+    var Html5Player = function (parent, options ){
         if( !(this instanceof Html5Player ))
-            return new Html5Player(el, options);
+            return new Html5Player(parent, options);
 
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
         this.config = $.extend({}, defaults, options);
-        this._createMarkup(el);
-    };
-
-    MetaPlayer.html5 = function (video, options) {
-        return Html5Player(video, options).video;
+        this._createMarkup(parent);
     };
 
     MetaPlayer.addPlayer("html5", function (options) {
-       return MetaPlayer.html5(this.video, options);
+        var html5 = new Html5Player(this.layout.stage, options);
+        this.video = html5.video;
     });
 
     Html5Player.prototype = {
@@ -1769,6 +2418,8 @@
                 video.controls = this.config.controls;
                 video.muted = this.config.muted;
                 video.volume = this.config.volume
+                video.style.height = "100%";
+                video.style.width = "100%";
                 this.video = video;
                 p.append(video);
             }
@@ -1777,7 +2428,8 @@
 
     };
 
-})();(function () {
+})();
+(function () {
 
     var $ = jQuery;
     var $f = window.flowplayer;
@@ -1845,10 +2497,10 @@
         // single argument mode: function(options) {
         if(!  el.getCommonClip  ) {
             options = el;
-            el = $("<div></div>").appendTo(this.video);
+            el = $("<div></div>").appendTo(this.layout.stage);
         }
         this.flowplayer = FlowPlayer(el, options);
-        return this.flowplayer.video;
+        this.video = this.flowplayer.video;
     });
 
     FlowPlayer.prototype = {
@@ -1912,8 +2564,17 @@
 
 
             // apply src from before we were loaded, if any
-            if( this.__src )
+            if( this.__src ) {
                 this.src( this.__src );
+            }
+            else {
+                var c = fp.getClip(0);
+                if( c ){
+                    this._addClipListeners(c);
+                    this.__src = c.url;
+                }
+
+            }
 
             self.dispatcher.dispatch('loadstart');
 
@@ -1923,6 +2584,9 @@
 
         _addClipListeners : function (clip) {
             var self = this;
+
+            if( ! clip )
+                return;
 
             clip.onBeforeBegin( function (clip) {
                 return true;
@@ -1963,6 +2627,7 @@
             });
 
             clip.onPause( function (clip) {
+
                 self._setPlaying(false);
                 self._setReady();
             });
@@ -1990,6 +2655,7 @@
                 if( ! self.paused() )
                     self.dispatcher.dispatch("seeked");
             });
+
         },
 
         _setReady : function (){
@@ -2249,6 +2915,7 @@
 
     };
 })();
+
 (function () {
 
     // save reference for no conflict support
@@ -2520,10 +3187,10 @@
                 this.__readyState = 4;
             }
 
-            if( src.match(/^http:/) )
-                this.youtube.cueVideoByUrl( src );
-            else
-                this.youtube.cueVideoById( src );
+            if( src.match("^http") ){
+                var videoId = src.match( /www.youtube.com\/(watch\?v=|v\/)(\w+)/ )[2];
+            }
+            this.youtube.cueVideoById( videoId || src );
 
             if( this.autoplay )
                 this.play();

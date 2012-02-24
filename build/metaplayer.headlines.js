@@ -52,19 +52,11 @@ all copies or substantial portions of the Software.
 
 
     MetaPlayer.addPlugin("headlines", function (target, options){
-
-        var popcorn = this.popcorn;
-        this.dispatcher.listen("metaq", function (e, metaq) {
-            $.each(metaq.headlines, function (e, obj) {
-                var o = $.extend({ 'target': target}, obj);
-                popcorn.headlines(o);
-            });
-        });
-
-        return Headlines(target, options);
+        this.cues.enable("headlines", { target : target });
+        this.headlines = Headlines(target, options);
     });
 
-    MetaPlayer.headlines = Headlines;
+    MetaPlayer.Headlines;
 
     Headlines.prototype = {
 

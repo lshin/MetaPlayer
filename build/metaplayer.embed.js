@@ -35,29 +35,23 @@ all copies or substantial portions of the Software.
 
     };
 
-    var Embed = function (target, video, options) {
-
-        if( !(this instanceof Embed) )
-            return new Embed(target, video, options);
-
+    var Embed = function (target, player, options) {
         this.config = $.extend(true, {}, defaults, options);
         this.container = target;
-        this.dispatcher = MetaPlayer.dispatcher(video);
-
         this.addDom();
-        this.dispatcher.listen("metadata", this.onMetaData, this );
+        player.metadata.listen(MetaPlayer.MetaData.DATA, this.onMetaData, this );
     };
 
-    MetaPlayer.embed  = Embed;
+    MetaPlayer.Embed  = Embed;
 
     MetaPlayer.addPlugin("embed", function (target, options) {
-        return Embed(target, this.video, options);
+        this.embed = new Embed(target, this, options);
     });
 
     Embed.prototype = {
 
-        onMetaData : function (e, metadata) {
-            this._metadata = metadata;
+        onMetaData : function (e) {
+            this._metadata = e.data;
 
             if( this._current )
                 this.open(this._current); // re-render
@@ -116,10 +110,13 @@ all copies or substantial portions of the Software.
             this.close();
 
             this._current = embed;
+
             this.find(embed.name).addClass( this.cssName('selected') );
 
+            var data = this._metadata;
             // {{var}} substituation with anything in size config
-            var dict = $.extend({}, this._metadata, embed);
+            var dict = $.extend({}, data.ramp, data, embed);
+
             dict.src = encodeURI( Embed.templateReplace( this.config.embedUrl, dict) );
 
             var code = Embed.templateReplace( this.config.embedCode, dict);

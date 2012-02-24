@@ -20,8 +20,12 @@ all copies or substantial portions of the Software.
     var $ = jQuery;
     var Popcorn = window.Popcorn;
 
+    var pluginName = "captions";
+
     var defaults = {
-        cssPrefix : "metaplayer-captions"
+        cssPrefix : "metaplayer-captions",
+        pluginName :pluginName,  // override to use another popcorn plugin
+        detectTextTracks : false  // beta, popcorn parser issues
     };
 
     var Captions = function (target, options) {
@@ -46,7 +50,15 @@ all copies or substantial portions of the Software.
         if( !(this instanceof Captions) )
             return new Captions(target, options);
 
-        this.target = target;
+        this.config = $.extend({}, defaults, options);
+
+        if( target.getTrackEvents ) {
+            this.popcorn = target;
+            this.target = target.media;
+        }
+        else
+            this.target = target;
+
         this.config = $.extend(true, {}, defaults, options);
 
         this.init();
@@ -54,19 +66,53 @@ all copies or substantial portions of the Software.
         Captions.instances[id] = this;
     };
 
+    MetaPlayer.Captions = Captions;
+
     Captions.instances = {};
     Captions._count = 0;
+
+    MetaPlayer.addPlugin("captions", function (options){
+
+        var popcorn = this.popcorn;
+        this.captions = Captions(popcorn, options);
+
+        if( ! (popcorn[pluginName] instanceof Function) )
+            throw "popcorn plugin does not exist: " + pluginName;
+
+        this.cues.enable( pluginName );
+    });
 
     Captions.prototype = {
         init : function (){
             this.container = this.create();
-//            this.container.append('&nbsp;'); // holds height
+
             this._captions = {};
 
+            var target;
             if( this.target.getTrackEvents )
-                $(this.target.media.parentNode).append( this.container );
+                target = this.target.media;
             else
-                $(this.target).append( this.container );
+                target = this.target;
+
+            $(this.target.parentNode).append( this.container );
+
+        },
+
+        findTrackElements : function (){
+            var popcorn = this.popcorn;
+            if( ! (popcorn.parseSRT instanceof Function) ){
+                return;
+            }
+
+            var tracks = $(this.target).find('track[kind="subtitle"]');
+            $.each( tracks, function (i, track) {
+                var src = $(track).attr('src');
+                var ext = src.substr( src.lastIndexOf('.') );
+                if( ext == ".srt" ) {
+                    popcorn.parseSRT(src);
+                    return false;
+                }
+            })
         },
 
         append :  function (options) {
@@ -75,7 +121,7 @@ all copies or substantial portions of the Software.
 
         focus : function (options) {
             var el = this.create("text", 'div');
-            el.text( options.text );
+            el.html( options.text );
             this._captions[ options.start ] = el;
             this.container.append(el);
         },
@@ -107,7 +153,7 @@ all copies or substantial portions of the Software.
     };
 
     if( Popcorn ) {
-        Popcorn.plugin( "subtitle" , {
+        Popcorn.plugin( pluginName , {
             _setup: function( options ) {
                 Captions(this);
             },
