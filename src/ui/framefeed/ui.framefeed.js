@@ -37,7 +37,7 @@
         this.seen = {};
         this.init();
 
-        this.dispatcher = MetaPlayer.dispatcher(this);
+        MetaPlayer.dispatcher(this);
 
         FrameFeed.instances[ target.id ] = this;
     };
@@ -46,16 +46,8 @@
 
 
     MetaPlayer.addPlugin("framefeed", function (target, options){
-
-        var popcorn = this.popcorn;
-        this.dispatcher.listen("metaq", function (e, metaq) {
-            $.each(metaq.framefeed, function (e, obj) {
-                var o = $.extend({ 'target': target}, obj);
-                popcorn.framefeed(o);
-            });
-        });
-
-        return FrameFeed(target, options);
+        this.cues.enable("framefeed", { target : target });
+        this.framefeed = FrameFeed(target, options);
     });
 
     MetaPlayer.framefeed = FrameFeed;
@@ -187,11 +179,7 @@
                     }, this.config.filterMsec );
 
                 if( scroll && duration) {
-                    console.log(["scroll", this.scrollbar.scrollTop() ]);
-                    console.log(["scroll to ", scroll + obj.height]);
                     this.scrollbar.scrollTo( 0 , scroll + obj.height );
-                    console.log(["scroll post", this.scrollbar.scrollTop() ]);
-
                 }
             }
             // else scroll and fade in

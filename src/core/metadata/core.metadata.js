@@ -6,7 +6,6 @@
     };
 
     var MetaData = function (player, options){
-
         if( !(this instanceof MetaData ))
             return new MetaData(options);
 
@@ -16,6 +15,8 @@
         this._callbacks = {};
         this._lastUri = null;
     };
+
+    MetaPlayer.MetaData = MetaData;
 
 
     /**
@@ -53,9 +54,12 @@
         load : function ( uri, callback, scope) {
             var e;
 
-            // calling w/o callback will trigger a DATA event if uri changes
-            if( callback )
+            // calling  w/ a callback will not trigger a focus change or DATA events
+            if( callback ) {
                 this._queue(uri, callback, scope);
+            }
+
+            // no callback, let others know focus has changed, that a DATA event is coming
             else {
                 this._lastUri = uri;
                 e = this.createEvent();
@@ -64,25 +68,39 @@
                 this.dispatchEvent(e);
             }
 
-            // cache hit gets response immediately, otherwise request data via LOAD
-            if( this._data[uri] && this._data[uri]._cached ) {
-                this._response(uri);
-                return true;
+            if( this._data[uri] ){
+                // cache hit; already loaded. respond immediately
+                if( this._data[uri]._cached ) {
+                    this._response(uri);
+                    return true;
+                }
+                // load in progress, skip
+                else if ( this._data[uri]._loading ) {
+                    return true;
+                }
             }
 
-            // dispatch event requesting metadata services
+            // flag as loading
+            if( ! this._data[uri] )
+                this._data[uri] = {};
+            this._data[uri]._loading =  (new Date()).getTime();
+
+            // send a loading request
             e = this.createEvent();
             e.initEvent(MetaData.LOAD, false, true);
             e.uri = uri;
 
-            if( this.dispatchEvent(e) ){
-                return false; // no one is handling this request for data
+            // see if anyone caught our request, return accordingly
+            var caught = ! this.dispatchEvent(e);
+            if( ! caught ) {
+                this._data[uri]._loading = false;
             }
-            else {
-                return true; // async lookup, they should wait
-            }
+            return caught;
         },
 
+        /**
+         * Returns the uri for which events are currently being fired.
+         */
         getFocusUri : function () {
             return this._lastUri;
         },
@@ -149,6 +167,5 @@
         }
     };
 
-    MetaPlayer.MetaData = MetaData;
 
 })();

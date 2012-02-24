@@ -52,16 +52,8 @@
 
 
     MetaPlayer.addPlugin("transcript", function (target, options) {
-        var popcorn = this.popcorn;
-
-        this.dispatcher.listen("captions", function (e, captions) {
-            $.each(captions, function (e, obj) {
-                var o = $.extend({ 'target': target}, obj);
-                popcorn.transcript(o);
-            });
-        });
-
-        return Transcript( target, this.video, options);
+        this.cues.enable("transcript", { target : target }, { clone : "captions"} );
+        this.transcript = Transcript( target, this.video, options);
     });
 
 

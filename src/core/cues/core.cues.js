@@ -27,6 +27,8 @@
      * @name CUES
      * @event
      * @param data The cues from a resulting load() request.
+     * @param uri The focus uri
+     * @param plugin The cue type
      */
     Cues.CUES = "cues";
 
@@ -79,12 +81,17 @@
         },
 
         /**
-         * Returns an array of cue objects for a given type.
+         * Returns an array of cue objects for a given type. If no type specified, acts
+         * as alias for getCueLists() returning a dictionary of all cue types and arrays.
          * @param type The name of the cue list (eg: "caption", "twitter", etc)
          * @param uri (optional) Data uri, or last load() uri.
          */
         getCues : function (type, uri) {
             var guid = uri || this.player.metadata.getFocusUri();
+
+            if( ! type ) {
+                return this.getCueLists();
+            }
 
             if(! this._cues[guid]  || ! this._cues[guid][type])
                 return [];
@@ -163,7 +170,7 @@
                 var e = self.createEvent();
                 e.initEvent(Cues.CUES, false, true);
                 e.uri = guid;
-                e.type = type;
+                e.plugin = type;
                 e.cues = cues;
 
                 if( self.dispatchEvent(e) ) {

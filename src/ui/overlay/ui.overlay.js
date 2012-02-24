@@ -67,8 +67,8 @@
                 this.find('embed').show();
             }
 
-            if( Ramp.social )
-                Ramp.social( this.find('social'), this.dispatcher );
+            if( MetaPlayer.Social )
+                this.social = new MetaPlayer.Social( this.find('social'), this.player );
         },
 
         addUIListeners : function () {
