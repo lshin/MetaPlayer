@@ -59,14 +59,13 @@
 
     <!--Metaplayer -->
     <script src="../build/metaplayer.js"></script>
-    <script src="../build/metaplayer.metaq.js"></script>
     <script src="../build/metaplayer.controls.js"></script>
     <script src="../build/metaplayer.overlay.js"></script>
     <script src="../build/metaplayer.endcap.js"></script>
     <script src="../build/metaplayer.captions.js"></script>
     <script src="../build/metaplayer.social.js"></script>
     <script src="../build/metaplayer.embed.js"></script>
-    <script src="../build/metaplayer.search.js"></script>
+    <script src="../build/metaplayer.searchbox.js"></script>
     <script src="../build/metaplayer.transcript.js"></script>
 
     <!--Theme: mp2 -->
@@ -84,22 +83,9 @@
                         swfUrl : "../external/flowplayer/flowplayer-3.2.7.swf"
                     })
 
-//                    .html5()
-
                     .transcript("#transcript", {
                         timestamps: false,
                         breaks: false
-                    })
-
-                    .metaq({
-                        "subtitle" : {
-                            clone : "transcript"
-                        },
-                        "transcript" : {
-                            overrides : {
-                                target : "#transcript"
-                            }
-                        }
                     })
 
                     .controls({
@@ -113,8 +99,9 @@
                     .social("#social")
                     .embed("#embed");
 
-            player.video.autoplay = true;
             player.load("ramp:/advisor:48920875");
+
+            player.video.autoplay = true;
 
 
         });

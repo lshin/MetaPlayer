@@ -32,7 +32,6 @@
 
     <!--Metaplayer -->
     <script src="../build/metaplayer.js"></script>
-    <script src="../build/metaplayer.metaq.js"></script>
     <script src="../build/metaplayer.controls.js"></script>
     <script src="../build/metaplayer.overlay.js"></script>
     <script src="../build/metaplayer.captions.js"></script>
@@ -62,8 +61,8 @@
     player = MetaPlayer("#target")
             .flowplayer( fp )
                     .ramp()
-                    .metaq()
                     .overlay()
+                    .captions()
                     .endcap()
                     .controls()
                     .load("ramp:/advisor:48920875");

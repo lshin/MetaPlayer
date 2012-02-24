@@ -20,7 +20,8 @@
         }
     };
 
-    var SearchBox = function (target, player, service, options) {
+    var SearchBox = function (target, player, options) {
+
         var id;
         if( typeof target !== "string") {
             if ( ! target.__SEARCH_ID )
@@ -35,16 +36,9 @@
             return SearchBox.instances[id];
 
         if( !(this instanceof SearchBox) )
-            return new SearchBox(target, player, service, options);
+            return new SearchBox(target, player, options);
 
-        this.service = service;
-
-        if( typeof player == "string")
-            player = $(player).get(0);
-
-        if( player.currentTime != undefined && player.play )
-            this.player = player;
-
+        this.player = player;
         this.target = target;
         this.config = $.extend(true, {}, defaults, options);
 
@@ -61,10 +55,10 @@
     SearchBox.instances = {};
     SearchBox._count = 0;
 
-    MetaPlayer.searchbox = SearchBox;
+    MetaPlayer.SearchBox = SearchBox;
 
     MetaPlayer.addPlugin("searchbox", function(target, options) {
-        return SearchBox(target, this.video, this.service, options);
+        this.searchbox = SearchBox(target, this, options);
     });
 
     SearchBox.getPhrase = function (words, offset, context){
@@ -132,16 +126,19 @@
                     el = $(e.target);
                 var start = el.data().start;
                 if( self.player )
-                    self.player.currentTime = start - self.config.seekBeforeSec;
+                    self.player.video.currentTime = start - self.config.seekBeforeSec;
             });
 
-            if( this.service ) {
-                this.service.listen("tags", this.onTags, this);
-                this.service.listen("search", this.onSearchResult, this);
-            }
+            this.player.metadata.listen(MetaPlayer.MetaData.DATA, this.onTags, this);
+            this.player.search.listen("search", this.onSearchResult, this);
         },
 
-        onTags : function (e, tags) {
+        onTags : function (e) {
+            var ramp = e.data.ramp;
+            if(! ramp.tags ){
+                return;
+            }
+
             var box = this.find("tags");
             var self = this;
 
@@ -151,7 +148,7 @@
                 .text( this.getString("tagHeader") )
                 .appendTo(box);
 
-            $.each(tags, function (i, tag) {
+            $.each(ramp.tags, function (i, tag) {
                 var cell = $("<div></div>")
                     .addClass( self.cssName("tag") )
                     .appendTo(box);
@@ -173,7 +170,7 @@
         },
 
         search : function (query) {
-            this.service.search(query);
+            this.player.search.query(query);
         },
 
         clear : function () {
@@ -187,7 +184,6 @@
         },
 
         onSearchResult : function (e, response) {
-
             this.clear();
 
             if( ! response.query.length ) {
