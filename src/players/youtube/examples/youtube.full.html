@@ -82,18 +82,13 @@
 <h3>Metaplayer &raquo; YouTube Plugin</h3>
 
 <div id='target'></div>
-<div id='video'></div>
 
 <script type="text/javascript">
     var video;
-
-    var player = MetaPlayer("#target")
-            .youtube({ chromeless : true})
-            .ramp()
-            .overlay()
-            .endcap()
-            .controls()
-            .load("http://www.youtube.com/v/TEcvbWCYFZg?version=3");
+    var player = MetaPlayer("#target");
+    player.youtube();
+    player.controls();
+    player.load("http://www.youtube.com/v/TEcvbWCYFZg?version=3");
 
 </script>
 

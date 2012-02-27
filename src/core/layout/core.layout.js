@@ -41,9 +41,10 @@
         var stage = t.find('.mp-video');
         var video = t.find('video');
         var isVideo = (target.play instanceof Function);
+        var isFrame = (target.tagName.toUpperCase() == "IFRAME");
 
         // set up main wrapper
-        if( isVideo ){
+        if( isVideo || isFrame ){
             base = $('<div></div>')
                 .addClass('metaplayer')
                 .insertAfter( t );
@@ -51,7 +52,8 @@
             // assume they've set the dimensions on the target
             base.width( t.width() );
             base.height( t.height() );
-        } else {
+        }
+        else {
             base = t;
         }
         base.addClass('metaplayer');
@@ -69,14 +71,11 @@
             stage.append(video);
         }
 
-        if( isVideo )
+        if( base !== t )
             stage.append(t);
 
-        // steal the id for sizing
-//        base.attr('id', t.attr('id') );
-//        t.attr('id', '');
-
         return {
+            target : target,
             base : base.get(0),
             stage : stage.get(0)
         }

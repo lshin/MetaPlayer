@@ -78,10 +78,11 @@
                 this.video = video;
             }
 
-            // optional layout disabling, use at own risk for player UI layout
-            if( this.config.useLayout ) {
-                this.layout = MetaPlayer.layout(video);
-            }
+        }
+
+        // optional layout disabling, use at own risk for player UI layout
+        if( video && this.config.useLayout ) {
+            this.layout = MetaPlayer.layout(video);
         }
 
         // start loading after this execution block, can be triggered earlier by load()

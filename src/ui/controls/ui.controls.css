@@ -4,6 +4,7 @@
     right: 0;
     left: 0;
     height: 32px;
+    z-index: 100;
 }
 
 .mp-controls-box {

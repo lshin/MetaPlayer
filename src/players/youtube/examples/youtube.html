@@ -4,7 +4,7 @@
     <meta charset=utf-8>
 
     <style>
-        #target, #test {
+        #player{
             width: 600px;
             height: 300px;
             background: #aaaaaa;
@@ -28,16 +28,18 @@
     <script src="../../../core/utils/util.ui.js"></script>
     <script src="../../../core/playlist/player.playlist.js"></script>
     <script src="../../../core/layout/core.layout.js"></script>
-    <link href="../../../core/layout/core.layout.css" rel="stylesheet" type="text/css">
+    <script src="../../../core/metadata/core.metadata.js"></script>
+    <script src="../../../core/search/core.search.js"></script>
+    <script src="../../../core/cues/core.cues.js"></script>
+
+    <!-- Service Plugin: RAMP -->
+    <script src="../../../services/ramp/service.ramp.js"></script>
 
     <!-- Media: YouTube -->
     <script src="../../../players/youtube/player.youtube.js"></script>
 </head>
 
 <body>
-
-<h3>Metaplayer &raquo; YouTube Plugin</h3>
-
 
 video.src =
 <button onclick='video.src="http://www.youtube.com/v/II1Lrxz2Lgg?version=3"'>count down</button>
@@ -51,23 +53,31 @@ video.src =
 <button onclick='video.pause()'>video.pause()</button>
 <button onclick='video.currentTime += 2'>video.currentTime += 2</button>
 
-<div id='target'>
-</div>
 
+<div id="player"></div>
 
-<script type="text/javascript">
-    var video;
-    $(function () {
+<script>
+    var tag = document.createElement('script');
+    tag.src = "http://www.youtube.com/player_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-        video = MetaPlayer.youtube("#target", {
-            preload: false,
-            autoplay: false
+    var yt, player, video;
+    function onYouTubePlayerAPIReady() {
+        yt = new YT.Player('player', {
+            height: '100%',
+            width: '100%'
         });
 
-    });
+        player = MetaPlayer("#player")
+                .youtube(yt);
+
+        video = player.video;
+        video.src = "u1zgFlCw8Aw";
+    }
+
 
 </script>
-
 
 </body>
 </html>

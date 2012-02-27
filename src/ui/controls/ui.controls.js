@@ -384,7 +384,7 @@
         },
 
         showBelow : function (bool){
-            var stage = $(this.video);
+            var stage = $(this.player.layout.stage);
             var h = this.find().height();
             var b = parseFloat( stage.css('bottom') );
             if( bool ) {

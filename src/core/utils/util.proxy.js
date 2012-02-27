@@ -17,13 +17,12 @@
         },
 
         proxyEvent : function (types, source, target ){
-
             // emulate if old non-standard event model
             if( ! target.addEventListener ) {
                 Ramp.dispatcher(target);
             }
             $.each(types.split(/\s+/g), function (i, type) {
-                $(source).bind(type, function (e) {
+                source.addEventListener(type, function (e) {
                     // if emulated, just use type
                     if( target.dispatch ) {
                         target.dispatch(e.type);
