@@ -453,6 +453,10 @@
 
 
                 var trackPercent = annotation.start / duration * 100;
+
+                if( trackPercent > 100 )
+                    trackPercent = 100;
+
                 annotation.el.css('left', trackPercent + "%");
                 if( annotation.end ) {
                     var widthPercent = (annotation.end - annotation.start) / duration * 100;

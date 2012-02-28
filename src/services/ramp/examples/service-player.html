@@ -52,23 +52,27 @@
 
 
             metaplayer.metadata.listen( MetaPlayer.MetaData.DATA, function (e) {
+
+                // show some of the metadata fields
                 $('#title').text( e.data.title);
                 $('#description').text( e.data.description);
                 $('#source').text( metaplayer.video.src )
                         .attr("href", metaplayer.video.src );
 
+
+                // jumptags
                 var tags = $("#tags").empty();
                 $.each( e.data.ramp.tags, function (i, tag) {
                     var clone = template
                             .clone()
                             .appendTo(tags);
 
+                    // create the tag
                     clone.find(".term").text(tag.term);
 
+                    // create the timestamp links
                     var times = clone.find(".times");
-
                     $.each( tag.timestamps, function (i, ts){
-                        console.log("ts", ts, i);
                         $("<a></a>").text(ts + "s")
                                 .appendTo(times)
                                 .attr("href", "#"+ts)

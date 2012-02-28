@@ -149,7 +149,6 @@
 
 
         _onMetaData : function (e) {
-
             if( e.uri != this.track() ){
                 return;
             }

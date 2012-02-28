@@ -3,7 +3,8 @@
     var $ = jQuery;
 
     var defaults = {
-        msQuotes : true
+        msQuotes : true,
+        serviceUri : "/device/services/mp2-playlist?e="
     };
 
     var RampService = function (player, url, options) {
@@ -68,12 +69,12 @@
         load : function ( uri, isPlaylist ) {
             var track;
 
-            // parse format:  "ramp:publishing.ramp.com/ramp:1234"
-            if( typeof uri == "string" ) {
-                track = this.parseUrl(uri);
-            }
-
+            // parse format:  "ramp:publishing.ramp.com/sitename:1234"
             var url = uri;
+            if( typeof uri == "string" &&  uri.match(/^ramp\:/) ) {
+                var parts = this.parseUrl(uri);
+                url = parts.rampHost + this.config.serviceUri + parts.rampId;
+            }
 
             var params = {
             };
@@ -84,7 +85,7 @@
                 context: this,
                 data : params,
                 error : function (jqXHR, textStatus, errorThrown) {
-                    console.error("Load playlist error: " + textStatus + ", url: " + url);
+                    this.player.video.dispatch("error");
                 },
                 success : function (response, textStatus, jqXHR) {
                     var items = this.parse(response, uri);
@@ -101,9 +102,9 @@
 
             // first item contains full info
             var first = items[0];
-            var guid = first.metadata.link;
+            var guid = first.metadata.guid;
             if( isPlaylist )
-                metadata.setFocusUri(first.metadata.link);
+                metadata.setFocusUri(guid);
             metadata.setData( first.metadata, guid, true );
             cues.setCueLists( first.cues, guid  );
 
@@ -113,13 +114,13 @@
                 var self = this;
                 // add stub metadata
                 $.each(items.slice(1), function (i, item) {
-                    metadata.setData(item.metadata, item.metadata.link, false);
+                    metadata.setData(item.metadata, item.metadata.guid, false);
                 });
 
                 // queue the uris
                 playlist.empty();
                 playlist.queue( $.map(items, function (item) {
-                    return item.metadata.link
+                    return item.metadata.guid;
                 }));
             }
         },
