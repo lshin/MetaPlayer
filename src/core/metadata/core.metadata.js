@@ -61,11 +61,7 @@
 
             // no callback, let others know focus has changed, that a DATA event is coming
             else {
-                this._lastUri = uri;
-                e = this.createEvent();
-                e.initEvent(MetaData.FOCUS);
-                e.uri = uri;
-                this.dispatchEvent(e);
+                this.setFocusUri(uri);
             }
 
             if( this._data[uri] ){
@@ -85,10 +81,11 @@
                 this._data[uri] = {};
             this._data[uri]._loading =  (new Date()).getTime();
 
-            // send a loading request
+            // send a loading request, with any data we have
             e = this.createEvent();
             e.initEvent(MetaData.LOAD, false, true);
             e.uri = uri;
+            e.data = this.getData(uri);
 
             // see if anyone caught our request, return accordingly
             var caught = ! this.dispatchEvent(e);
@@ -103,6 +100,21 @@
          */
         getFocusUri : function () {
             return this._lastUri;
+        },
+
+        /**
+         * Sets the uri for which events are currently being fired.
+         */
+        setFocusUri : function (uri) {
+
+            if( this._lastUri == uri )
+                return;
+
+            this._lastUri = uri;
+            e = this.createEvent();
+            e.initEvent(MetaData.FOCUS);
+            e.uri = uri;
+            this.dispatchEvent(e);
         },
 
         /**

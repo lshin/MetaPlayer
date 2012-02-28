@@ -149,6 +149,11 @@
 
 
         _onMetaData : function (e) {
+
+            if( e.uri != this.track() ){
+                return;
+            }
+
             this.transcodes = e.data.content;
 
             if( this.config.sourceTags )

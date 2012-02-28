@@ -85,10 +85,13 @@
 
 <script type="text/javascript">
     var video;
-    var player = MetaPlayer("#target");
-    player.youtube();
-    player.controls();
-    player.load("http://www.youtube.com/v/TEcvbWCYFZg?version=3");
+    var player = MetaPlayer("#target")
+            .youtube()
+            .controls()
+            .endcap()
+            .overlay()
+            .ramp("ramp:/sxsw:52307770")
+            .load();
 
 </script>
 

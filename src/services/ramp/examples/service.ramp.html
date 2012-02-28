@@ -4,57 +4,68 @@
     <title>example: ramp smil service</title>
 
     <!--Dependency: jQuery-->
-    <script src="../../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
+    <script src="../../../../external/jquery/jquery-1.7.1.js" type="text/javascript"></script>
 
-    <!--Plugin: ramp core-->
+    <!-- json2html-->
+    <script src="../../../../external/json2html/json2html.js" type="text/javascript"></script>
+    <link href="../../../../external/json2html/json2html.css" rel="stylesheet" type="text/css">
+
+    <!-- Core: Ramp -->
     <script src="../../../core/metaplayer.js"></script>
     <script src="../../../core/utils/util.event.js"></script>
+    <script src="../../../core/utils/util.proxy.js"></script>
+    <script src="../../../core/utils/util.script.js"></script>
+    <script src="../../../core/utils/util.timer.js"></script>
+    <script src="../../../core/utils/util.format.js"></script>
+    <script src="../../../core/utils/util.ui.js"></script>
+    <script src="../../../core/playlist/player.playlist.js"></script>
+    <script src="../../../core/layout/core.layout.js"></script>
+    <script src="../../../core/metadata/core.metadata.js"></script>
+    <script src="../../../core/search/core.search.js"></script>
+    <script src="../../../core/cues/core.cues.js"></script>
 
-
-    <!--Plugin: ramp json service-->
-    <script src="../service.smil.js"></script>
+    <!-- Service Plugin: RAMP -->
+    <script src="../../../services/ramp/service.ramp.js"></script>
 
     <script type="text/javascript">
+        var url = "../../../../media/sxsw/mp2-playlist-e=52300242.xml";
+        var url2 = "../../../../media/sxsw/mp2-playlist-e=52307770.xml";
+        var metaplayer;
 
-        var data = Ramp.data('ramp:/pca:36234882', {});
 
-        data.onMetaData( function (metadata) {
-            console.log(['metadata', metadata])
-        });
+        $(function () {
+            var template = $('#content').hide().remove();
 
-        data.onTranscodes( function (transcodes) {
-            console.log(['transcodes', transcodes])
-        });
+            metaplayer = MetaPlayer().ramp().load();
+//            json2html("#dump", metaplayer.metadata.getData() );
 
-        data.onCaptions( function (captions) {
-            console.log(['captions', captions]);
-        });
+            metaplayer.metadata.listen( MetaPlayer.MetaData.DATA, function (e) {
+                json2html("#dump", metaplayer.metadata.getData() );
+            });
 
-        data.onTags( function (captions) {
-            console.log(['tags', captions]);
-        });
 
-        data.onMetaQ( function (captions) {
-            console.log(['metaq', captions])
-        });
-
-        data.onRelated( function (captions) {
-            console.log(['related', captions])
-        });
-
-        setTimeout ( function() {
-            data.search("choice", function (results) {
-                console.log(["results", results]);
-            })
-        }, 5000);
-
+        })
     </script>
+
 
 
 </head>
 <body>
+
 <div>
-    Video data will be displayed in console output.
+    <button onclick="metaplayer.ramp('../../../../media/sxsw/L-Style.xml')">L-Style.xml</button>
+    <button onclick="metaplayer.ramp('../../../../media/sxsw/Galaxy_Mini_2.xml')">Galaxy_Mini_2.xml</button>
 </div>
+
+
+
+> metaplayer.metadata.getData()
+<div id="dump">
+</div>
+
+<script>
+
+
+</script>
 </body>
 </html>

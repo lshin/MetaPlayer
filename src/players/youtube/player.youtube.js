@@ -12,11 +12,11 @@
             version : 3,
             autohide : 0,
             autoplay : 0,
-            controls : 0,
+            controls : 1,
             fs : 1,
             hd : 1,
-            rel : 0,
-            showinfo : 0,
+            rel : 1,
+            showinfo : 1,
             iv_load_policy : 0,
             cc_load_policy : 0,
             wmode : "transparent"
@@ -37,6 +37,12 @@
         this.__loop = this.config.loop;
         this.__src = "";
 
+        if( this.config.chromeless ){
+            var pv = this.config.playerVars;
+            pv.control = 0;
+            pv.rel = 0;
+            pv.showinfo = 0;
+        }
         this.preload = this.config.preload;
         this.autoplay = this.config.autoplay;
         this.updateMsec = this.config.updateMsec;
@@ -168,7 +174,7 @@
         },
 
         onError : function (e) {
-            this.dispatch(e);
+            this.dispatch("error");
         },
 
         startTimeCheck : function () {
@@ -247,7 +253,7 @@
             }
 
             if( src.match("^http") ){
-                var videoId = src.match( /www.youtube.com\/(watch\?v=|v\/)(\w+)/ )[2];
+                var videoId = src.match( /www.youtube.com\/(watch\?v=|v\/)([\w-]+)/ )[2];
             }
             this.youtube.cueVideoById( videoId || src );
 
@@ -280,7 +286,7 @@
         load : function () {
             this.preload = true;
 
-            if( ! this.youtube )
+            if( ! this.isReady() )
                 return;
 
             if( this.youtube.getPlayerState() != -1 )
@@ -357,7 +363,7 @@
         volume : function (val){
             if( val != null ){
                 this.__volume = val;
-                if( ! this.youtube )
+                if( ! this.isReady() )
                     return val;
                 this.youtube.setVolume(val * 100)
                 this.dispatch("volumechange");

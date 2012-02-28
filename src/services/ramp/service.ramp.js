@@ -3,8 +3,7 @@
     var $ = jQuery;
 
     var defaults = {
-        msQuotes : true,
-        playlistService : "/device/services/mp2-playlist?e={e}"
+        msQuotes : true
     };
 
     var RampService = function (player, url, options) {
@@ -48,9 +47,9 @@
         },
 
         onMetaDataLoad : function (e) {
-            var uri = e.uri;
-            if( typeof uri == "string" && uri.match(/^ramp:/i) ){
-                this.load(uri);
+            var data = e.data;
+            if(data.ramp && data.ramp.serviceURL ){
+                this.load(data.ramp.serviceURL );
                 // let others know we're on it.
                 e.stopPropagation();
                 e.preventDefault();
@@ -74,17 +73,7 @@
                 track = this.parseUrl(uri);
             }
 
-            if( ! track.rampId ) {
-                throw "invalid media id";
-            }
-
-            this.mediaId = track.rampId;
-
-            if( track.rampHost )
-                this.lastHost = track.rampHost;
-
-            var host = this.lastHost;
-            var url = host + this.config.playlistService.replace(/{e}/, this.mediaId);
+            var url = uri;
 
             var params = {
             };
@@ -98,8 +87,9 @@
                     console.error("Load playlist error: " + textStatus + ", url: " + url);
                 },
                 success : function (response, textStatus, jqXHR) {
-                    var items = this.parse(response, host);
-                    this.setItems(items, isPlaylist);
+                    var items = this.parse(response, uri);
+                    if( items.length )
+                        this.setItems(items, isPlaylist);
                 }
             });
         },
@@ -111,8 +101,10 @@
 
             // first item contains full info
             var first = items[0];
-            var guid = this.toUrl(first.metadata);
-            metadata.setData( first.metadata, guid );
+            var guid = first.metadata.link;
+            if( isPlaylist )
+                metadata.setFocusUri(first.metadata.link);
+            metadata.setData( first.metadata, guid, true );
             cues.setCueLists( first.cues, guid  );
 
             // subsequent items contain metadata only, no transcodes, tags, etc.
@@ -121,27 +113,28 @@
                 var self = this;
                 // add stub metadata
                 $.each(items.slice(1), function (i, item) {
-                    metadata.setData(item.metadata, self.toUrl(item.metadata), false);
+                    metadata.setData(item.metadata, item.metadata.link, false);
                 });
 
                 // queue the uris
+                playlist.empty();
                 playlist.queue( $.map(items, function (item) {
-                    return self.toUrl(item.metadata)
+                    return item.metadata.link
                 }));
             }
         },
 
-        parse : function (data, host) {
+        parse : function (data, uri) {
             var self = this;
             var playlist = $(data).find('par').toArray();
             var media = [];
             $.each(playlist, function(i, node) {
-                media.push( self.parseMedia(node, host) );
+                media.push( self.parseMedia(node, uri) );
             });
             return media;
         },
 
-        parseMedia : function (node, host) {
+        parseMedia : function (node, uri) {
             var item = {
                 metadata : {},
                 cues : {}
@@ -159,12 +152,15 @@
 
             // other metadata
             item.metadata.ramp = {
-                rampHost: host
             };
             video.find('metadata meta').each( function (i, metadata){
                 var meta = $(metadata);
                 item.metadata.ramp[ meta.attr('name') ] = meta.attr('content') || meta.text();
             });
+
+            if( item.metadata.ramp.rampId ){
+                item.metadata.ramp.serviceURL = uri.replace(/(mp2-playlist[-\?]e=)(\d+)/, "$1" + item.metadata.ramp.rampId);
+            }
 
             // content & transcodes
             item.metadata.content = [];
