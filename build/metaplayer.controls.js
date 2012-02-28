@@ -399,7 +399,7 @@ all copies or substantial portions of the Software.
         },
 
         showBelow : function (bool){
-            var stage = $(this.video);
+            var stage = $(this.player.layout.stage);
             var h = this.find().height();
             var b = parseFloat( stage.css('bottom') );
             if( bool ) {
@@ -468,6 +468,10 @@ all copies or substantial portions of the Software.
 
 
                 var trackPercent = annotation.start / duration * 100;
+
+                if( trackPercent > 100 )
+                    trackPercent = 100;
+
                 annotation.el.css('left', trackPercent + "%");
                 if( annotation.end ) {
                     var widthPercent = (annotation.end - annotation.start) / duration * 100;

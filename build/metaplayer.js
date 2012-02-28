@@ -78,10 +78,11 @@
                 this.video = video;
             }
 
-            // optional layout disabling, use at own risk for player UI layout
-            if( this.config.useLayout ) {
-                this.layout = MetaPlayer.layout(video);
-            }
+        }
+
+        // optional layout disabling, use at own risk for player UI layout
+        if( video && this.config.useLayout ) {
+            this.layout = MetaPlayer.layout(video);
         }
 
         // start loading after this execution block, can be triggered earlier by load()
@@ -542,9 +543,10 @@
         var stage = t.find('.mp-video');
         var video = t.find('video');
         var isVideo = (target.play instanceof Function);
+        var isFrame = (target.tagName.toUpperCase() == "IFRAME");
 
         // set up main wrapper
-        if( isVideo ){
+        if( isVideo || isFrame ){
             base = $('<div></div>')
                 .addClass('metaplayer')
                 .insertAfter( t );
@@ -552,7 +554,8 @@
             // assume they've set the dimensions on the target
             base.width( t.width() );
             base.height( t.height() );
-        } else {
+        }
+        else {
             base = t;
         }
         base.addClass('metaplayer');
@@ -570,14 +573,11 @@
             stage.append(video);
         }
 
-        if( isVideo )
+        if( base !== t )
             stage.append(t);
 
-        // steal the id for sizing
-//        base.attr('id', t.attr('id') );
-//        t.attr('id', '');
-
         return {
+            target : target,
             base : base.get(0),
             stage : stage.get(0)
         }
@@ -646,11 +646,7 @@
 
             // no callback, let others know focus has changed, that a DATA event is coming
             else {
-                this._lastUri = uri;
-                e = this.createEvent();
-                e.initEvent(MetaData.FOCUS);
-                e.uri = uri;
-                this.dispatchEvent(e);
+                this.setFocusUri(uri);
             }
 
             if( this._data[uri] ){
@@ -670,10 +666,11 @@
                 this._data[uri] = {};
             this._data[uri]._loading =  (new Date()).getTime();
 
-            // send a loading request
+            // send a loading request, with any data we have
             e = this.createEvent();
             e.initEvent(MetaData.LOAD, false, true);
             e.uri = uri;
+            e.data = this.getData(uri);
 
             // see if anyone caught our request, return accordingly
             var caught = ! this.dispatchEvent(e);
@@ -688,6 +685,21 @@
          */
         getFocusUri : function () {
             return this._lastUri;
+        },
+
+        /**
+         * Sets the uri for which events are currently being fired.
+         */
+        setFocusUri : function (uri) {
+
+            if( this._lastUri == uri )
+                return;
+
+            this._lastUri = uri;
+            e = this.createEvent();
+            e.initEvent(MetaData.FOCUS);
+            e.uri = uri;
+            this.dispatchEvent(e);
         },
 
         /**
@@ -904,6 +916,10 @@
 
 
         _onMetaData : function (e) {
+            if( e.uri != this.track() ){
+                return;
+            }
+
             this.transcodes = e.data.content;
 
             if( this.config.sourceTags )
@@ -1293,13 +1309,12 @@
         },
 
         proxyEvent : function (types, source, target ){
-
             // emulate if old non-standard event model
             if( ! target.addEventListener ) {
                 Ramp.dispatcher(target);
             }
             $.each(types.split(/\s+/g), function (i, type) {
-                $(source).bind(type, function (e) {
+                source.addEventListener(type, function (e) {
                     // if emulated, just use type
                     if( target.dispatch ) {
                         target.dispatch(e.type);
@@ -1987,7 +2002,7 @@
 
     var defaults = {
         msQuotes : true,
-        playlistService : "/device/services/mp2-playlist?e={e}"
+        serviceUri : "/device/services/mp2-playlist?e="
     };
 
     var RampService = function (player, url, options) {
@@ -2031,9 +2046,9 @@
         },
 
         onMetaDataLoad : function (e) {
-            var uri = e.uri;
-            if( typeof uri == "string" && uri.match(/^ramp:/i) ){
-                this.load(uri);
+            var data = e.data;
+            if(data.ramp && data.ramp.serviceURL ){
+                this.load(data.ramp.serviceURL );
                 // let others know we're on it.
                 e.stopPropagation();
                 e.preventDefault();
@@ -2052,22 +2067,12 @@
         load : function ( uri, isPlaylist ) {
             var track;
 
-            // parse format:  "ramp:publishing.ramp.com/ramp:1234"
-            if( typeof uri == "string" ) {
-                track = this.parseUrl(uri);
+            // parse format:  "ramp:publishing.ramp.com/sitename:1234"
+            var url = uri;
+            if( typeof uri == "string" &&  uri.match(/^ramp\:/) ) {
+                var parts = this.parseUrl(uri);
+                url = parts.rampHost + this.config.serviceUri + parts.rampId;
             }
-
-            if( ! track.rampId ) {
-                throw "invalid media id";
-            }
-
-            this.mediaId = track.rampId;
-
-            if( track.rampHost )
-                this.lastHost = track.rampHost;
-
-            var host = this.lastHost;
-            var url = host + this.config.playlistService.replace(/{e}/, this.mediaId);
 
             var params = {
             };
@@ -2078,11 +2083,12 @@
                 context: this,
                 data : params,
                 error : function (jqXHR, textStatus, errorThrown) {
-                    console.error("Load playlist error: " + textStatus + ", url: " + url);
+                    this.player.video.dispatch("error");
                 },
                 success : function (response, textStatus, jqXHR) {
-                    var items = this.parse(response, host);
-                    this.setItems(items, isPlaylist);
+                    var items = this.parse(response, uri);
+                    if( items.length )
+                        this.setItems(items, isPlaylist);
                 }
             });
         },
@@ -2094,8 +2100,10 @@
 
             // first item contains full info
             var first = items[0];
-            var guid = this.toUrl(first.metadata);
-            metadata.setData( first.metadata, guid );
+            var guid = first.metadata.guid;
+            if( isPlaylist )
+                metadata.setFocusUri(guid);
+            metadata.setData( first.metadata, guid, true );
             cues.setCueLists( first.cues, guid  );
 
             // subsequent items contain metadata only, no transcodes, tags, etc.
@@ -2104,27 +2112,28 @@
                 var self = this;
                 // add stub metadata
                 $.each(items.slice(1), function (i, item) {
-                    metadata.setData(item.metadata, self.toUrl(item.metadata), false);
+                    metadata.setData(item.metadata, item.metadata.guid, false);
                 });
 
                 // queue the uris
+                playlist.empty();
                 playlist.queue( $.map(items, function (item) {
-                    return self.toUrl(item.metadata)
+                    return item.metadata.guid;
                 }));
             }
         },
 
-        parse : function (data, host) {
+        parse : function (data, uri) {
             var self = this;
             var playlist = $(data).find('par').toArray();
             var media = [];
             $.each(playlist, function(i, node) {
-                media.push( self.parseMedia(node, host) );
+                media.push( self.parseMedia(node, uri) );
             });
             return media;
         },
 
-        parseMedia : function (node, host) {
+        parseMedia : function (node, uri) {
             var item = {
                 metadata : {},
                 cues : {}
@@ -2142,12 +2151,15 @@
 
             // other metadata
             item.metadata.ramp = {
-                rampHost: host
             };
             video.find('metadata meta').each( function (i, metadata){
                 var meta = $(metadata);
                 item.metadata.ramp[ meta.attr('name') ] = meta.attr('content') || meta.text();
             });
+
+            if( item.metadata.ramp.rampId ){
+                item.metadata.ramp.serviceURL = uri.replace(/(mp2-playlist[-\?]e=)(\d+)/, "$1" + item.metadata.ramp.rampId);
+            }
 
             // content & transcodes
             item.metadata.content = [];
@@ -2915,7 +2927,6 @@
 
     };
 })();
-
 (function () {
 
     // save reference for no conflict support
@@ -2924,40 +2935,25 @@
     var defaults = {
         autoplay : false,
         preload : true,
-        controls : true,
-        chromeless : false,
-        loop : false,
-        hd : true,
-        annotations: false,
-        modestbranding : true,
-        related : false,
-        showinfo : false,
-        captions : false,
-        apiUrl  : "http://www.youtube.com/apiplayer", // chromeless
-        videoUrl : "http://www.youtube.com/v/Y7dpJ0oseIA", // controls, need some id
-        updateMsec : 500
-    };
-
-    // play nice in the global context by preserving other listeners, hope they do the same for us
-    var oldReady = window.onYouTubePlayerReady;
-
-    window.onYouTubePlayerReady = function (id){
-        if( oldReady ){
-            oldReady.apply(this, arguments);
+        updateMsec : 500,
+        playerVars : {
+            enablejsapi : 1,
+            version : 3,
+            autohide : 0,
+            autoplay : 0,
+            controls : 1,
+            fs : 1,
+            hd : 1,
+            rel : 1,
+            showinfo : 1,
+            iv_load_policy : 0,
+            cc_load_policy : 0,
+            wmode : "transparent"
         }
-        var instance = MetaPlayer.youtube.instances[id];
-        if( instance )
-            instance.onReady();
     };
 
-
-    var YouTubePlayer = function (target, options) {
-        var config = $.extend(true, {}, defaults, options);
-
-        this.video = $(target).get(0);
-
-        this.apiUrl = config.apiUrl;
-        this.videoUrl = config.videoUrl;
+    var YouTubePlayer = function (youtube, options) {
+        this.config = $.extend(true, {}, defaults, options);
 
         this.__seeking = false;
         this.__readyState = 0;
@@ -2967,149 +2963,147 @@
         this.__duration = NaN;
         this.__currentTime = 0;
         this.__volume = 1;
-        this.__loop = config.loop;
+        this.__loop = this.config.loop;
         this.__src = "";
 
-        this.preload = config.preload;
-        this.controls = config.controls;
-        this.autoplay = config.autoplay;
-        this.updateMsec = config.updateMsec;
+        if( this.config.chromeless ){
+            var pv = this.config.playerVars;
+            pv.control = 0;
+            pv.rel = 0;
+            pv.showinfo = 0;
+        }
+        this.preload = this.config.preload;
+        this.autoplay = this.config.autoplay;
+        this.updateMsec = this.config.updateMsec;
 
-        this.apiId = "YT" + YouTubePlayer.embedCount++ + "T" + (new Date()).getTime() ;
-        this.hd = config.hd;
-        this.annotations = config.annotations;
-        this.modestbranding = config.modestbranding;
-        this.showinfo = config.showinfo;
-        this.related = config.related;
-        this.captions = config.captions;
-        this.chromeless = config.chromeless;
 
-        MetaPlayer.proxy.proxyPlayer(this, this.video );
-        this.doEmbed(  this.video );
-        this.dispatcher = MetaPlayer.dispatcher( this.video );
-        MetaPlayer.youtube.instances[ this.apiId ] = this;
 
-        this.video.player = this;
+        MetaPlayer.dispatcher( this );
+
+        if( typeof youtube == "string" || ! youtube.getVideoEmbedCode ) {
+            this.target = $(youtube).get(0);
+            this.init();
+        }
+        else {
+            this.youtube = youtube;
+            this.target = youtube.a.parentNode;
+            this.addListeners();
+        }
+
+        this.video = MetaPlayer.proxy.proxyPlayer(this, this.target);
     };
 
 
-    if( window.MetaPlayer ) {
-        MetaPlayer.addPlayer("youtube", function ( options ) {
-            var el = $("<div></div>").appendTo(this.video);
-            return new YouTubePlayer(el, options).video;
-        });
-    }
-    else {
-        // allow stand-alone use
-        window.MetaPlayer = {};
-    }
+    MetaPlayer.addPlayer("youtube", function (youtube, options ) {
+        if( ! youtube ) {
+           youtube = $("<div></div>")
+               .addClass("mp-yt")
+               .appendTo(this.layout.stage);
+        }
+        var yt = new YouTubePlayer(youtube, options);
+        this.video = yt.video;
+        this.youtube = yt.youtube;
+    });
 
-    MetaPlayer.youtube = function (target, options) {
-        return new YouTubePlayer(target, options).video;
-    };
-
-    MetaPlayer.youtube.instances = {};
-
-    YouTubePlayer.embedCount = 0;
 
     YouTubePlayer.prototype = {
-        doEmbed : function (target) {
-            var url = this.getEmbedUrl();
 
-            var video = $(target);
+        init : function () {
 
-            video.empty();
+            if( window.YT instanceof Function ){
+                this.onApiReady();
+                return;
+            }
 
-            var replace = $("<div></div>")
-                .attr("id", this.apiId)
-                .appendTo(this.video);
+            var tag = document.createElement('script');
+            tag.src = "http://www.youtube.com/player_api";
+            var firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-            var params = {
-                wmode : "transparent",
-                allowScriptAccess: "always"
-
+            // play nice; global context
+            var self = this;
+            var oldReady = window.onYouTubePlayerAPIReady;
+            window.onYouTubePlayerAPIReady = function (){
+                self.onApiReady();
+                if( oldReady )
+                    oldReady.call(window);
             };
-            var atts = {
-                id:  this.apiId
-            };
-            swfobject.embedSWF(url,
-                 this.apiId, "100%", "100%", "8", null, null, params, atts);
         },
 
-        getEmbedUrl : function () {
-            var url =  this.chromeless ?
-                this.apiUrl :
-                this.videoUrl;
-
-            var params = {
-                enablejsapi : 1,
-                version : 3,
-                playerapiid : this.apiId,
-                autohide : 0,
-                autoplay : this.autoplay ? 1 : 0,
-                controls : this.controls ? 1 : 0,
-                fs : 1,
-                hd : this.hd ? 1 : 0,
-                rel : this.related ? 1 : 0,
-                showinfo : this.showinfo? 1 : 0,
-                iv_load_policy : this.annotations ? 1 : 0,
-                cc_load_policy : this.captions ? 1 : 1
-            };
-
-            return url + "?" + $.param(params,true);
+        onApiReady : function () {
+            this.youtube = new YT.Player( this.target, {
+                height: '100%',
+                width: '100%',
+//                playerVars : this.getParams()
+                playerVars : this.config.playerVars
+            });
+            this.addListeners();
         },
 
-        getCallbackString : function ( fnName ) {
-            var str = "MetaPlayer.youtube.instances['" + this.apiId +"']";
-            if( fnName != null )
-                str = str.concat( "."+fnName );
-            return str;
+        addListeners : function () {
+            var yt = this.youtube;
+            var self = this;
+
+            yt.addEventListener("onReady", function(e) {
+                self.onReady(e);
+            });
+            yt.addEventListener("onStateChange", function(e) {
+                self.onStateChange(e);
+            });
+            yt.addEventListener("onError", function(e) {
+                self.onError(e);
+            });
         },
 
         onReady : function () {
-            var video = $(this.video);
-
-            this.youtube = document.getElementById( this.apiId );
-
-            if(! this.youtube.playVideo ) {
+            if( ! this.isReady() ) {
                 this.error = "unabled to find youtube player";
+                this.dispatch("error");
                 return;
             }
 
             // flash implemented, works in IE?
             // player.addEventListener(event:String, listener:String):Void
-            this.youtube.addEventListener("onStateChange", this.getCallbackString("onStateChange") );
             this.startVideo();
         },
 
+        isReady : function () {
+            return this.youtube && this.youtube.playVideo;
+        },
 
-        onStateChange : function (state) {
+        onStateChange : function (e) {
+            var state = e.data;
+
             // http://code.google.com/apis/youtube/js_api_reference.html#Events
             switch(state) {
                 case -1: // unstarted
                     break;
                 case 0: //ended
                     this.__ended = true;
-                    this.video.dispatch("ended");
+                    this.dispatch("ended");
                     break;
                 case 1: // playing
                     this.__paused = false;
-                    this.video.dispatch("playing");
-                    this.video.dispatch("play");
+                    this.dispatch("playing");
+                    this.dispatch("play");
                     break;
                 case 2: // paused
                     this.__paused = true;
-                    this.video.dispatch("pause");
+                    this.dispatch("pause");
                     break;
                 case 3: // buffering
                     this.startDurationCheck();
                     this.startTimeCheck(); // check while paused to handle event-less seeks
                     break;
                 case 5: // queued
-                    this.video.dispatch("canplay");
-                    this.video.dispatch("loadeddata");
+                    this.dispatch("canplay");
+                    this.dispatch("loadeddata");
                     break;
             }
+        },
+
+        onError : function (e) {
+            this.dispatch("error");
         },
 
         startTimeCheck : function () {
@@ -3133,7 +3127,7 @@
 
         onTimeUpdate: function () {
             this.updateTime();
-            this.video.dispatch("timeupdate");
+            this.dispatch("timeupdate");
         },
 
         updateTime : function () {
@@ -3157,8 +3151,8 @@
             var duration = this.youtube.getDuration();
             if( duration > 0 ) {
                 this.__duration = duration;
-                this.video.dispatch("loadedmetadata");
-                this.video.dispatch("durationchange");
+                this.dispatch("loadedmetadata");
+                this.dispatch("durationchange");
                 clearInterval( this._durationCheckInterval );
                 this._durationCheckInterval = null;
             }
@@ -3166,7 +3160,7 @@
 
         startVideo : function () {
             // not loaded yet
-            if( ! this.youtube )
+            if( ! this.isReady() )
                 return;
 
             this.__ended = false;
@@ -3183,12 +3177,12 @@
             }
 
             if( this.__readyState < 4 ){
-                this.video.dispatch("loadstart");
+                this.dispatch("loadstart");
                 this.__readyState = 4;
             }
 
             if( src.match("^http") ){
-                var videoId = src.match( /www.youtube.com\/(watch\?v=|v\/)(\w+)/ )[2];
+                var videoId = src.match( /www.youtube.com\/(watch\?v=|v\/)([\w-]+)/ )[2];
             }
             this.youtube.cueVideoById( videoId || src );
 
@@ -3201,7 +3195,7 @@
 
         doSeek : function (time) {
             this.__seeking = true;
-            this.video.dispatch("seeking");
+            this.dispatch("seeking");
             this.youtube.seekTo( time );
             this.__currentTime = time;
 
@@ -3211,8 +3205,8 @@
             setTimeout (function () {
                 self.updateTime(); // trigger a time update
                 self.__seeking = false;
-                self.video.dispatch("seeked");
-                self.video.dispatch("timeupdate");
+                self.dispatch("seeked");
+                self.dispatch("timeupdate");
             }, 1500)
         },
 
@@ -3221,7 +3215,7 @@
         load : function () {
             this.preload = true;
 
-            if( ! this.youtube )
+            if( ! this.isReady() )
                 return;
 
             if( this.youtube.getPlayerState() != -1 )
@@ -3288,7 +3282,7 @@
                     this.youtube.mute();
                 else
                     this.youtube.unMute();
-                this.video.dispatch("volumechange");
+                this.dispatch("volumechange");
                 return val;
             }
 
@@ -3298,10 +3292,10 @@
         volume : function (val){
             if( val != null ){
                 this.__volume = val;
-                if( ! this.youtube )
+                if( ! this.isReady() )
                     return val;
                 this.youtube.setVolume(val * 100)
-                this.video.dispatch("volumechange");
+                this.dispatch("volumechange");
             }
             return this.__volume;
         },
