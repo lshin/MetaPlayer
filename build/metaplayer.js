@@ -2968,7 +2968,7 @@
 
         if( this.config.chromeless ){
             var pv = this.config.playerVars;
-            pv.control = 0;
+            pv.controls = 0;
             pv.rel = 0;
             pv.showinfo = 0;
         }
@@ -2995,11 +2995,23 @@
 
 
     MetaPlayer.addPlayer("youtube", function (youtube, options ) {
+
+        // single arg form
+        if( ! options && youtube instanceof Object ){
+            youtube = null;
+        }
+
+        if( ! options ) {
+            options = {};
+        }
+
         if( ! youtube ) {
+           options.chromeless = true;
            youtube = $("<div></div>")
                .addClass("mp-yt")
                .appendTo(this.layout.stage);
         }
+
         var yt = new YouTubePlayer(youtube, options);
         this.video = yt.video;
         this.youtube = yt.youtube;
@@ -3229,14 +3241,14 @@
 
         play : function () {
             this.autoplay = true;
-            if( ! this.youtube )
+            if( ! this.isReady() )
                 return;
 
             this.youtube.playVideo()
         },
 
         pause : function () {
-            if(! this.youtube  )
+            if(! this.isReady()  )
                 return false;
             this.youtube.pauseVideo()
         },
@@ -3258,13 +3270,13 @@
         },
 
         ended : function () {
-            if(! this.youtube  )
+            if(! this.isReady()  )
                 return false;
             return (this.youtube.getPlayerState() == 0);
         },
 
         currentTime : function (val){
-            if(! this.youtube  )
+            if(! this.isReady()  )
                 return 0;
             if( val != undefined ) {
                 this.__ended = false;
@@ -3276,7 +3288,7 @@
         muted : function (val){
             if( val != null ){
                 this.__muted = val
-                if( ! this.youtube )
+                if( ! this.isReady() )
                     return val;
                 if( val  )
                     this.youtube.mute();
