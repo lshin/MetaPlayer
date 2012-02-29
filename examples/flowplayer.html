@@ -58,15 +58,16 @@
                         playlist : []
                     });
 
-    player = MetaPlayer("#target")
-            .flowplayer( fp )
-                    .ramp()
+            player = MetaPlayer("#target")
+                    .flowplayer( fp )
+                    .ramp("ramp:/advisor:48920875")
                     .overlay()
                     .captions()
                     .endcap()
                     .controls()
-                    .load("ramp:/advisor:48920875");
+                    .load();
 
+            player.video.autoplay = true;
         });
 
     </script>

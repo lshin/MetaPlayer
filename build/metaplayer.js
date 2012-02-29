@@ -697,7 +697,7 @@
 
             this._lastUri = uri;
             e = this.createEvent();
-            e.initEvent(MetaData.FOCUS);
+            e.initEvent(MetaData.FOCUS, false, true);
             e.uri = uri;
             this.dispatchEvent(e);
         },
