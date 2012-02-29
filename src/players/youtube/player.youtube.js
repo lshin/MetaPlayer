@@ -68,7 +68,8 @@
     MetaPlayer.addPlayer("youtube", function (youtube, options ) {
 
         // single arg form
-        if( ! options && youtube instanceof Object ){
+        if( ! options && youtube instanceof Object && ! youtube.getVideoEmbedCode){
+            options = youtube;
             youtube = null;
         }
 
@@ -77,7 +78,11 @@
         }
 
         if( ! youtube ) {
-           options.chromeless = true;
+
+            // disable default UI if initialized without options
+            if( options.chromeless == null )
+                options.chromeless = true;
+
            youtube = $("<div></div>")
                .addClass("mp-yt")
                .appendTo(this.layout.stage);
@@ -85,8 +90,13 @@
 
         var yt = new YouTubePlayer(youtube, options);
         this.video = yt.video;
-        this.youtube = yt.youtube;
+        this.youtube = yt
     });
+
+    MetaPlayer.youtube = function (youtube, options){
+        var yt = new YouTubePlayer(youtube, options);
+        return yt.video;
+    }
 
 
     YouTubePlayer.prototype = {

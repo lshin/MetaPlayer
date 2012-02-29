@@ -445,6 +445,7 @@
 
         _renderCues : function (type, cues){
             var self = this;
+
             this._scheduleCues(type, cues);
 
             // additionally schedule any clones
@@ -2086,7 +2087,7 @@
                     this.player.video.dispatch("error");
                 },
                 success : function (response, textStatus, jqXHR) {
-                    var items = this.parse(response, uri);
+                    var items = this.parse(response, url);
                     if( items.length )
                         this.setItems(items, isPlaylist);
                 }
@@ -2157,8 +2158,10 @@
                 item.metadata.ramp[ meta.attr('name') ] = meta.attr('content') || meta.text();
             });
 
-            if( item.metadata.ramp.rampId ){
-                item.metadata.ramp.serviceURL = uri.replace(/(mp2-playlist[-\?]e=)(\d+)/, "$1" + item.metadata.ramp.rampId);
+            if( item.metadata.ramp.rampId && ! item.metadata.ramp.serviceURL ){
+                if( uri.match( /mp2-playlist/ ) ) {
+                    item.metadata.ramp.serviceURL = uri.replace(/(mp2-playlist[-\?]e=)(\d+)/, "$1" + item.metadata.ramp.rampId);
+                }
             }
 
             // content & transcodes
@@ -2403,6 +2406,11 @@
         var html5 = new Html5Player(this.layout.stage, options);
         this.video = html5.video;
     });
+
+    MetaPlayer.html5 = function (target, options) {
+        var html5 = new Html5Player(target, options);
+        return html5.video;
+    };
 
     Html5Player.prototype = {
         _createMarkup : function ( parent ) {
@@ -2996,7 +3004,8 @@
     MetaPlayer.addPlayer("youtube", function (youtube, options ) {
 
         // single arg form
-        if( ! options && youtube instanceof Object ){
+        if( ! options && youtube instanceof Object && ! youtube.getVideoEmbedCode){
+            options = youtube;
             youtube = null;
         }
 
@@ -3005,7 +3014,11 @@
         }
 
         if( ! youtube ) {
-           options.chromeless = true;
+
+            // disable default UI if initialized without options
+            if( options.chromeless == null )
+                options.chromeless = true;
+
            youtube = $("<div></div>")
                .addClass("mp-yt")
                .appendTo(this.layout.stage);
@@ -3013,8 +3026,13 @@
 
         var yt = new YouTubePlayer(youtube, options);
         this.video = yt.video;
-        this.youtube = yt.youtube;
+        this.youtube = yt
     });
+
+    MetaPlayer.youtube = function (youtube, options){
+        var yt = new YouTubePlayer(youtube, options);
+        return yt.video;
+    }
 
 
     YouTubePlayer.prototype = {

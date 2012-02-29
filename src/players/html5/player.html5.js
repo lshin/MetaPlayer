@@ -30,6 +30,11 @@
         this.video = html5.video;
     });
 
+    MetaPlayer.html5 = function (target, options) {
+        var html5 = new Html5Player(target, options);
+        return html5.video;
+    };
+
     Html5Player.prototype = {
         _createMarkup : function ( parent ) {
             var p = $(parent);

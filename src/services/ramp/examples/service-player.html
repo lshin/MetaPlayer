@@ -38,26 +38,26 @@
 
 
     <script type="text/javascript">
-        var metaplayer;
+        var player;
 
         $(function () {
             var template = $('#template').remove();
 
-            metaplayer = MetaPlayer('#target')
+            player = MetaPlayer('#target')
                     .ramp()
-                    .youtube()
+                    .youtube({ chromeless : false })
                     .load();
 
-            metaplayer.video.autoplay = true;
+            player.video.autoplay = true;
 
 
-            metaplayer.metadata.listen( MetaPlayer.MetaData.DATA, function (e) {
+            player.metadata.listen( MetaPlayer.MetaData.DATA, function (e) {
 
                 // show some of the metadata fields
                 $('#title').text( e.data.title);
                 $('#description').text( e.data.description);
-                $('#source').text( metaplayer.video.src )
-                        .attr("href", metaplayer.video.src );
+                $('#source').text( player.video.src )
+                        .attr("href", player.video.src );
 
 
                 // jumptags
@@ -77,7 +77,7 @@
                                 .appendTo(times)
                                 .attr("href", "#"+ts)
                                 .click( function (e) {
-                                    metaplayer.video.currentTime = ts;
+                                    player.video.currentTime = ts;
                                     e.preventDefault();
                                     return false;
                                 });
@@ -106,8 +106,8 @@
 <body>
 
 <div>
-    <button onclick="metaplayer.ramp('../../../../media/sxsw/L-Style.xml')">L-Style.xml</button>
-    <button onclick="metaplayer.ramp('../../../../media/sxsw/Galaxy_Mini_2.xml')">Galaxy_Mini_2.xml</button>
+    <button onclick="player.ramp('../../../../media/sxsw/L-Style.xml')">L-Style.xml</button>
+    <button onclick="player.ramp('../../../../media/sxsw/Galaxy_Mini_2.xml')">Galaxy_Mini_2.xml</button>
 </div>
 
 <div>

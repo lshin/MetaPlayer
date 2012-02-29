@@ -206,6 +206,7 @@
 
         _renderCues : function (type, cues){
             var self = this;
+
             this._scheduleCues(type, cues);
 
             // additionally schedule any clones

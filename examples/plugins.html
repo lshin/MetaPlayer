@@ -77,8 +77,6 @@
         $( function () {
 
             player = MetaPlayer('#target')
-                    .ramp()
-
                     .flowplayer({
                         swfUrl : "../external/flowplayer/flowplayer-3.2.7.swf"
                     })
@@ -87,19 +85,19 @@
                         timestamps: false,
                         breaks: false
                     })
-
+//
                     .controls({
                         renderTags : false
                     })
-
+//
                     .overlay()
                     .endcap()
-
+//
                     .searchbox("#search")
                     .social("#social")
                     .embed("#embed");
 
-            player.load("ramp:/advisor:48920875");
+            player.ramp("ramp:/advisor:48920875").load();
 
             player.video.autoplay = true;
 
