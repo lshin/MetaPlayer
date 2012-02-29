@@ -21,7 +21,7 @@
         ovpConfig: {
             sources:[
                     {'src':'/videos/trailer.ogv', 'type':'video/ogg'},
-                    {'src':'/videos/trailer.mp4','type':'video/mp4'},
+                    {'src':'/videos/trailer.mp4','type':'video/mp4'}
             ],
             width : '100%', // swfobject requires width/height of player.
             height : '100%',
@@ -51,25 +51,25 @@
         
         this._ovp = this._render( $(el).get(0) );
         this.video = this._ovp.getWrapperNode();
+        this.dispatcher = MetaPlayer.dispatcher( this );
         MetaPlayer.proxy.proxyPlayer( this, this.video );
-        this.dispatcher = MetaPlayer.dispatcher( this.video );
-        
-        this.video.player = this;
         this._setControls();
         this._addEventListeners();
     };
 
     if( window.MetaPlayer ) {
         MetaPlayer.addPlayer("ovp", function ( options ) {
-            var target = $("<div></div>").appendTo(this.video);
-            return new OVPlayer(target, options).video;
+            var target = $("<div></div>").appendTo(this.layout.stage);
+            this.ovp = OVPlayer(target, options);
+            this.video = this.ovp.video;
         });
     } else {
         window.MetaPlayer = {};
     }
 
     MetaPlayer.ovp = function (target, options) {
-        return new OVPlayer(target, options).video;
+        var ovp = OVPlayer(target, options);
+        return ovp.video;
     };
 
     OVPlayer.prototype = {
@@ -95,7 +95,7 @@
         _onBeforeLoad : function () {
             if(typeof this._ovp.player !== "object")
                 return;
-            this.dispatcher.dispatch('loadstart');
+            this.dispatch('loadstart');
             this._loadtimer.reset();
             this._onReady();
             this._startDurationCheck();
@@ -103,8 +103,8 @@
         _onReady : function () {
             this._statustimer.start();
             this.__readyState = 4;
-            this.dispatcher.dispatch("loadeddata");
-            this.dispatcher.dispatch("canplay");
+            this.dispatch("loadeddata");
+            this.dispatch("canplay");
             this.load();
             
             this.video.pause();
@@ -126,9 +126,9 @@
             var duration = this._ovp.getDuration();
             if( duration > 0 ) {
                 this.__duration = duration;
-                this.dispatcher.dispatch("loadeddata");
-                this.dispatcher.dispatch("loadedmetadata");
-                this.dispatcher.dispatch("durationchange");
+                this.dispatch("loadeddata");
+                this.dispatch("loadedmetadata");
+                this.dispatch("durationchange");
                 clearInterval( this._durationCheckInterval );
                 this._durationCheckInterval = null;
             }
@@ -137,15 +137,15 @@
         _onStatus : function () {
             if ( this._ovp.isPlaying() ) {
                 this.__paused = false;
-                this.dispatcher.dispatch("playing");
-                this.dispatcher.dispatch("play");
-                this.dispatcher.dispatch("timeupdate");
+                this.dispatch("playing");
+                this.dispatch("play");
+                this.dispatch("timeupdate");
             } else if ( this._ovp.isEnded() ){
                 this.__paused = true;
-                this.dispatcher.dispatch("ended");
+                this.dispatch("ended");
             } else {
                 this.__paused = true;
-                this.dispatcher.dispatch("pause");
+                this.dispatch("pause");
             }
         },
         _setControls : function () {
@@ -171,7 +171,7 @@
         },
         doSeek : function (time) {
             this.__seeking = true;
-            this.dispatcher.dispatch("seeking");
+            this.dispatch("seeking");
             this._ovp.seekTo( time );
             this.__currentTime = time;
 
@@ -181,8 +181,8 @@
             setTimeout (function () {
                 self.updateTime(); // trigger a time update
                 self.__seeking = false;
-                self.dispatcher.dispatch("seeked");
-                self.dispatcher.dispatch("timeupdate");
+                self.dispatch("seeked");
+                self.dispatch("timeupdate");
             }, 1500)
         },
         updateTime : function () {
@@ -245,7 +245,7 @@
         currentTime : function (val) {    
             if( typeof val !== 'undefined' ) {
                 if( val < 0 )
-                    val = 0
+                    val = 0;
                 if( val > this.duration )
                     val = this.duration;
                 this.doSeek(val);
@@ -260,14 +260,14 @@
         },
         muted : function (val) {
             if( val != null ){
-                this.__muted = val
+                this.__muted = val;
                 if( ! this._ovp )
                     return val;
                 if( val )
                     this._ovp.mutetoggle();
                 else
                     this._ovp.mutetoggle();
-                this.dispatcher.dispatch("volumechange");
+                this.dispatch("volumechange");
                 return val;
             }
 
@@ -280,7 +280,7 @@
                     return val;
                 // ovp doesn't support to change any volume level.
                 this._ovp.mutetoggle();
-                this.dispatcher.dispatch("volumechange");
+                this.dispatch("volumechange");
             }
             return this.__volume;
         },

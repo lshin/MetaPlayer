@@ -2472,7 +2472,7 @@
 
         this.config = $.extend(true, {}, defaults, options);
 
-        this.dispatcher = MetaPlayer.dispatcher(el);
+        this.dispatcher = MetaPlayer.dispatcher(this);
 
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
         this.__seeking = null;
@@ -2553,23 +2553,23 @@
 
             // Player listeners
             this._flowplayer.onVolume( function (level) {
-                self.dispatcher.dispatch("volumechange");
+                self.dispatch("volumechange");
             });
 
             this._flowplayer.onMute( function (level) {
-                self.dispatcher.dispatch("volumechange");
+                self.dispatch("volumechange");
             });
 
             this._flowplayer.onUnmute( function (level) {
-                self.dispatcher.dispatch("volumechange");
+                self.dispatch("volumechange");
             });
 
             this._flowplayer.onPlaylistReplace( function () {
-                self.dispatcher.dispatch("playlistChange");
+                self.dispatch("playlistChange");
             });
 
             this._flowplayer.onClipAdd( function () {
-                self.dispatcher.dispatch("playlistChange");
+                self.dispatch("playlistChange");
             });
 
             this.controls( this.config.controls );
@@ -2588,7 +2588,7 @@
 
             }
 
-            self.dispatcher.dispatch('loadstart');
+            self.dispatch('loadstart');
 
             if( this.preload() || this.autoplay()  )
                 this.load();
@@ -2619,10 +2619,10 @@
                     $(self._flowplayer.getParent() ).find('video').get(0).controls = false;
                 }
 
-                self.dispatcher.dispatch('loadeddata');
+                self.dispatch('loadeddata');
                 self.__duration = clip.duration;
-                self.dispatcher.dispatch("durationchange");
-                self.dispatcher.dispatch('loadedmetadata');
+                self.dispatch("durationchange");
+                self.dispatch('loadedmetadata');
             });
 
             clip.onStop( function (clip) {
@@ -2635,7 +2635,7 @@
                 self.__seeking = null;
                 self._setPlaying(false);
                 self._flowplayer.stop();
-                self.dispatcher.dispatch("ended");
+                self.dispatch("ended");
             });
 
             clip.onPause( function (clip) {
@@ -2646,17 +2646,17 @@
 
             clip.onResume( function (clip) {
                 self._setPlaying(true);
-                self.dispatcher.dispatch("play");
+                self.dispatch("play");
             });
 
             clip.onBeforeSeek( function (clip) {
 
-                self.dispatcher.dispatch("seeking");
-                self.dispatcher.dispatch("timeupdate");
+                self.dispatch("seeking");
+                self.dispatch("timeupdate");
 
                 // fp doesn't do seeks while paused until it plays again, so we fake
                 if( self.paused() )  {
-                    self.dispatcher.dispatch("seeked");
+                    self.dispatch("seeked");
                     self.__seeking = null;
                 }
             });
@@ -2665,7 +2665,7 @@
                 this.__currentTimeCache = 0;
                 self.__seeking = null;
                 if( ! self.paused() )
-                    self.dispatcher.dispatch("seeked");
+                    self.dispatch("seeked");
             });
 
         },
@@ -2673,11 +2673,11 @@
         _setReady : function (){
             if( this.__readyState != 4 ) {
                 this.__readyState = 4;
-                this.dispatcher.dispatch("canplay");
+                this.dispatch("canplay");
             }
             else {
-                this.dispatcher.dispatch("seeking");
-                this.dispatcher.dispatch("seeked");
+                this.dispatch("seeking");
+                this.dispatch("seeked");
             }
         },
 
@@ -2897,7 +2897,6 @@
 
         attach : function (target) {
             target = MetaPlayer.proxy.getProxyObject(target);
-            this.dispatcher.attach(target);
             MetaPlayer.proxy.proxyPlayer(this, target);
             return target;
         },
@@ -2910,19 +2909,19 @@
 
             this._statepoll.reset();
             if( this.paused()  ) {
-                this.dispatcher.dispatch("pause");
+                this.dispatch("pause");
                 this._timeupdater.reset();
             }
             else {
                 this.autoplay(true);
-                this.dispatcher.dispatch("playing");
-                this.dispatcher.dispatch("play");
+                this.dispatch("playing");
+                this.dispatch("play");
                 this._timeupdater.start();
             }
         },
 
         _onTimeUpdate : function  () {
-            this.dispatcher.dispatch("timeupdate");
+            this.dispatch("timeupdate");
         }
 
     };
