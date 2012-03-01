@@ -118,7 +118,7 @@ all copies or substantial portions of the Software.
 
             this.find('results-close').click( function (e) {
                 self.find('search-input').val('');
-                self.player.search.query('', self.onSearchResult, self);
+                self.player.search.query('');
             });
 
             var volume_bg = this.find('volume-bg');
@@ -221,22 +221,25 @@ all copies or substantial portions of the Software.
 
         onTagClick : function (e) {
             var term = $(e.currentTarget).data().term;
-            this.find('search-input').val("\"" +  term + "\"");
-            this.doSearch();
+            this.player.search.query(term);
         },
 
         doSearch : function () {
             var q = this.find('search-input').val();
-            this.player.search.query(q, this.onSearchResult, this);
+            this.player.search.query(q);
         },
 
-        onSearchResult : function (response) {
+        onSearchStart : function (e) {
+            this.find('search-input').val(e.query);
+        },
+
+        onSearchResult : function (e) {
             this.clearSearch();
+
+            var response = e.data;
 
             if( ! response.query.length )
                 return;
-
-//            this.find('search-input').val(response.query.join(' '));
 
             var has_results = (response.results.length == 0);
             this.find('results-none').toggle( has_results );
@@ -342,6 +345,8 @@ all copies or substantial portions of the Software.
             var playlist = this.player.playlist;
             playlist.listen("trackchange", this.onTrackChange, this);
             playlist.listen("playlistchange", this.onPlaylistChange, this);
+            this.player.search.listen(MetaPlayer.Search.QUERY, this.onSearchStart, this);
+            this.player.search.listen(MetaPlayer.Search.RESULTS, this.onSearchResult, this);
         },
 
         onVolumeDragStart : function (e) {

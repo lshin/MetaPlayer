@@ -76,7 +76,6 @@
         };
 
         var player = MetaPlayer().load();
-        console.log("loading..");
 
         player.metadata().listen( MetaPlayer.MetaData.LOAD, function (e) {
             console.log([e.type, e.uri, e.metadata, e]);

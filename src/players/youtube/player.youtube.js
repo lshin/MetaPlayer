@@ -49,19 +49,27 @@
 
 
 
+
         MetaPlayer.dispatcher( this );
 
         if( typeof youtube == "string" || ! youtube.getVideoEmbedCode ) {
-            this.target = $(youtube).get(0);
+            this.container = $(youtube).get(0);
+            // add another child so our proxy div doesn't get replaced by the frame
+            this.target = $("<div></div>").appendTo(this.container).get(0);
             this.init();
         }
         else {
             this.youtube = youtube;
-            this.target = youtube.a.parentNode;
+            // wrap so we have a non-iframe container to append source elements to
+            this.container  = $("<div></div>")
+                .addClass("mp-youtube")
+                .appendTo( youtube.a.parentNode )
+                .append( youtube.a )
+                .get(0);
             this.addListeners();
         }
 
-        this.video = MetaPlayer.proxy.proxyPlayer(this, this.target);
+        this.video = MetaPlayer.proxy.proxyPlayer(this, this.container);
     };
 
 
@@ -84,7 +92,7 @@
                 options.chromeless = true;
 
            youtube = $("<div></div>")
-               .addClass("mp-yt")
+               .addClass("mp-youtube")
                .appendTo(this.layout.stage);
         }
 

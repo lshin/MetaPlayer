@@ -16,6 +16,10 @@
         this.player.listen(MetaPlayer.DESTROY, this.destroy, this);
     };
 
+
+    Search.QUERY = "QUERY";
+    Search.RESULTS = "results";
+
     MetaPlayer.Search = Search;
 
     MetaPlayer.addPlugin("search", function (options) {
@@ -27,6 +31,12 @@
             var data = this.player.metadata.getData();
             if(! data.ramp.searchapi )
                 throw "no searchapi available";
+
+
+            var e = this.createEvent();
+            e.initEvent(Search.QUERY, false, false);
+            e.query = query;
+            this.dispatchEvent(e);
 
             this._queryAPI(data.ramp.searchapi, query, callback, scope)
         },
@@ -47,7 +57,7 @@
             };
 
             if( ! query ) {
-                this.setResults({ query : [], results : [] }, callback, scope);
+                this.setResults({ query : [], results : [] }, query, callback, scope);
                 return;
             }
 
@@ -61,17 +71,22 @@
                 },
                 success : function (response, textStatus, jqXHR) {
                     var results = this.parseSearch(response, callback, scope);
-                    this.setResults(results, callback, scope);
+                    this.setResults(results, query, callback, scope);
                 }
             });
         },
 
-        setResults : function (results, callback, scope) {
-            console.log("setResults", results);
-            if( callback )
-                callback.call(scope, results);
-            else
-                this.dispatch("search", results);
+        setResults : function (results, query, callback, scope) {
+            if( callback ){
+                callback.call(scope, results, query);
+                return;
+            }
+
+            var e = this.createEvent();
+            e.initEvent(Search.RESULTS, false, false);
+            e.query = query;
+            e.data = results;
+            this.dispatchEvent(e);
         },
 
         parseSearch : function (xml) {
