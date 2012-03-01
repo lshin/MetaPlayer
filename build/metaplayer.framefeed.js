@@ -20,8 +20,10 @@ all copies or substantial portions of the Software.
 
     var defaults = {
         cssPrefix : "mp-ff",
-        filterMsec : 750,
-        revealMsec : 1500
+        filterMsec : 500,
+        revealMsec : 1500,
+        duplicates : false,
+        baseUrl : ""
     };
 
     var FrameFeed = function (target, options) {
@@ -38,13 +40,30 @@ all copies or substantial portions of the Software.
             return new FrameFeed(target, options);
 
         this.config = $.extend(true, {}, defaults, options);
-        this.target = target;
+
+
+        this.target = $("<div></div>")
+            .addClass( this.cssName("scroller") )
+            .width("100%")
+            .height("100%")
+            .appendTo(target);
+
+        this.scrollbar = MetaPlayer.scrollbar(target);
+        this.seen = {};
         this.init();
 
-        FrameFeed.instances[ this.target.id ] = this;
+        MetaPlayer.dispatcher(this);
+
+        FrameFeed.instances[ target.id ] = this;
     };
 
     FrameFeed.instances = {};
+
+
+    MetaPlayer.addPlugin("framefeed", function (target, options){
+        this.cues.enable("framefeed", { target : target });
+        this.framefeed = FrameFeed(target, options);
+    });
 
     MetaPlayer.framefeed = FrameFeed;
 
@@ -57,87 +76,137 @@ all copies or substantial portions of the Software.
         },
 
         filter: function (query) {
+            this.hideAll();
             this.query = query;
-            $(this.target).find("div")
-                .stop()
-                .height(0)
-                .css('opacity',0);
             this.render();
+            this.scrollbar.scrollTo(0);
+
+        },
+
+        hideAll : function  () {
+            var self = this;
+            $.each(this.items, function (i, val) {
+                self.hideItem(val);
+            });
+            this.dispatch("size")
         },
 
         render : function  () {
             var self = this;
             $.each(this.items, function (i, val) {
-                if ( ! self.filtered(val) && val.active ){
-                    val.item.stop().
-                        height(val.height)
-                        .animate({
-                            opacity: 1
-                        }, self.config.filterMsec);
-                }
-            })
+                self.renderItem(val);
+            });
+            this.scrollbar.render();
         },
 
         filtered : function (obj) {
-            return ( this.query && obj.text && ! obj.text.match(this.query) );
+            return ( this.query && (! obj.tags || ! obj.tags.match(this.query) ) );
         },
 
         focus : function (obj) {
+            this.render();
             obj.active = true;
-            this.frame(obj);
+            this.frame(obj, true);
         },
 
         blur : function (obj) {
             obj.active = false;
-            obj.item.stop().height(0).css('opacity', 0);
+            this.hideItem(obj);
+            this.scrollbar.render();
         },
 
-        frame : function (obj) {
+
+        frame : function (obj, animate) {
             if( typeof obj == "string" ){
                 obj = { url :  obj };
             }
 
-            this.render();
+            var url = obj.url;
+            if(! url.match('^http') && this.config.baseUrl )
+                url = this.config.baseUrl + url;
+
+
+            if( this.seen[url] && this.seen[url].start != obj.start && ! this.config.duplicates) {
+                return;
+            }
+            this.seen[url] = obj;
+
+            var self = this;
 
             if( ! obj.item ){
+                obj.loadAnimate = true;
                 var frame = $("<iframe frameborder='0'></iframe>")
-                    .attr("src", obj.url)
-                    .attr("scrolling", false)
+                    .attr("src", url)
+                    .attr("scrolling", "no")
                     .attr("marginheight", 0)
                     .attr("marginwidth", 0)
+                    .bind("load", function () {
+                        obj.loaded = true;
+                        self.renderItem(obj,
+                            obj.loadAnimate ? self.config.revealMsec : null);
+                    })
                     .attr("height", obj.height);
 
                 obj.item = $("<div></div>")
                     .addClass( this.cssName("box") )
                     .prependTo( this.target )
-                    .height(0)
-                    .css('opacity', 0)
                     .append(frame);
 
+                this.hideItem( obj );;
                 this.items.push(obj);
             }
+            else {
+                this.renderItem(obj, this.config.revealMsec);
+            }
+        },
 
-            if( this.filtered(obj) )
+        hideItem : function (obj) {
+            obj.item
+                .height(0)
+                .hide()
+                .css('opacity', 0)
+        },
+
+        renderItem : function (obj, duration) {
+            obj.item.stop();
+            obj.loadAnimate = false;
+
+            if( ! obj.active || ! obj.loaded || this.filtered(obj) ){
+                this.hideItem(obj);
                 return;
+            }
 
-            // if user has scrolled down, fade in
-            var scroll = $(this.target).scrollTop();
-            if( scroll > 0 ){
-                obj.item.height(obj.height)
+            var rendered = obj.item.css('opacity') == 1;
+            if( rendered ){
+                return;
+            }
+            obj.item.show();
+
+            var scroll = this.scrollbar.scrollTop();
+            var self = this;
+
+            if( scroll > 0 || ! duration ){
+                // fade in without height animation
+                obj.item
+                    .height(obj.height)
                     .animate({
                         opacity: 1
-                    }, this.config.revealMsec);
-                $(this.target).scrollTop( scroll + obj.height );
+                    }, this.config.filterMsec );
 
+                if( scroll && duration) {
+                    this.scrollbar.scrollTo( 0 , scroll + obj.height );
+                }
             }
             // else scroll and fade in
             else {
                 obj.item.animate({
                     height: obj.height,
                     opacity: 1
-                }, this.config.revealMsec);
+                }, duration, function () {
+                    self.scrollbar.render();
+                });
             }
-
+            self.dispatch("size");
         },
 
         clear : function () {

@@ -33,19 +33,21 @@ all copies or substantial portions of the Software.
         renderTags : true,
         renderMetaq : false,
         autoHide : false,
+        annotationAnimate : true,
+        annotationEasing : '',
+        annotationMsec : 1200,
+        annotationEntropy : 1,
+        annotationSpacing : .5,
         showBelow : true
     };
 
     var Controls = function (player, options) {
 
-        if( !(this instanceof Controls) )
-            return new Controls(player, options);
-
         this.config = $.extend(true, {}, defaults, options);
 
-        this.container = $(this.config.container || $(player.video).parents('.metaplayer') );
+        this.container = $(this.config.container ||  player.layout.base );
+        this.player = player;
         this.video = player.video;
-        this.dispatcher = player.dispatcher;
 
         this.annotations = [];
         this.video.controls = false;
@@ -78,12 +80,8 @@ all copies or substantial portions of the Software.
             this.toggle(false, 0);
     };
 
-    MetaPlayer.controls = function (video, options) {
-        return Controls(this, options);
-    };
-
     MetaPlayer.addPlugin("controls", function (options) {
-        return Controls(this, options);
+        this.controls = new Controls(this, options);
     });
 
     Controls.prototype = {
@@ -142,19 +140,20 @@ all copies or substantial portions of the Software.
             });
         },
 
-        addDataListeners : function (player) {
-            var d = this.dispatcher;
+        addDataListeners : function () {
+            var metadata = this.player.metadata;
             if( this.config.renderTags )
-                d.listen("tags", this.onTags, this);
+                metadata.listen( MetaPlayer.MetaData.DATA, this.onTags, this);
 
-            if( this.config.renderMetaq )
-                d.listen("metaq", this._onMetaq, this);
+            var playlist = this.player.playlist;
+            playlist.listen("trackchange", this.onTrackChange, this);
 
-            d.listen("metadata", this.onMetaData, this);
-            d.listen("search", this.onSearch, this);
+            var search = this.player.search;
+            search.listen("search", this.onSearch, this);
         },
 
-        onTags : function (e, tags) {
+        onTags : function (e) {
+            var tags = e.data.ramp.tags;
             var self = this;
             $.each(tags, function (i, tag){
                 $.each(tag.timestamps, function (j, time){
@@ -174,7 +173,7 @@ all copies or substantial portions of the Software.
             this.renderAnnotations();
         },
 
-        onMetaData: function (e, metadata) {
+        onTrackChange: function (e, track) {
             this.clearAnnotations();
         },
 
@@ -320,7 +319,8 @@ all copies or substantial portions of the Software.
             this.find('play').toggleClass( this.cssName('pause'), ! this.video.paused );
             this.find('time-duration').html(' / ' + this.formatTime( duration ) );
 
-            this.renderAnnotations();
+            if( this.annotations.modified )
+                this.renderAnnotations();
 
             var msec = this.config.trackIntervalMsec;
 
@@ -399,7 +399,7 @@ all copies or substantial portions of the Software.
         },
 
         showBelow : function (bool){
-            var stage = $(this.video);
+            var stage = $(this.player.layout.stage);
             var h = this.find().height();
             var b = parseFloat( stage.css('bottom') );
             if( bool ) {
@@ -432,28 +432,62 @@ all copies or substantial portions of the Software.
                 marker.addClass( this.cssName(cssClass) );
 
             overlay.append(marker);
+            this.annotations.modified = true;
             this.annotations.push({
-                start : start,
-                end : end,
+                rendered: false,
+                start : parseFloat( start ),
+                end : parseFloat( end ) || null,
                 el : marker,
                 cssClass : cssClass
             });
+
+            this.renderAnnotations();
+
             return marker;
+
         },
 
         renderAnnotations : function () {
             var duration = this.video.duration;
             if( ! duration )
                 return;
-            $(this.annotations).each( function (i, annotation) {
+
+            var videoHeight = $(this.video).height();
+            var config = this.config;
+            var last;
+            var spacing = this.config.annotationSpacing
+            var sorted = this.annotations.sort( Controls.annotationSort );
+            $(sorted).each( function (i, annotation) {
+
+                if( last && (last.start + spacing > annotation.start) ){
+                    annotation.el.hide();
+                    return;
+                }
+                annotation.el.show();
+                last = annotation;
+
+
                 var trackPercent = annotation.start / duration * 100;
+
+                if( trackPercent > 100 )
+                    trackPercent = 100;
+
                 annotation.el.css('left', trackPercent + "%");
                 if( annotation.end ) {
                     var widthPercent = (annotation.end - annotation.start) / duration * 100;
                     annotation.el.css('width', widthPercent + "%");
                 }
+                if(! annotation.rendered && config.annotationAnimate ){
+                    annotation.el.css('top', -videoHeight).animate({ top : 0 },
+                        (config.annotationMsec + ( Math.random() * config.annotationEntropy * config.annotationMsec)),
+                        config.annotationEasing || ($.easing.easeOutBounce ? "easeOutBounce" : "linear" ) );
+                    annotation.rendered = true;
+                }
+
                 annotation.el.show();
+
             });
+            this.annotations.modified = false;
         },
 
         removeAnnotations : function (className) {
@@ -533,5 +567,15 @@ all copies or substantial portions of the Software.
         }
 
     };
+
+    Controls.annotationSort = function (a, b) {
+        var as = parseFloat( a.start );
+        var bs = parseFloat( b.start );
+        if( bs > as )
+            return -1;
+        if( as > bs )
+            return 1;
+        return 0;
+    }
 
 })();

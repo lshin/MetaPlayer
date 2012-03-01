@@ -4,7 +4,7 @@
     right: 0;
     left: 0;
     height: 32px;
-    overflow:  hidden;
+    z-index: 100;
 }
 
 .mp-controls-box {
@@ -435,9 +435,13 @@
     height: 100%;
     width: 100%;
 }
+.transcript .mp-scroll-knob {
+    right: 3px !important;
+}
 .transcript-scroller {
     position: relative;
     top: 0; left: 0;
+    padding: 5px 10px;
 }
 .transcript-time {
     padding-right: 10px;
@@ -452,10 +456,15 @@
 .transcript-caption:hover {
     text-decoration: underline;
 }
-.transcript-text {
+.transcript-caption {
+    color: #999;
 }
 .transcript-focus {
-    text-decoration: underline;
+    color: black;
+}
+.transcript-search {
+    font-weight: bold;
+    color: orange;
 }
 .metaplayer-captions {
     color: white;
@@ -477,6 +486,7 @@
     height: 100%;
     width: 100%;
 }
+
 .mp-search-form {
     position: absolute;
     top: 10px;
@@ -484,6 +494,7 @@
     right: 0;
     height: 32px;
 }
+
 .mp-search-input {
     position: absolute;
     right: 100px;
@@ -498,6 +509,7 @@
     font-size: 16px;
     margin: 0;
 }
+
 .mp-search-submit {
     width: 89px;
     display: block;
@@ -522,15 +534,48 @@
 .mp-search-submit-label:after {
     content : "Search";
 }
-.mp-search-results {
-    position: absolute;
+
+.mp-search-close {
+    position : absolute;
+    right: 15px;
+    top: 0px;
+    width: 13px;
+    height: 13px;
+    color: blue;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 15px;
+}
+
+.mp-search-tags
+{
+    position: absolute !important;
     top: 42px;
     bottom: 0;
     left: 0;
     right: 0;
     padding: 5px 10px;
     font-size: .8em;
-    overflow: auto;
+}
+.mp-search-results
+{
+    position: absolute !important;
+    top: 42px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-size: .8em;
+}
+
+.mp-search-results .mp-scroll-body {
+    padding: 5px 15px 5px 15px;
+}
+.mp-search-results .mp-scroll-knob {
+    right: 2px !important;
+    width: 8px !important;
+}
+
+.mp-search-result-count {
 }
 .mp-search-result {
     border-top:  1px solid #aaa;
@@ -560,6 +605,19 @@
     font-weight: bold;
 }
 
+.mp-search-tags {
+}
+
+.mp-search-tag {
+    white-space: nowrap;
+    float: left;
+    width: 50%;
+}
+.mp-search-tag-label {
+    cursor: pointer;
+    color: blue;
+    text-decoration: underline;
+}
 .vjs-fullscreen {
     position: fixed !important;
     width: 100% !important;
@@ -798,6 +856,45 @@
     width: 100%;
     position: absolute;
     bottom: 0;
+    margin-bottom:10px;
+}.mp-hl {
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    height: 1.5em;
+    line-height: 1.5em;
+}
+
+.mp-hl-nav {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    line-height: 1.5em;
+    display: none;
+}
+.mp-hl-prev,
+.mp-hl-next {
+    height: 1.5em;
+    line-height: 1.5em;
+    text-align: center;
+    border: 1px solid black;
+    margin:  0 2px;
+    padding:  1px 4px;
+}
+.mp-hl-title{
+    float: left;
+    margin: 0 8px;
+}
+.mp-hl-scroll{
+    /*margin-right: 46px;*/
+    overflow: hidden;
+}
+.mp-hl-item {
+    margin: 0 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    background: white
 }.metaplayer {
     position: relative;
     top: 0;
@@ -812,7 +909,6 @@
     right: 0;
 }
 
-.mp-video div,
 .mp-video video,
 .mp-video object {
     width: 100% !important;
@@ -905,11 +1001,9 @@
 }
 
 .mp-controls-tag {
-    background: url(assets/dot-blue.png) no-repeat;
 }
 
 .mp-controls-metaq {
-    background: #ee82ee;
 }
 
 .mp-controls-track-knob {

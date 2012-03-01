@@ -4,14 +4,19 @@
     <meta charset=utf-8>
 
     <style>
-        #target {
+        #player{
             width: 600px;
             height: 300px;
-            background:  #333;
+            background: #aaaaaa;
+            margin-top: 10px;
         }
     </style>
+
     <!-- Dependency: jQuery -->
     <script src="../../../../external/jquery/jquery-1.6.2.js" type="text/javascript"></script>
+
+    <!-- Dependency: swfobject -->
+    <script src="../../../../external/swfobject/swfobject.js" type="text/javascript"></script>
 
     <!-- Core: Ramp -->
     <script src="../../../core/metaplayer.js"></script>
@@ -23,7 +28,12 @@
     <script src="../../../core/utils/util.ui.js"></script>
     <script src="../../../core/playlist/player.playlist.js"></script>
     <script src="../../../core/layout/core.layout.js"></script>
-    <link href="../../../core/layout/core.layout.css" rel="stylesheet" type="text/css">
+    <script src="../../../core/metadata/core.metadata.js"></script>
+    <script src="../../../core/search/core.search.js"></script>
+    <script src="../../../core/cues/core.cues.js"></script>
+
+    <!-- Service Plugin: RAMP -->
+    <script src="../../../services/ramp/service.ramp.js"></script>
 
     <!-- Media: YouTube -->
     <script src="../../../players/youtube/player.youtube.js"></script>
@@ -31,34 +41,42 @@
 
 <body>
 
-<h3>Metaplayer &raquo; YouTube Plugin</h3>
-
 video.src =
-<button onclick='video.src="http://www.youtube.com/v/Ip2ZGND1I9Q?version=3"'>space</button>
-<button onclick='video.src="http://www.youtube.com/v/TEcvbWCYFZg?version=3"'>timer</button>
-<button onclick='video.src="http://www.youtube.com/v/II1Lrxz2Lgg?version=3"'>count down</button>
-<button onclick='video.src="http://www.youtube.com/v/poSNvWXkIKY?version=3"'>count down</button>
-<button onclick='video.src="CQew-jtvOtg"'>count down</button>
+<button onclick='video.src="http://www.youtube.com/v/Ip2ZGND1I9Q?version=3"'>http://www.youtube.com/v/Ip2ZGND1I9Q?version=3</button>
+<button onclick='video.src="http://www.youtube.com/watch?v=TEcvbWCYFZg&feature=player_embedded"'>http://www.youtube.com/watch?v=TEcvbWCYFZg&feature=player_embedded</button>
+<button onclick='video.src="CQew-jtvOtg"'>CQew-jtvOtg</button>
+<br>
 <br>
 <button onclick='video.load()'>video.load()</button>
 <button onclick='video.play()'>video.play()</button>
 <button onclick='video.pause()'>video.pause()</button>
-<button onclick='video.currentTime = 30'>video.currentTime = 30</button>
+<button onclick='video.currentTime += 2'>video.currentTime += 2</button>
 
-<div id='target'></div>
 
-<script type="text/javascript">
-    var video;
-    $(function () {
-        video = MetaPlayer.youtube("#target", {
-            preload: false,
-            autoplay: false
+<div id="player"></div>
+
+<script>
+    var tag = document.createElement('script');
+    tag.src = "http://www.youtube.com/player_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    var yt, player, video;
+    function onYouTubePlayerAPIReady() {
+        yt = new YT.Player('player', {
+            height: '100%',
+            width: '100%'
         });
-        video.src = "http://www.youtube.com/v/II1Lrxz2Lgg?version=3";
-    });
+
+        player = MetaPlayer("#player")
+                .youtube(yt);
+
+        video = player.video;
+        video.src = "u1zgFlCw8Aw";
+    }
+
 
 </script>
-
 
 </body>
 </html>

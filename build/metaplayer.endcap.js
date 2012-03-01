@@ -34,25 +34,17 @@ all copies or substantial portions of the Software.
             return new EndCap(player, options);
 
         this.config = $.extend({}, defaults, options);
-
-        this.dispatcher = player.dispatcher;
-        this.video = player.video;
-        this.playlist = player.playlist;
+        this.player = player;
 
         this.baseUrl = Ramp.script.base('(metaplayer||ui).endcap(.min)?.js');
 
-        if( this.config.container ) {
-            this.container = this.config.container;
-            this.init();
-        }
-        else {
-            this.container = this.video.parentNode;
-            this.getTemplate();
-        }
+        this.container = this.player.layout.stage;
+        this.getTemplate();
+
     };
 
     MetaPlayer.addPlugin("endcap", function (options) {
-        return EndCap(this, options);
+        this.endcap =  EndCap(this, options);
     });
 
     EndCap.prototype = {
@@ -70,15 +62,18 @@ all copies or substantial portions of the Software.
 
         init : function  (){
             var self = this;
+            var video = this.player.video;
+            var metadata = this.player.metadata;
+            var playlist = this.player.playlist;
 
-            this.dispatcher.listen("metadata", this.onTrackChange, this);
-            this.dispatcher.listen("playlistchange", this.onTrackChange, this);
+            metadata.listen(MetaPlayer.MetaData.DATA, this.onTrackChange, this);
+            playlist.listen("playlistchange", this.onTrackChange, this);
 
-            $(this.video).bind('play playing seeked loadstart', function () {
+            $(video).bind('play playing seeked loadstart', function () {
                 self.onPlaying();
             });
 
-            $(this.video).bind('ended', function () {
+            $(video).bind('ended', function () {
                 self.onEnded();
             });
 
@@ -90,11 +85,11 @@ all copies or substantial portions of the Software.
                 self.countdown.stop();
             });
             this.find('preview').click( function () {
-                self.playlist.next();
+                playlist.next();
             });
             this.find('repeat').click( function () {
-                self.video.currentTime = 0;
-                self.video.play();
+                video.currentTime = 0;
+                video.play();
             });
 
             this.find('search-btn').click( function (e) {
@@ -107,21 +102,20 @@ all copies or substantial portions of the Software.
                 }
             });
 
-            this.playlist.advance = false;
+            playlist.advance = false;
 
             this.countdown = Ramp.timer(1000, this.config.countDownSec);
             this.countdown.listen('time', this.onCountdownTick, this);
             this.countdown.listen('complete', this.onCountdownDone, this);
 
 
-            if( Ramp.embed ) {
-                this.embed = Ramp.embed( this.find('embed'), this.video );
+            if( MetaPlayer.Embed ) {
+                this.embed = new MetaPlayer.Embed(this.find('embed'), this.player);
                 this.find('embed').show();
             }
 
-            if( Ramp.social ){
-                Ramp.social( this.find('social'), this.video );
-            }
+            if( MetaPlayer.Social )
+                this.social = new MetaPlayer.Social( this.find('social'), this.player );
 
             this.toggle(false, true);
         },
@@ -164,21 +158,30 @@ all copies or substantial portions of the Software.
         },
 
         onTrackChange : function (e) {
+
+            var data = this.player.metadata.getData();
+            if( ! data )
+                return;
+
             this.toggle(false);
-            var again = this.playlist.track();
-            this.find('again-thumb').attr('src', again.thumbnail);
-            this.find('again-title').text(again.title);
+            this.find('again-thumb').attr('src', data.thumbnail);
+            this.find('again-title').text(data.title);
             this.find('again').show();
 
-            this.siteSearchUrl = again.siteSearchURL;
+            if( data.ramp )
+                this.siteSearchUrl = data.ramp.siteSearchURL;
 
             this.find('next').hide();
-            var nextup = this.playlist.nextTrack();
-            if( nextup ){
-                this.find('preview-thumb').attr('src', nextup.thumbnail);
-                this.find('preview-title').text(nextup.title);
-                this.find('next').show();
-            }
+
+            var nextup = this.player.playlist.nextTrack();
+            if( nextup )
+                this.player.metadata.load( nextup, this.onNextData, this )
+        },
+
+        onNextData : function (data) {
+            this.find('preview-thumb').attr('src', data.thumbnail);
+            this.find('preview-title').text(data.title);
+            this.find('next').show();
         },
 
         onCountdownTick : function (e) {
@@ -187,7 +190,7 @@ all copies or substantial portions of the Software.
         },
 
         onCountdownDone : function (e) {
-            this.playlist.next();
+            this.player.playlist.next();
         },
 
         find : function (className){

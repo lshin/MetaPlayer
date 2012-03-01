@@ -16,22 +16,24 @@
         controls : true
     };
 
-    var Html5Player = function (el, options ){
+    var Html5Player = function (parent, options ){
         if( !(this instanceof Html5Player ))
-            return new Html5Player(el, options);
+            return new Html5Player(parent, options);
 
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
         this.config = $.extend({}, defaults, options);
-        this._createMarkup(el);
-    };
-
-    MetaPlayer.html5 = function (video, options) {
-        return Html5Player(video, options).video;
+        this._createMarkup(parent);
     };
 
     MetaPlayer.addPlayer("html5", function (options) {
-       return MetaPlayer.html5(this.video, options);
+        var html5 = new Html5Player(this.layout.stage, options);
+        this.video = html5.video;
     });
+
+    MetaPlayer.html5 = function (target, options) {
+        var html5 = new Html5Player(target, options);
+        return html5.video;
+    };
 
     Html5Player.prototype = {
         _createMarkup : function ( parent ) {
@@ -59,6 +61,8 @@
                 video.controls = this.config.controls;
                 video.muted = this.config.muted;
                 video.volume = this.config.volume
+                video.style.height = "100%";
+                video.style.width = "100%";
                 this.video = video;
                 p.append(video);
             }

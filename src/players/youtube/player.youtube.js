@@ -1,44 +1,30 @@
-
 (function () {
 
+    // save reference for no conflict support
     var $ = jQuery;
 
     var defaults = {
         autoplay : false,
         preload : true,
-        controls : true,
-        chromeless : false,
-        loop : false,
-        hd : true,
-        annotations: false,
-        modestbranding : true,
-        related : false,
-        showinfo : false,
-        captions : false,
-        apiUrl  : "http://www.youtube.com/apiplayer", // chromeless
-        videoUrl : "http://www.youtube.com/v/u1zgFlCw8Aw" // controls, need some id
-    };
-
-    // play nice in the global context by preserving other listeners, hope they do the same for us
-    var oldReady = window.onYouTubePlayerReady;
-
-    window.onYouTubePlayerReady = function (id){
-        if( oldReady ){
-            oldReady.apply(this, arguments);
+        updateMsec : 500,
+        playerVars : {
+            enablejsapi : 1,
+            version : 3,
+            autohide : 0,
+            autoplay : 0,
+            controls : 1,
+            fs : 1,
+            hd : 1,
+            rel : 1,
+            showinfo : 1,
+            iv_load_policy : 0,
+            cc_load_policy : 0,
+            wmode : "transparent"
         }
-        var instance = MetaPlayer.youtube.instances[id];
-        if( instance )
-            instance.onReady();
     };
 
-
-    var YouTubePlayer = function (target, options) {
-        var config = $.extend(true, {}, defaults, options);
-
-        this.video = $(target).get(0);
-
-        this.apiUrl = config.apiUrl;
-        this.videoUrl = config.videoUrl;
+    var YouTubePlayer = function (youtube, options) {
+        this.config = $.extend(true, {}, defaults, options);
 
         this.__seeking = false;
         this.__readyState = 0;
@@ -48,167 +34,169 @@
         this.__duration = NaN;
         this.__currentTime = 0;
         this.__volume = 1;
-
-        this.controls = config.controls;
-        this.__loop = config.loop;
-        this.preload = config.preload;
-        this.autoplay = config.autoplay;
+        this.__loop = this.config.loop;
         this.__src = "";
 
+        if( this.config.chromeless ){
+            var pv = this.config.playerVars;
+            pv.controls = 0;
+            pv.rel = 0;
+            pv.showinfo = 0;
+        }
+        this.preload = this.config.preload;
+        this.autoplay = this.config.autoplay;
+        this.updateMsec = this.config.updateMsec;
 
-        this.apiId = "YT" + YouTubePlayer.embedCount++ + "T" + (new Date()).getTime() ;
-        this.hd = config.hd;
-        this.annotations = config.annotations;
-        this.modestbranding = config.modestbranding;
-        this.showinfo = config.showinfo;
-        this.related = config.related;
-        this.captions = config.captions;
-        this.chromeless = config.chromeless;
 
-        MetaPlayer.proxy.proxyPlayer(this, this.video );
-        this.doEmbed( this.video );
-        this.dispatcher = MetaPlayer.dispatcher( this.video );
-        MetaPlayer.youtube.instances[ this.apiId ] = this;
 
-        this.video.player = this;
+        MetaPlayer.dispatcher( this );
+
+        if( typeof youtube == "string" || ! youtube.getVideoEmbedCode ) {
+            this.target = $(youtube).get(0);
+            this.init();
+        }
+        else {
+            this.youtube = youtube;
+            this.target = youtube.a.parentNode;
+            this.addListeners();
+        }
+
+        this.video = MetaPlayer.proxy.proxyPlayer(this, this.target);
     };
 
 
-    if( window.MetaPlayer ) {
-        MetaPlayer.addPlayer("youtube", function ( options ) {
-            var el = $("<div></div>").appendTo(this.video);
-            return new YouTubePlayer(el, options).video;
-        });
+    MetaPlayer.addPlayer("youtube", function (youtube, options ) {
+
+        // single arg form
+        if( ! options && youtube instanceof Object && ! youtube.getVideoEmbedCode){
+            options = youtube;
+            youtube = null;
+        }
+
+        if( ! options ) {
+            options = {};
+        }
+
+        if( ! youtube ) {
+
+            // disable default UI if initialized without options
+            if( options.chromeless == null )
+                options.chromeless = true;
+
+           youtube = $("<div></div>")
+               .addClass("mp-yt")
+               .appendTo(this.layout.stage);
+        }
+
+        var yt = new YouTubePlayer(youtube, options);
+        this.video = yt.video;
+        this.youtube = yt
+    });
+
+    MetaPlayer.youtube = function (youtube, options){
+        var yt = new YouTubePlayer(youtube, options);
+        return yt.video;
     }
-    else {
-        // allow stand-alone use
-        window.MetaPlayer = {};
-    }
 
-    MetaPlayer.youtube = function (target, options) {
-        return new YouTubePlayer(target, options).video;
-    };
-
-    MetaPlayer.youtube.instances = {};
-
-    YouTubePlayer.embedCount = 0;
 
     YouTubePlayer.prototype = {
-        doEmbed : function (target) {
-            var url = this.getEmbedUrl();
 
-            var video = $(target);
+        init : function () {
 
-            video.empty();
+            if( window.YT instanceof Function ){
+                this.onApiReady();
+                return;
+            }
 
-            var obj =  $("<object></object>")
-                .attr("width", "100%")
-                .attr("height", "100%");
+            var tag = document.createElement('script');
+            tag.src = "http://www.youtube.com/player_api";
+            var firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-            $("<param>")
-                .attr('name', 'movie')
-                .attr('value', url)
-                .appendTo(obj);
-
-            $("<param>")
-                .attr('name', 'allowFullScreen')
-                .attr('value', true)
-                .appendTo(obj);
-
-            $("<param>")
-                .attr('name', 'allowScriptAccess')
-                .attr('value', 'always')
-                .appendTo(obj);
-
-            $("<param>")
-                .attr('name', 'wmode')
-                .attr('value', 'transparent')
-                .appendTo(obj);
-
-            $("<embed>")
-                .attr('src', url)
-                .attr('type', 'application/x-shockwave-flash')
-                .attr('allowfullscreen', 'true')
-                .attr('allowscriptaccess', 'always')
-                .attr('wmode', 'transparent')
-                .attr("width", "100%")
-                .attr("height", "100%")
-                .appendTo(obj);
-
-            obj.appendTo( video );
-        },
-
-        getEmbedUrl : function () {
-            var url =  this.chromeless ?
-                this.apiUrl :
-                this.videoUrl;
-
-            var params = {
-                enablejsapi : 1,
-                version : 3,
-                playerapiid : this.apiId,
-                autohide : 0,
-                autoplay : this.autoplay ? 1 : 0,
-                controls : this.controls ? 1 : 0,
-                fs : 1,
-                hd : this.hd ? 1 : 0,
-                rel : this.related ? 1 : 0,
-                showinfo : this.showinfo? 1 : 0,
-                iv_load_policy : this.annotations ? 1 : 0,
-                cc_load_policy : this.captions ? 1 : 1
+            // play nice; global context
+            var self = this;
+            var oldReady = window.onYouTubePlayerAPIReady;
+            window.onYouTubePlayerAPIReady = function (){
+                self.onApiReady();
+                if( oldReady )
+                    oldReady.call(window);
             };
-
-            return url + "?" + $.param(params,true);
         },
 
-        getCallbackString : function ( fnName ) {
-            var str = "MetaPlayer.youtube.instances['" + this.apiId +"']";
-            if( fnName != null )
-                str = str.concat( "."+fnName );
-            return str;
+        onApiReady : function () {
+            this.youtube = new YT.Player( this.target, {
+                height: '100%',
+                width: '100%',
+//                playerVars : this.getParams()
+                playerVars : this.config.playerVars
+            });
+            this.addListeners();
+        },
+
+        addListeners : function () {
+            var yt = this.youtube;
+            var self = this;
+
+            yt.addEventListener("onReady", function(e) {
+                self.onReady(e);
+            });
+            yt.addEventListener("onStateChange", function(e) {
+                self.onStateChange(e);
+            });
+            yt.addEventListener("onError", function(e) {
+                self.onError(e);
+            });
         },
 
         onReady : function () {
-            var video = $(this.video);
-            var obj = video.find("object").get(0);
-            var embed = video.find("embed").get(0);
-            this.youtube = obj['playVideo'] != null ? obj : embed;
+            if( ! this.isReady() ) {
+                this.error = "unabled to find youtube player";
+                this.dispatch("error");
+                return;
+            }
+
             // flash implemented, works in IE?
             // player.addEventListener(event:String, listener:String):Void
-            this.youtube.addEventListener("onStateChange", this.getCallbackString("onStateChange") );
             this.startVideo();
         },
 
+        isReady : function () {
+            return this.youtube && this.youtube.playVideo;
+        },
 
-        onStateChange : function (state) {
-            /*
-            http://code.google.com/apis/youtube/js_api_reference.html#Events
-             */
+        onStateChange : function (e) {
+            var state = e.data;
 
+            // http://code.google.com/apis/youtube/js_api_reference.html#Events
             switch(state) {
                 case -1: // unstarted
                     break;
                 case 0: //ended
                     this.__ended = true;
-                    this.video.dispatch("ended");
+                    this.dispatch("ended");
                     break;
                 case 1: // playing
                     this.__paused = false;
-                    this.video.dispatch("playing");
-                    this.video.dispatch("play");
+                    this.dispatch("playing");
+                    this.dispatch("play");
                     break;
                 case 2: // paused
                     this.__paused = true;
-                    this.video.dispatch("pause");
+                    this.dispatch("pause");
                     break;
                 case 3: // buffering
+                    this.startDurationCheck();
+                    this.startTimeCheck(); // check while paused to handle event-less seeks
                     break;
                 case 5: // queued
-                    this.video.dispatch("canplay");
-                    this.video.dispatch("loadeddata");
-                    this.startTimeCheck();
+                    this.dispatch("canplay");
+                    this.dispatch("loadeddata");
                     break;
             }
+        },
+
+        onError : function (e) {
+            this.dispatch("error");
         },
 
         startTimeCheck : function () {
@@ -219,7 +207,7 @@
 
             this._timeCheckInterval = setInterval(function () {
                 self.onTimeUpdate();
-            }, 500);
+            }, this.updateMsec);
 
             // set an initial value, too
             this.updateTime();
@@ -232,7 +220,7 @@
 
         onTimeUpdate: function () {
             this.updateTime();
-            this.video.dispatch("timeupdate");
+            this.dispatch("timeupdate");
         },
 
         updateTime : function () {
@@ -241,20 +229,23 @@
 
         startDurationCheck : function () {
             var self = this;
+            if( this.__duration )
+                return;
+
             if( this._durationCheckInterval ) {
                 return;
             }
             this._durationCheckInterval = setInterval(function () {
                 self.onDurationCheck();
-            }, 1000);
+            }, this.updateMsec);
         },
 
         onDurationCheck : function () {
             var duration = this.youtube.getDuration();
             if( duration > 0 ) {
                 this.__duration = duration;
-                this.video.dispatch("loadedmetadata");
-                this.video.dispatch("durationchange");
+                this.dispatch("loadedmetadata");
+                this.dispatch("durationchange");
                 clearInterval( this._durationCheckInterval );
                 this._durationCheckInterval = null;
             }
@@ -262,7 +253,7 @@
 
         startVideo : function () {
             // not loaded yet
-            if( ! this.youtube )
+            if( ! this.isReady() )
                 return;
 
             this.__ended = false;
@@ -279,14 +270,14 @@
             }
 
             if( this.__readyState < 4 ){
-                this.video.dispatch("loadstart");
+                this.dispatch("loadstart");
                 this.__readyState = 4;
             }
 
-            if( src.match(/^http:/) )
-                this.youtube.cueVideoByUrl( src );
-            else
-                this.youtube.cueVideoById( src );
+            if( src.match("^http") ){
+                var videoId = src.match( /www.youtube.com\/(watch\?v=|v\/)([\w-]+)/ )[2];
+            }
+            this.youtube.cueVideoById( videoId || src );
 
             if( this.autoplay )
                 this.play();
@@ -297,7 +288,7 @@
 
         doSeek : function (time) {
             this.__seeking = true;
-            this.video.dispatch("seeking");
+            this.dispatch("seeking");
             this.youtube.seekTo( time );
             this.__currentTime = time;
 
@@ -307,8 +298,8 @@
             setTimeout (function () {
                 self.updateTime(); // trigger a time update
                 self.__seeking = false;
-                self.video.dispatch("seeked");
-                self.video.dispatch("timeupdate");
+                self.dispatch("seeked");
+                self.dispatch("timeupdate");
             }, 1500)
         },
 
@@ -316,26 +307,29 @@
 
         load : function () {
             this.preload = true;
-            if( ! this.youtube )
+
+            if( ! this.isReady() )
+                return;
+
+            if( this.youtube.getPlayerState() != -1 )
                 return;
 
             var src = this.src();
             // kickstart the buffering so we get the duration
             this.youtube.playVideo();
             this.youtube.pauseVideo();
-            this.startDurationCheck();
         },
 
         play : function () {
             this.autoplay = true;
-            if( ! this.youtube )
+            if( ! this.isReady() )
                 return;
 
             this.youtube.playVideo()
         },
 
         pause : function () {
-            if(! this.youtube  )
+            if(! this.isReady()  )
                 return false;
             this.youtube.pauseVideo()
         },
@@ -357,13 +351,13 @@
         },
 
         ended : function () {
-            if(! this.youtube  )
+            if(! this.isReady()  )
                 return false;
             return (this.youtube.getPlayerState() == 0);
         },
 
         currentTime : function (val){
-            if(! this.youtube  )
+            if(! this.isReady()  )
                 return 0;
             if( val != undefined ) {
                 this.__ended = false;
@@ -375,13 +369,13 @@
         muted : function (val){
             if( val != null ){
                 this.__muted = val
-                if( ! this.youtube )
+                if( ! this.isReady() )
                     return val;
                 if( val  )
                     this.youtube.mute();
                 else
                     this.youtube.unMute();
-                this.video.dispatch("volumechange");
+                this.dispatch("volumechange");
                 return val;
             }
 
@@ -391,10 +385,10 @@
         volume : function (val){
             if( val != null ){
                 this.__volume = val;
-                if( ! this.youtube )
+                if( ! this.isReady() )
                     return val;
                 this.youtube.setVolume(val * 100)
-                this.video.dispatch("volumechange");
+                this.dispatch("volumechange");
             }
             return this.__volume;
         },

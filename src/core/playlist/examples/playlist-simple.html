@@ -26,6 +26,9 @@
     <script src="../../../core/utils/util.ui.js"></script>
     <script src="../../../core/playlist/player.playlist.js"></script>
     <script src="../../../core/layout/core.layout.js"></script>
+    <script src="../../../core/metadata/core.metadata.js"></script>
+    <script src="../../../core/search/core.search.js"></script>
+    <script src="../../../core/cues/core.cues.js"></script>
     <link href="../../../core/layout/core.layout.css" rel="stylesheet" type="text/css">
 
 </head>
@@ -47,13 +50,18 @@
     </div>
 
     <script type="text/javascript">
+
         var urls= [
             "http://videos.mozilla.org/serv/webmademovies/wtfpopcorn.webm",
             "http://media.w3.org/2010/05/sintel/trailer.webm"
         ];
+
         var video = document.getElementById('video');
-        var playlist = MetaPlayer.playlist('#video');
+
+        var mp = MetaPlayer('#video').load();
+        playlist = mp.playlist;
         playlist.queue( urls );
+
     </script>
 
 </body>

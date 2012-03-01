@@ -1,49 +1,113 @@
 /**
-    Metaplayer - A media player framework for HTML5/JavaScript for use with RAMP services.
+ Metaplayer - A media player framework for HTML5/JavaScript for use with RAMP services.
 
-    Copyright (c) 2011 RAMP Holdings, Inc.
+ Copyright (c) 2011 RAMP Holdings, Inc.
 
-    Licensed under the MIT license: http://www.opensource.org/licenses/mit-license.php
+ Licensed under the MIT license: http://www.opensource.org/licenses/mit-license.php
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
 
-    Created: 2011 by Greg Kindel <gkindel@ramp.com>
+ Created: 2011 by Greg Kindel <greg@gkindel.com>
 
-    Dependencies: jQuery
+ Dependencies: jQuery
  */
 (function () {
 
-    var $ = jQuery;
+    var $ = window.jQuery;
+    var Popcorn = window.Popcorn;
 
     /**
      * Sets up player plugin container, playlist, and DOM scaffolding
      * @constructor
-     * @param target a DOM element, or jQuery selector (eg: "#mydiv")
+     * @target an HTML5 Media element
      */
-    var MetaPlayer = function (target, options ) {
-
-        if( ! (this instanceof MetaPlayer ) )
-            return new MetaPlayer( target );
-
-        this._plugins = [];
-
-        var layout = MetaPlayer.layout(target);
-
-
-        this.target = $(target).get(0);
-        this.dom = layout.base;
-        this.video = MetaPlayer.proxy.getProxyObject(layout.stage);
-        this.dispatcher = MetaPlayer.dispatcher( this.video );
-        this.playlist(options);
+    var defaults = {
+        debug : "",
+        useLayout : true,
+        useMetaData: true,
+        useCues: true,
+        useSearch: true
     };
+
+    var MetaPlayer = function (video, options ) {
+
+        if( ! (this instanceof MetaPlayer) )
+            return new MetaPlayer( video, options );
+
+        this.config = $.extend({}, defaults, options );
+
+        MetaPlayer.dispatcher(this);
+
+        this._plugins = {};
+        this._loadQueue = [];
+        this.target = video;
+
+        // metadata interface
+        if( this.config.useMetaData )
+            this.metadata = new MetaPlayer.MetaData(this, this.config );
+
+        // search interface
+        if( this.config.useSearch )
+            this.search = new MetaPlayer.Search(this, this.config );
+
+        // cues interface
+        if( this.config.useCues )
+            this.cues = new MetaPlayer.Cues(this, this.config );
+
+        // resolve video element from string, popcorn instance, or direct reference
+        if( video ) {
+            if( typeof video == "string")
+                video = $(video).get(0);
+
+            if( video.getTrackEvents instanceof Function ) {
+                // is popcorn instance
+                this.video = video.media;
+                this.popcorn = video;
+            }
+
+            else if( video.play instanceof Function ) {
+                // is already a media element
+                this.video = video;
+            }
+
+        }
+
+        // optional layout disabling, use at own risk for player UI layout
+        if( video && this.config.useLayout ) {
+            this.layout = MetaPlayer.layout(video);
+        }
+
+        // start loading after this execution block, can be triggered earlier by load()
+        // makes sure all plugins have initialized before startup sequence
+        var self = this;
+        setTimeout( function () {
+            self._load();
+        }, 0);
+    };
+
+    /**
+     * Fired when all plugins are loaded.
+     * @static
+     * @constant
+     * @event
+     */
+    MetaPlayer.READY = "ready";
+
+    /**
+     * Fired when player destructor called to allow plugins to clean up.
+     * @static
+     * @constant
+     * @event
+     */
+    MetaPlayer.DESTROY = "destroy";
 
     /**
      * Registers a non-playback plugin.
@@ -57,21 +121,21 @@
             throw "keyword unavailable: " + keyword;
 
         p[keyword] = function () {
-
             // wait for load()
-            if( this._plugins ) {
-                this._plugins.push({
+            if( ! this.ready ) {
+                this._loadQueue.push({
                     name : keyword,
                     args : arguments,
                     fn : callback
                 })
             }
             else { // post load(), fire now
-                callback.apply(this, arguments);
+                 callback.apply(this, arguments);
             }
             return this;
         };
     };
+
 
     /**
      * Registers a function as a playback plugin.
@@ -80,54 +144,364 @@
      */
     MetaPlayer.addPlayer = function (keyword, callback ) {
         var p = MetaPlayer.prototype;
+
         if( p[keyword] )
             throw "keyword unavailable: " + keyword;
 
         p[keyword] = function () {
-            var video =  callback.apply(this, arguments);
-            this.player( video );
+            callback.apply(this, arguments);
             return this;
         };
     };
 
+
     MetaPlayer.prototype = {
-        /**
-         * Manually set the video playback source.
-         * @param video
-         */
-        player : function (video) {
-            MetaPlayer.proxy.proxyPlayer(video, this.video);
-            this.currentPlayer = video;
-            return this;
+
+        destroy : function () {
+            this.dispatcher.dispatch( MetaPlayer.DESTROY );
+
+            delete this.plugins;
+            delete this._loadQueue;
+
+            // todo: iterate plugins, call destroy() if def
+            // these should be made plugins
+
+            delete this.layout;
+            delete this.popcorn;
+
+        },
+
+        log : function (args, tag ){
+            if( this.config.debug.indexOf(tag) < 0 )
+                return;
+
+            var arr = Array.prototype.slice.apply(args);
+            arr.unshift( tag.toUpperCase() );
+            console.log.apply(console, arr);
         },
 
         /**
-         * Initializes requested player plugins, optinally begins plabyack.
+         * Initializes requested player plugins, optionally begins playback.
          * @param url (optional) initial url or tracks
          */
-        load : function (url) {
+        _load : function () {
+
+            if (! this._loadQueue ) {
+                // load() was already called
+                return;
+            }
+
+            // fill in core interfaces were not implemented
+            if( ! this.video && this.layout )
+                this.html5();
+
+            if( this.video && ! this.playlist )
+                this.playlist = new MetaPlayer.Playlist(this, this.config.playlist);
+
+            if( this.video && ! this.popcorn && Popcorn != null )
+                this.popcorn = Popcorn(this.video);
+
+
+            // run the plugins, any video will have been initialized by now
             var self = this;
-            $( this._plugins ).each(function (i, plugin) {
-                self[plugin.name] = plugin.fn.apply(self, plugin.args);
+            $( this._loadQueue ).each(function (i, plugin) {
+                plugin.fn.apply(self, plugin.args);
             });
-            this._plugins = null;
+            this._loadQueue = null;
 
-            this.dispatcher.dispatch("ready");
 
-            if( url )
+            // let plugins do any setup which requires other plugins
+            this.dispatcher.dispatch( MetaPlayer.READY );
+
+            this.ready = true;
+        },
+
+        load : function (url) {
+            this._load();
+
+            if( url ) {
+                this.playlist.empty();
                 this.playlist.queue(url);
+            }
+
+            // calling load() explicitly will cause the player to apply sources;
+//            this.playlist.selectSource();
+
 
             return this;
         }
     };
-
 
     window.MetaPlayer = MetaPlayer;
     window.MPF = MetaPlayer;
     window.Ramp = MetaPlayer;
 })();
 
-/*
+(function () {
+
+    var $ = jQuery;
+
+    var defaults = {
+    };
+
+    var Cues = function (player, options){
+
+        this.config = $.extend({}, defaults, options);
+        MetaPlayer.dispatcher(this);
+        this._cues = {};
+
+        this._rules = {
+            // default rule mapping "captions" to popcorn "subtitle"
+            "subtitle" : { clone : "captions" }
+        };
+
+        this.player = player;
+        this._addListeners();
+    };
+
+    MetaPlayer.Cues = Cues;
+
+    /**
+     * Fired when cues are available for the focus uri.
+     * @name CUES
+     * @event
+     * @param data The cues from a resulting load() request.
+     * @param uri The focus uri
+     * @param plugin The cue type
+     */
+    Cues.CUES = "cues";
+
+    Cues.prototype = {
+        /**
+         * Bulk adding of cue lists to a uri.
+         * @param cuelists a dictionary of cue arrays, indexed by type.
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        setCueLists : function ( cuelists , uri) {
+            var self = this;
+            $.each(cuelists, function(type, cues){
+                self.setCues(type, cues, uri)
+            });
+        },
+
+        /**
+         * Returns a dictionary of cue arrays, indexed by type.
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        getCueLists : function ( uri) {
+            var guid = uri || this.player.metadata.getFocusUri();
+            return this._cues[guid];
+        },
+
+        /**
+         * For a given cue type, adds an array of cues events, triggering a CUE event
+         * if the uri has focus.
+         * @param type The name of the cue list (eg: "caption", "twitter", etc)
+         * @param cues An array of cue obects.
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        setCues : function (type, cues , uri){
+            var guid = uri || this.player.metadata.getFocusUri();
+
+            if( ! this._cues[guid] )
+                this._cues[guid] = {};
+
+            this._cues[guid][type] = cues;
+
+            this._dispatchCues(guid, type)
+        },
+
+        /**
+         * Returns an array of caption cues events. Shorthand for getCues("caption")
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        getCaptions : function ( uri ){
+            return this.getCues("captions", uri);
+        },
+
+        /**
+         * Returns an array of cue objects for a given type. If no type specified, acts
+         * as alias for getCueLists() returning a dictionary of all cue types and arrays.
+         * @param type The name of the cue list (eg: "caption", "twitter", etc)
+         * @param uri (optional) Data uri, or last load() uri.
+         */
+        getCues : function (type, uri) {
+            var guid = uri || this.player.metadata.getFocusUri();
+
+            if( ! type ) {
+                return this.getCueLists();
+            }
+
+            if(! this._cues[guid]  || ! this._cues[guid][type])
+                return [];
+            return this._cues[guid][type];
+        },
+
+        /**
+         * Enables popcorn events for a cue type
+         * @param type Cue type
+         * @param overrides Optional object with properties to define in each popcorn event, such as target
+         * @param rules (advanced) Optional rules hash for cloning, sequencing, and more.
+         */
+        enable : function (type, overrides, rules) {
+            var r = $.extend({}, this._rules[type], rules);
+            r.overrides = $.extend({}, r.overrides, overrides);
+            r.enabled = true;
+            this._rules[type] = r;
+
+            this._renderCues(type, this.getCues( r.clone || type) )
+        },
+
+        /**
+         * Disables popcorn events for a cue type
+         * @param type Cue type
+         */
+        disable : function (type) {
+            if( ! type )
+                return;
+
+            if( this._rules[type] )
+                this._rules[type].enabled = false;
+
+            this._removeEvents(type);
+        },
+
+        /**
+         * Frees external references for manual object destruction.
+         * @destructor
+         */
+        destroy : function  () {
+            this._removeEvents();
+            this.dispatcher.destroy();
+            delete this.player;
+        },
+
+        /* "private" */
+
+        // broadcasts cue data available for guid, if it matches the current focus uri
+        // defaults to all known cues, or can have a single type specified
+        // triggers attachment of popcorn events
+        _dispatchCues : function ( guid, type ) {
+
+            // only focus uri causes events
+            if( guid != this.player.metadata.getFocusUri() ) {
+                return;
+            }
+
+            var self = this;
+            var types = [];
+
+            // specific cue type to be rendered
+            if( type ) {
+                types.push(type)
+            }
+
+            // render all cues
+            else if( this._cues[guid] ){
+                types = $.map(this._cues[guid], function(cues, type) {
+                    return type;
+                });
+            }
+
+            $.each(types, function(i, type) {
+                var cues = self.getCues(type);
+
+                var e = self.createEvent();
+                e.initEvent(Cues.CUES, false, true);
+                e.uri = guid;
+                e.plugin = type;
+                e.cues = cues;
+
+                if( self.dispatchEvent(e) ) {
+                   // allow someone to cancel, blocking popcorn scheduling
+                    self._renderCues(type, cues)
+                }
+            });
+        },
+
+        _addListeners : function () {
+            var player = this.player;
+            var metadata = player.metadata;
+            player.listen( MetaPlayer.DESTROY, this.destroy, this);
+            metadata.listen( MetaPlayer.MetaData.FOCUS, this._onFocus, this)
+        },
+
+        _onFocus : function (e) {
+            //... remove all popcorn events because the track has changed
+            this._removeEvents();
+            this._dispatchCues( e.uri );
+        },
+
+        _removeEvents : function ( type ) {
+            var popcorn = this.player.popcorn;
+            if( popcorn ) {
+                var events = popcorn.getTrackEvents();
+                $.each(events, function (i, e){
+                    if( !type || type == e._natives.type )
+                        popcorn.removeTrackEvent(e._id);
+                });
+            }
+        },
+
+        _renderCues : function (type, cues){
+            var self = this;
+
+            this._scheduleCues(type, cues);
+
+            // additionally schedule any clones
+            $.each( this._rules, function (plugin, rules){
+                if( rules.clone == type ){
+                    self._scheduleCues(plugin, cues)
+                }
+            });
+        },
+
+        _scheduleCues : function (type, cues) {
+            var rules = this._rules[type] || {};
+            var lastCue;
+
+            if(! rules.enabled ) {
+                return;
+            }
+
+            // deep copy of cues
+            var events = $.extend(true, [], cues );
+
+            // "sequence" automatically fills in missing cue end times with next cue start
+            if( rules.sequence ) {
+                $.each(events, function (i, event) {
+                    if( lastCue )
+                        lastCue.end = event.start;
+                    lastCue = event;
+                });
+            }
+
+            // "duration" sets a fixed length for any cue
+            if( rules.duration ) {
+                $.each(events, function (i, event) {
+                    event.end = event.start + rules.duration;
+                });
+            }
+
+            // "overrides" allow for page-specific event overrides
+            if( rules.overrides ) {
+                $.each(events, function (i, event) {
+                    $.extend(true, event, rules.overrides)
+                });
+            }
+
+            // schedule with popcorn instance
+            var popcorn = this.player.popcorn;
+            if( popcorn && popcorn[type] instanceof Function  ) {
+                $.each(events, function(i, cue){
+                    popcorn[type].call(popcorn, $.extend({}, cue) );
+                });
+            }
+        }
+
+    };
+
+})();/*
  ui.base.js
  - establishes a basic html structure for adding player UI elements
  - ui elements can reliably position themselves using css
@@ -169,18 +543,20 @@
         var base;
         var stage = t.find('.mp-video');
         var video = t.find('video');
-        var isVideo = ! (target.currentTime == null);
+        var isVideo = (target.play instanceof Function);
+        var isFrame = (target.tagName.toUpperCase() == "IFRAME");
 
         // set up main wrapper
-        if( isVideo ){
+        if( isVideo || isFrame ){
             base = $('<div></div>')
                 .addClass('metaplayer')
-                .appendTo( t.parent() );
+                .insertAfter( t );
 
             // assume they've set the dimensions on the target
             base.width( t.width() );
             base.height( t.height() );
-        } else {
+        }
+        else {
             base = t;
         }
         base.addClass('metaplayer');
@@ -198,14 +574,11 @@
             stage.append(video);
         }
 
-        if( isVideo )
+        if( base !== t )
             stage.append(t);
 
-        // steal the id for sizing
-//        base.attr('id', t.attr('id') );
-//        t.attr('id', '');
-
         return {
+            target : target,
             base : base.get(0),
             stage : stage.get(0)
         }
@@ -216,44 +589,216 @@
     var $ = jQuery;
 
     var defaults = {
-        applySources : true,
+    };
+
+    var MetaData = function (player, options){
+        if( !(this instanceof MetaData ))
+            return new MetaData(options);
+
+        this.config = $.extend({}, defaults, options);
+        MetaPlayer.dispatcher(this);
+        this._data = {};
+        this._callbacks = {};
+        this._lastUri = null;
+    };
+
+    MetaPlayer.MetaData = MetaData;
+
+
+    /**
+     * Fired when a uri becomes the focus, broadcasting events on updates.
+     * @name FOCUS
+     * @event
+     * @param uri The new focus uri
+     */
+    MetaData.FOCUS = "focus";
+
+    /**
+     * Fired when MetaData needs a resource to be defined.
+     * @name LOAD
+     * @event
+     * @param uri Opaque string which can be used by a service to load metadata.
+     */
+    MetaData.LOAD = "load";
+
+    /**
+     * Fired when new metadata is received as a result of a load() request.
+     * @name LOAD
+     * @event
+     * @param data The metadata from a resulting load() request.
+     */
+    MetaData.DATA = "data";
+
+
+    MetaData.prototype = {
+
+        /**
+         * Request MetaData for an uri
+         * @param uri
+         * @param callback (optional)  If specified will suppress the DATA event
+         */
+        load : function ( uri, callback, scope) {
+            var e;
+
+            // calling  w/ a callback will not trigger a focus change or DATA events
+            if( callback ) {
+                this._queue(uri, callback, scope);
+            }
+
+            // no callback, let others know focus has changed, that a DATA event is coming
+            else {
+                this.setFocusUri(uri);
+            }
+
+            if( this._data[uri] ){
+                // cache hit; already loaded. respond immediately
+                if( this._data[uri]._cached ) {
+                    this._response(uri);
+                    return true;
+                }
+                // load in progress, skip
+                else if ( this._data[uri]._loading ) {
+                    return true;
+                }
+            }
+
+            // flag as loading
+            if( ! this._data[uri] )
+                this._data[uri] = {};
+            this._data[uri]._loading =  (new Date()).getTime();
+
+            // send a loading request, with any data we have
+            e = this.createEvent();
+            e.initEvent(MetaData.LOAD, false, true);
+            e.uri = uri;
+            e.data = this.getData(uri);
+
+            // see if anyone caught our request, return accordingly
+            var caught = ! this.dispatchEvent(e);
+            if( ! caught ) {
+                this._data[uri]._loading = false;
+            }
+            return caught;
+        },
+
+        /**
+         * Returns the uri for which events are currently being fired.
+         */
+        getFocusUri : function () {
+            return this._lastUri;
+        },
+
+        /**
+         * Sets the uri for which events are currently being fired.
+         */
+        setFocusUri : function (uri) {
+
+            if( this._lastUri == uri )
+                return;
+
+            this._lastUri = uri;
+            e = this.createEvent();
+            e.initEvent(MetaData.FOCUS, false, true);
+            e.uri = uri;
+            this.dispatchEvent(e);
+        },
+
+        /**
+         * Returns any for a URI without causing an external lookup.
+         * @param uri Optional argument specifying media guid. Defaults to last load() uri.
+         */
+        getData : function ( uri ){
+            var guid = uri || this._lastUri;
+            return this._data[guid]
+        },
+
+        /**
+         * Sets the data for a URI, triggering DATA if the uri has focus.
+         * @param data
+         * @param uri (optional) Data uri, or last load() uri.
+         * @param cache (optional) allow lookup of item on future calls to load(), defaults true.
+         */
+        setData : function (data, uri, cache ){
+            var guid = uri || this._lastUri;
+            this._data[guid] = $.extend(true, {}, this._data[guid], data);
+            this._data[guid]._cached = ( cache == null ||  cache ) ? true : false;
+            this._response(guid);
+        },
+
+        /**
+         * Frees external references for manual object destruction.
+         * @destructor
+         */
+        destroy : function  () {
+            this.dispatcher.destroy();
+            delete this.player;
+            delete this._callbacks;
+            delete this._data;
+            delete this.config;
+        },
+
+        // registers a callback
+        _queue : function ( uri, callback, scope ) {
+            if( ! this._callbacks[uri] )
+                this._callbacks[uri] = [];
+            this._callbacks[uri].push({ fn : callback, scope : scope });
+        },
+
+        // handles setting data, firing event and callbacks as necessary
+        _response : function ( uri ){
+             var data = this._data[uri];
+
+            if( this._lastUri == uri ) {
+                var e = this.createEvent();
+                e.initEvent(MetaData.DATA, false, true);
+                e.uri = uri;
+                e.data = data;
+                this.dispatchEvent(e);
+            }
+
+            if( this._callbacks[uri] ) {
+                $.each( this._callbacks[uri] || [], function (i, callback ) {
+                    callback.fn.call(callback.scope, data);
+                });
+                delete this._callbacks[uri];
+            }
+        }
+    };
+
+
+})();
+(function () {
+
+    var $ = jQuery;
+
+    var defaults = {
+        sourceTags : true,
         selectSource : true,
+        linkAdvance : false,
         autoAdvance : true,
-        autoPlay : true,
         autoBuffer : true,
         related: true,
         loop : false
     };
 
-    var Playlist = function (video, options ){
-
-        if( !(this instanceof Playlist ))
-            return new Playlist(video, options);
+    var Playlist = function (player, options ){
 
         this.config = $.extend({}, defaults, options);
-        this.video = video;
-        this._haveRelated = false;
+        this.player = player;
         this._tracks = [];
         this._index = 0;
+
         this.loop = this.config.loop;
-        this.autoplay = this.config.autoPlay;
         this.preload = this.config.autoBuffer;
         this.advance = this.config.autoAdvance;
+        this.linkAdvance = this.config.linkAdvance;
 
-//        this.dispatcher = MetaPlayer.dispatcher();
-        this.dispatcher = MetaPlayer.dispatcher(video);
+        MetaPlayer.dispatcher(this);
 
-        this._addDataListeners(this.video);
-        this._addMediaListeners(this.video);
+        this._addListeners();
     };
 
-    MetaPlayer.playlist = function (video, options) {
-        return Playlist( $(video).get(0), options);
-    };
-
-    MetaPlayer.addPlugin('playlist', function (options) {
-        return MetaPlayer.playlist(this.video, options);
-    });
+    MetaPlayer.Playlist = Playlist;
 
     Playlist.prototype = {
 
@@ -261,7 +806,7 @@
             i = this._resolveIndex(i);
             if( i != null ) {
                 this._index = i;
-                this.load( this.track() );
+                this._select( this.track() );
             }
             return this._index;
         },
@@ -279,28 +824,43 @@
             this.dispatcher.dispatch("playlistchange");
 
             if( wasEmpty )
-                this.load( this.track() )
+                this._select( this.track() )
         },
 
-        load : function (track) {
-            this.video.pause();
-
-            // let services cancel loading if they need to do something
-            var ok = this.dispatcher.dispatch("trackchange", track);
-            if( ok ) {
-                this._setSrc( track );
+        // begins the process of changing video source, starting with fetching metadata
+        _select : function ( uri ) {
+            this.dispatcher.dispatch("trackchange");
+            this.player.video.pause();
+            if(! this.player.metadata.load(uri) ){
+                // if have no data, and no one will look it up, just play the url
+                this._setSrc( uri );
             }
         },
 
         empty : function ( tracks ) {
+            this.player.video.pause();
+            this.player.video.src = "";
             this._tracks = [];
+            this.transcodes = null;
             this._index = 0;
             this.dispatcher.dispatch("playlistchange");
             this.dispatcher.dispatch("trackchange");
         },
 
         next  : function () {
-            this.index( this._index + 1 )
+
+            var i = this._index + 1;
+            var t = this.track(i);
+
+            if( this.linkAdvance ) {
+                var link = t.link || t.linkURL;
+                if( link ) {
+                    window.top.location = link;
+                    return;
+                }
+            }
+
+            this.index(i )
         },
 
         previous : function () {
@@ -341,68 +901,78 @@
             return i;
         },
 
-        _addDataListeners : function (dispatcher) {
-            dispatcher.listen("metadata", this._onMetaData, this);
-            dispatcher.listen("transcodes", this._onTranscodes, this);
-            dispatcher.listen("related", this._onRelated, this);
-        },
+        _addListeners : function () {
+            var player = this.player;
+            var metadata = this.player.metadata;
+            var video = this.player.video;
 
-        _addMediaListeners : function () {
+            player.listen(MetaPlayer.DESTROY, this.destroy, this);
+            metadata.listen(MetaPlayer.MetaData.DATA, this._onMetaData, this);
+
             var self = this;
-            $(this.video).bind('ended error', function(e) {
+            $(player.video).bind('ended error', function(e) {
                 self._onEnded()
             });
         },
 
-        _onMetaData: function (e, metadata) {
-            var idx = this.index();
-            // replace a plain url with updated metadata
-            if ( typeof this._tracks[idx] == "string" ) {
-                this._tracks[idx] = metadata;
-            }
-        },
 
-        _onRelated : function (e, related) {
-            if( this._haveRelated || ! this.config.related )
+        _onMetaData : function (e) {
+            if( e.uri != this.track() ){
                 return;
-            this.queue( related );
-            this._haveRelated = true;
+            }
+
+            this.transcodes = e.data.content;
+
+            if( this.config.sourceTags )
+                this.addSourceTags();
+
+            if( this.config.selectSource )
+                this.selectSource();
         },
 
-        _onTranscodes : function (e, transcodes) {
+        addSourceTags : function  () {
             var self = this;
-            var video = this.video;
-            this.transcodes = transcodes;
+            var video = this.player.video;
+            $.each(this.transcodes, function (i, source) {
+                video.appendChild( self._createSource(source.url, source.type) );
+            });
+        },
+
+        selectSource : function () {
+            // sticky, for playlists
+            this.config.selectSource = true;
+
+            var self = this;
+            var video = this.player.video;
             var probably = [];
             var maybe = [];
-            var sources = [];
 
-            $.each(transcodes, function (i, source) {
-                video.appendChild( self._createSource(source.url, source.type) );
+            if( ! this.transcodes )
+                return;
 
+            $.each(this.transcodes, function (i, source) {
                 var canPlay = video.canPlayType(source.type);
                 if( ! canPlay )
                     return;
-
                 if( canPlay == "probably" )
                     probably.push(source.url);
                 else
                     maybe.push(source.url);
-
             });
 
             var src = probably.shift() || maybe .shift();
-            if( src)
+            if( src )
                 this._setSrc(src);
         },
 
         _setSrc : function ( src ) {
-            this.video.src = src;
-            if( this.video.autoplay || this.index() > 0 ) {
-                this.video.play();
+            var video = this.player.video;
+            video.src = src;
+            if( video.autoplay || this.index() > 0 ) {
+                video.play();
             }
-            else if( this.video.preload ) {
-                this.video.load()
+            else if( video.preload ) {
+                video.load()
             }
         },
 
@@ -420,10 +990,132 @@
             if( this.index() == this.tracks().length - 1 ) {
                 this.dispatcher.dispatch('playlistComplete');
             }
+
             this.next();
+        },
+
+        destroy : function () {
+            this.dispatcher.destroy();
+            delete this.player;
         }
 
     };
+
+})();
+(function () {
+
+    var $ = jQuery;
+
+    var defaults = {
+        forceRelative : false
+    };
+
+    var Search = function (player, options){
+        this.config = $.extend({}, defaults, options);
+
+        this.player = player;
+        this.forceRelative = this.config.forceRelative;
+        MetaPlayer.dispatcher(this);
+
+        this.player.listen(MetaPlayer.DESTROY, this.destroy, this);
+    };
+
+    MetaPlayer.Search = Search;
+
+    MetaPlayer.addPlugin("search", function (options) {
+        return new Search(this);
+    });
+
+    Search.prototype = {
+        query : function (query, callback, scope) {
+            var data = this.player.metadata.getData();
+            if(! data.ramp.searchapi )
+                throw "no searchapi available";
+
+            this._queryAPI(data.ramp.searchapi, query, callback, scope)
+        },
+
+        destroy : function () {
+            this.dispatcher.destroy();
+            delete this.player;
+        },
+
+        _queryAPI : function (url, query, callback, scope) {
+
+            if( this.forceRelative ) {
+                url = url.replace(/^(.*\/\/[\w.]+)/, ""); // make match local domain root
+            }
+
+            var params = {
+                q : query
+            };
+
+            if( ! query ) {
+                this.setResults({ query : [], results : [] }, callback, scope);
+                return;
+            }
+
+            $.ajax(url, {
+                dataType : "xml",
+                timeout : 15000,
+                context: this,
+                data : params,
+                error : function (jqXHR, textStatus, errorThrown) {
+                    console.error("Load search error: " + textStatus + ", url: " + url);
+                },
+                success : function (response, textStatus, jqXHR) {
+                    var results = this.parseSearch(response, callback, scope);
+                    this.setResults(results, callback, scope);
+                }
+            });
+        },
+
+        setResults : function (results, callback, scope) {
+            console.log("setResults", results);
+            if( callback )
+                callback.call(scope, results);
+            else
+                this.dispatch("search", results);
+        },
+
+        parseSearch : function (xml) {
+            var node = $(xml);
+            var self = this;
+            var ret = {
+                query : [],
+                results : []
+            };
+
+            var terms = node.find('SearchTerms Term');
+            terms.each(function() {
+                ret.query.push( self._deSmart( $(this).text() ) );
+            });
+
+            var snippets = node.find('Snippets Snippet');
+            snippets.each( function (i, snip) {
+                var node = $(snip);
+                var s = {
+                    start : node.attr('time'),
+                    words : []
+                };
+                var words = node.find('T');
+                $.each(words, function (i, word){
+                    var el = $(word);
+                    s.words.push({
+                        match : Boolean( el.find('MQ').length ),
+                        start : el.attr('s'),
+                        text : self._deSmart( el.text() )
+                    })
+                });
+                ret.results.push(s);
+            });
+            return ret;
+        },
+
+        _deSmart : function (text) {
+            return text.replace(/\xC2\x92/, "\u2019" );
+        }
+    }
 
 })();
 (function () {
@@ -456,6 +1148,9 @@
         stopPropagation : function () {
             this.cancelBubble  = true;
         },
+        stopImmediatePropagation : function () {
+            this.cancelBubble  = true;
+        },
         preventDefault : function () {
             if( this.cancelable )
                 this.defaultPrevented = true;
@@ -481,10 +1176,18 @@
             }
 
             // and add our convenience functions
-            MetaPlayer.proxy.proxyFunction ( "listen forget dispatch",
+            MetaPlayer.proxy.proxyFunction ( "listen forget dispatch createEvent",
                 this, source);
 
             source.dispatcher = this;
+        },
+
+        destroy : function () {
+            delete this._listeners;
+            delete this.addEventListener;
+            delete this.removeEventListener;
+            delete this.dispatchEvent;
+            this.__destroyed = true; // for debugging / introspection
         },
 
         listen : function ( eventType, callback, scope) {
@@ -529,9 +1232,13 @@
         },
 
         dispatchEvent : function (eventObject) {
+
+//            if( eventObject.type != "timeupdate")
+//                   console.log(eventObject.type, eventObject);
+
             var l = this._listeners[eventObject.type] || [];
             for(var i=0; i < l.length; i++ ){
-                if( eventObject.cancelBubble )
+                if( eventObject.cancelBubble ) // via stopPropagation()
                     break;
                 l[i].call(l[i].scope || this, eventObject, eventObject.data )
             }
@@ -543,7 +1250,7 @@
 })();
 (function () {
 
-    Ramp.format = {
+    MetaPlayer.format = {
         seconds : function (time) {
             var zpad = function (val, len) {
                 var r = String(val);
@@ -562,6 +1269,23 @@
             if( hr )
                 parts.unshift(hr);
             return parts.join(":");
+        },
+
+        replace : function (template, dict) {
+            return template.replace( /\{\{(\w+)\}\}/g,
+                function(str, match) {
+                    var ret;
+                    if( dict[match] instanceof Function ){
+                        ret = dict[match](dict);
+                    }
+                    else if( dict[match] != null ){
+                        ret = dict[match]
+                    }
+                    else {
+                        return "{!!!" + match + "!!!}"
+                    }
+                    return MetaPlayer.format.replace( ret.toString(), dict )
+                });
         }
     };
 
@@ -586,13 +1310,12 @@
         },
 
         proxyEvent : function (types, source, target ){
-
             // emulate if old non-standard event model
             if( ! target.addEventListener ) {
                 Ramp.dispatcher(target);
             }
             $.each(types.split(/\s+/g), function (i, type) {
-                $(source).bind(type, function (e) {
+                source.addEventListener(type, function (e) {
                     // if emulated, just use type
                     if( target.dispatch ) {
                         target.dispatch(e.type);
@@ -661,6 +1384,8 @@
         // iOS: can't do DOM objects
         // use DOM where possible
         getProxyObject : function ( dom ) {
+
+            // All modern browsers (and ie8)
             if( ! dom )
                 dom = document.createElement("div");
 
@@ -671,11 +1396,10 @@
             catch(e){
             }
 
-            // dom to be flushed out as needed
+            // iOS, fake as best we can
             var target = {
                 parentNode : dom.parentNode
             };
-
             try {
                 Object.defineProperty(target, "__proptest", {} );
                 return target;
@@ -683,24 +1407,27 @@
             catch(e){
             }
 
-
             throw "Object.defineProperty not defined";
         },
 
         proxyPlayer : function (source, target) {
             var proxy = Ramp.proxy.getProxyObject(target);
 
-            Proxy.mapProperty("duration currentTime volume muted seeking seekable" +
-                " paused played controls autoplay preload src ended readyState",
+            Proxy.mapProperty("duration currentTime volume muted seeking" +
+                " paused controls autoplay preload src ended readyState",
                 proxy, source);
 
             Proxy.proxyFunction("load play pause canPlayType" ,source, proxy);
 
-            Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
-                "loadeddata loadedmetadata canplay loadstart durationchange volumechange " +
-                "ended error",source, proxy);
+            Proxy.proxyPlayerEvents(source, proxy);
 
             return proxy;
+        },
+
+        proxyPlayerEvents : function (source, target){
+            Proxy.proxyEvent("timeupdate seeking seeked playing play pause " +
+                "loadeddata loadedmetadata canplay loadstart durationchange volumechange " +
+                "ended error",source, target);
         }
     };
 
@@ -738,6 +1465,291 @@
         }
 
     }
+
+})();
+/**
+ * skinnable, touch friendly lightweight scroller
+ */
+
+
+(function () {
+
+    var $ = jQuery;
+
+    var defaults = {
+        fixedHeight : false,
+        minHeight : 20, //px
+        mouseDrag : false,
+        inertial : false  // beta
+    };
+    var ScrollBar = function (container, options) {
+        this.config = $.extend(true, {}, defaults, options);
+        this.init(container);
+        this.inertiaY = 0;
+    };
+
+    var eventX = function (e) {
+        return e.pageX || e.originalEvent.touches[0].pageX;
+    };
+    var eventY = function (e) {
+        return  e.pageY || e.originalEvent.touches[0].pageY;
+    };
+
+    ScrollBar.prototype = {
+        init : function (parent) {
+            this.parent = $(parent);
+            var self = this;
+            var children = this.parent[0].childNodes;
+
+            this.body = $("<div></div>")
+                .addClass("mp-scroll-body")
+                .css("position", "relative")
+                .bind("resize DOMSubtreeModified size change", function(e) {
+                    self.onResize(e);
+                })
+                .append( children );
+
+
+            this.scroller = $("<div></div>")
+                .css("width", "100%")
+                .css("height", "100%")
+                .css("overflow", "hidden")
+                .addClass("mp-scroll")
+                .append(this.body)
+                .appendTo(parent);
+
+
+            // memoise event callbacks
+            this._touchStop = function (e) {
+                self.onTouchStop(e);
+            };
+            this._touchMove = function (e) {
+                self.onTouchMove(e);
+            };
+
+            this._knobStop = function (e) {
+                self.onKnobStop(e);
+            };
+            this._knobMove = function (e) {
+                self.onKnobMove(e);
+            };
+
+            this.knob = $("<div></div>")
+                .css('position', "absolute")
+                .css('background', "black")
+                .css('top', 0)
+                .css('right', "-10px")
+                .css('border-radius', "4px")
+                .css('background', "#000")
+                .css('opacity', .4)
+                .css('cursor', "pointer")
+                .width(8)
+                .addClass("mp-scroll-knob")
+                .appendTo(this.parent)
+                .bind("mousedown touchstart", function (e) {
+                    self.onKnobStart(e);
+                });
+
+            this.parent
+                .css("position", "relative")
+                .css("overflow", "visible")
+                .bind("mousewheel", function (e){
+                    self.onScroll(e);
+                })
+                .bind((this.config.mouseDrag ? "mousedown" : '') + " touchstart", function (e) {
+                    self.onTouchStart(e);
+                });
+
+
+            this.scrollTo(0,0);
+        },
+
+        onScroll : function(e) {
+            var x = e.originalEvent.wheelDeltaX || e.originalEvent.delta || 0;
+            var y = e.originalEvent.wheelDeltaY || e.originalEvent.delta || 0;
+            this.scrollBy(-x, -y);
+            e.preventDefault();
+        },
+
+        scrollBy : function (x, y, duration){
+            var sl = this.scroller.scrollLeft();
+            var st = this.scroller.scrollTop();
+            this.scrollTo( sl + x ,  st + y, duration);
+        },
+
+        scrollTop : function () {
+            return this.scroller.scrollTop();
+        },
+
+        scrollTo : function (x, y, duration){
+
+            var max = this.body.height() - this.parent.height();
+            var at_max = ( max > 0 && this.scroller.scrollTop() + 1 >= max ); // allow rounding fuzzyiness
+
+             if( y > max  )
+                y = max;
+
+            if( y < 0 )
+                y = 0;
+
+            this.scroller.stop();
+
+            if( duration && !at_max ){
+                var self = this;
+                this._scrollY = y;
+                this.scroller.animate({
+                    scrollLeft : x,
+                    scrollTop : y
+                }, duration, function () {
+                    self._scrollY = null;
+                });
+                this.render(duration);
+            }
+            else {
+                this.scroller.scrollLeft(x);
+                this.scroller.scrollTop(y);
+                this.render();
+            }
+        },
+
+        render: function (duration) {
+            if( ! this.body ) {
+                return;
+            }
+            var bh = this.body.height();
+            var ph = this.parent.height();
+            var kh =  Math.min( ph - ( (bh - ph) / bh * ph ), ph);
+
+            if( kh < this.config.minHeight || this.config.fixedHeight )
+                kh = this.config.minHeight;
+
+            var y = (this._scrollY != null) ? this._scrollY : this.scroller.scrollTop();
+            var perY = y /  ( bh - ph );
+            var knobY = (ph - kh) * perY;
+
+            this.knob
+                .toggle( kh < ph );
+
+            if( duration ){
+                this.knob.stop().animate({
+                    height : kh,
+                    top : knobY
+                }, duration)
+            }
+            else {
+                this.knob.stop()
+                    .height(kh)
+                    .css('top', knobY);
+            }
+        },
+
+        onResize : function () {
+            this.render(1000);
+        },
+
+        onTouchStart : function (e) {
+
+            this.touching = {
+                lastX : this.scroller.scrollLeft(),
+                lastY : this.scroller.scrollTop()
+            };
+
+            this.touching.x = eventX(e) + this.touching.lastX;
+            this.touching.y = eventY(e) + this.touching.lastY;
+
+            $(document)
+                .bind("mousemove touchmove", this._touchMove )
+                .bind("mouseup touchend", this._touchStop );
+
+            if( this.config.inertial ) {
+                var self = this;
+                this.inertiaInterval = setInterval( function() {
+                    self.onInertiaUpdate();
+                },30);
+            }
+        },
+
+        onInertiaUpdate : function () {
+            this.inertiaY = this.inertiaY * .9;
+
+            if( this.touching ) {
+                return;
+            }
+
+            if( this.inertiaY < 1 )
+                clearInterval( this.inertiaInterval );
+
+            this.scrollBy(0, this.inertiaY);
+        },
+
+        onTouchStop : function (e) {
+
+             $(document)
+                .unbind("mousemove touchmove", this._touchMove )
+                .unbind("mouseup touchend", this._touchStop );
+            this.touching = null;
+
+
+        },
+
+        onTouchMove : function (e) {
+            var x = (eventX(e) - this.touching.x) * -1;
+            var y = (eventY(e) - this.touching.y) * -1;
+
+            this.inertiaY += y - this.touching.lastY;
+
+            this.touching.lastX = x;
+            this.touching.lastY = y;
+            this.scrollTo(x, y);
+            e.stopPropagation();
+            e.preventDefault();
+        },
+
+        onKnobStart : function (e, inverse) {
+            this.scroller.stop();
+
+            this.dragging = {
+                x : eventX(e) - this.knob.position().left,
+                y : eventY(e) -  this.knob.position().top
+            };
+
+            $(document)
+                .bind("mousemove touchmove", this._knobMove )
+                .bind("mouseup touchend", this._knobStop );
+
+            e.stopPropagation();
+            e.preventDefault();
+        },
+
+        onKnobStop : function (e) {
+             $(document)
+                .unbind("mousemove touchmove", this._knobMove )
+                .unbind("mouseup touchend", this._knobStop );
+            this.dragging = null;
+
+        },
+
+        onKnobMove : function (e) {
+            var x = (eventX(e) - this.dragging.x);
+            var y = (eventY(e) - this.dragging.y);
+
+
+            var bh = this.body.height();
+            var ph = this.parent.height();
+            var kh = this.knob.height();
+
+            var perY = y / (ph - kh);
+            this.scrollTo(x, perY * (bh -ph) );
+        }
+
+    };
+
+    if( ! window.MetaPlayer )
+        window.MetaPlayer = {};
+
+    MetaPlayer.scrollbar = function (target, options) {
+        return new ScrollBar(target, options);
+    };
 
 })();
 
@@ -990,164 +2002,190 @@
     var $ = jQuery;
 
     var defaults = {
-        playlistService : "/device/services/mp2-playlist?e={e}"
+        msQuotes : true,
+        serviceUri : "/device/services/mp2-playlist?e="
     };
 
-    var SmilService = function (video, options) {
-        if( ! (this instanceof SmilService ))
-            return new SmilService(video, options);
-
-        this.config = $.extend({}, defaults, options);
-
-        this.dispatcher = MetaPlayer.dispatcher(video);
-        this.dispatcher.attach(this);
-
-        // if we're attached to video, update with track changes
-        this.dispatcher.listen("trackchange", this._onTrackChange, this);
+    var RampService = function (player, url, options) {
+        this.config = $.extend({}, defaults);
+        this.dispatcher = MetaPlayer.dispatcher(this);
+        this.player = player;
+        this._currentUrl = null;
+        this.player.listen( MetaPlayer.READY, this.onReady, this);
     };
 
-    SmilService.msQuotes = true;
-    SmilService.rebase = true;
+    MetaPlayer.addPlugin("ramp", function (url, options) {
+        if(! this._ramp )
+            this._ramp =  new RampService(this, url);
 
-    MetaPlayer.ramp = function (options) {
-        return SmilService(null, options);
-    };
+        var ramp = this._ramp;
 
-    MetaPlayer.addPlugin("ramp", function (options) {
-        this.service = SmilService(this.video, options);
+        if( url ) {
+            if(! this.ready )
+                ramp._currentUrl = url;
+            else
+                ramp.load( url , true);
+        }
+
+        if( options )
+            ramp.config = $.extend(ramp.config, options);
+
+        return this;
     });
 
-    SmilService.parseUrl = function ( url, obj ) {
-        var parts = url.split(':');
-        if( obj == undefined)
-            obj = {};
-        if( parts[0] !== "ramp" )
-            obj.url = url;
-        else {
-            obj.rampHost = parts[1];
-            obj.rampId = parts[2];
-        }
-        return obj;
-    };
+    RampService.prototype = {
 
-    SmilService.prototype = {
-        _onTrackChange : function (e, track) {
-            if(! track ) {
-                return;
-            }
+        onReady  : function (e) {
+            this.player.metadata.listen( MetaPlayer.MetaData.LOAD,
+                this.onMetaDataLoad, this);
 
-            if( typeof track == "string" ) {
-                track = SmilService.parseUrl(track);
-            }
+            this.player.metadata.listen( MetaPlayer.DESTROY,
+                this.onDestroy, this);
 
-            if( track && track.rampId ){
-                this.load(track);
+            if( this._currentUrl )
+                this.load(this._currentUrl, true);
+        },
+
+        onMetaDataLoad : function (e) {
+            var data = e.data;
+            if(data.ramp && data.ramp.serviceURL ){
+                this.load(data.ramp.serviceURL );
+                // let others know we're on it.
+                e.stopPropagation();
                 e.preventDefault();
+            }
+            else {
+            // fall through to noop if not recognized
             }
         },
 
-        load : function ( track  ) {
+        onDestroy : function () {
+            this.dispatcher.destroy();
+            delete this.config;
+            delete this.player;
+        },
 
-            // parse format:  "ramp:publishing.ramp.com/ramp:1234"
-            if( typeof track == "string" ) {
-                track = SmilService.parseUrl(track);
+        load : function ( uri, isPlaylist ) {
+            var track;
+
+            // parse format:  "ramp:publishing.ramp.com/sitename:1234"
+            var url = uri;
+            if( typeof uri == "string" &&  uri.match(/^ramp\:/) ) {
+                var parts = this.parseUrl(uri);
+                url = parts.rampHost + this.config.serviceUri + parts.rampId;
             }
-
-            if( ! track.rampId ) {
-                throw "invalid media id";
-            }
-
-            this.mediaId = track.rampId;
-
-            if( track.rampHost )
-                this.lastHost = track.rampHost;
-
-            var host = this.lastHost;
-            var url = host + this.config.playlistService.replace(/{e}/, this.mediaId);
 
             var params = {
-//                format: 'playlist',
-//                renderJSON: true
             };
 
             $.ajax(url, {
                 dataType : "xml",
-//                jsonp : "jsoncallback",
                 timeout : 15000,
                 context: this,
                 data : params,
                 error : function (jqXHR, textStatus, errorThrown) {
-                    console.error("Load playlist error: " + textStatus + ", url: " + url);
+                    this.player.video.dispatch("error");
                 },
                 success : function (response, textStatus, jqXHR) {
-                    var data = this.parse(response);
-                    data.metadata.host = host;
-                    this.setData(data)
-
+                    var items = this.parse(response, url);
+                    if( items.length )
+                        this.setItems(items, isPlaylist);
                 }
             });
         },
 
-        setData : function (data) {
-            this._data = data;
-            var d = this.dispatcher;
-            d.dispatch('metadata', data.metadata);
-            d.dispatch('transcodes', data.transcodes);
-            d.dispatch('captions', data.captions);
-            d.dispatch('tags', data.tags);
-            d.dispatch('metaq', data.metaq);
-            d.dispatch('related', data.related);
+        setItems : function (items, isPlaylist) {
+            var metadata = this.player.metadata;
+            var playlist = this.player.playlist;
+            var cues = this.player.cues;
+
+            // first item contains full info
+            var first = items[0];
+            var guid = first.metadata.guid;
+            if( isPlaylist )
+                metadata.setFocusUri(guid);
+            metadata.setData( first.metadata, guid, true );
+            cues.setCueLists( first.cues, guid  );
+
+            // subsequent items contain metadata only, no transcodes, tags, etc.
+            // they require another lookup when played, so disable caching by metadata
+            if( playlist && isPlaylist ) {
+                var self = this;
+                // add stub metadata
+                $.each(items.slice(1), function (i, item) {
+                    metadata.setData(item.metadata, item.metadata.guid, false);
+                });
+
+                // queue the uris
+                playlist.empty();
+                playlist.queue( $.map(items, function (item) {
+                    return item.metadata.guid;
+                }));
+            }
         },
 
-        parse : function (data) {
+        parse : function (data, uri) {
             var self = this;
             var playlist = $(data).find('par').toArray();
-            var node = playlist.shift();
-
-            var media = this.parseMedia(node);
+            var media = [];
             $.each(playlist, function(i, node) {
-                media.related.push( self.parseMedia(node).metadata );
+                media.push( self.parseMedia(node, uri) );
             });
-
             return media;
         },
 
-        parseMedia : function (node) {
-            var media = {
+        parseMedia : function (node, uri) {
+            var item = {
                 metadata : {},
-                transcodes : [],
-                tags : [],
-                captions : [],
-                metaq : {},
-                related : []
+                cues : {}
             };
 
+            var self = this;
             var video = $(node).find('video');
 
-            // metadata
-            media.metadata.title = video.attr('title');
+            // mrss metadata
+            item.metadata.title = video.attr('title');
+            item.metadata.description = video.find('metadata meta[name=description]').text();
+            item.metadata.thumbnail = video.find('metadata meta[name=thumbnail]').attr('content');
+            item.metadata.guid = video.find('metadata meta[name=rampId]').attr('content');
+            item.metadata.link = video.find('metadata meta[name=linkURL]').attr('content');
+
+            // other metadata
+            item.metadata.ramp = {
+            };
             video.find('metadata meta').each( function (i, metadata){
                 var meta = $(metadata);
-                media.metadata[ meta.attr('name') ] = meta.attr('content') || meta.text();
+                item.metadata.ramp[ meta.attr('name') ] = meta.attr('content') || meta.text();
             });
 
-            // transcodes
-            media.transcodes.push({
+            if( item.metadata.ramp.rampId && ! item.metadata.ramp.serviceURL ){
+                if( uri.match( /mp2-playlist/ ) ) {
+                    item.metadata.ramp.serviceURL = uri.replace(/(mp2-playlist[-\?]e=)(\d+)/, "$1" + item.metadata.ramp.rampId);
+                }
+            }
+
+            // content & transcodes
+            item.metadata.content = [];
+            item.metadata.content.push({
                 name : "default",
-                type : SmilService.resolveType( video.attr('src') ),
-                url : video.attr('src')
+                url : video.attr('src'),
+                type : self.resolveType( video.attr('src') ),
+                isDefault : true
             });
 
             var transcodes = $(node).find("metadata[xml\\:id^=transcodes]");
             transcodes.find('meta').each(function (i, transcode){
                 var code = $(transcode);
-                media.transcodes.push({
+                item.metadata.content.push({
                     name : code.attr('name'),
-                    type : code.attr('type') || SmilService.resolveType( code.attr('content') ),
-                    url : code.attr('content')
+                    type : code.attr('type') || self.resolveType( code.attr('content') ),
+                    url : code.attr('content'),
+                    isDefault: false
                 });
             });
 
+            // jump tags
+            item.metadata.ramp.tags = [];
             var jumptags = $(node).find("seq[xml\\:id^=jumptags]");
             jumptags.find('ref').each(function (i, jump){
                 var tag = {};
@@ -1157,16 +2195,18 @@
                 });
                 if( tag.timestamps )
                     tag.timestamps = tag.timestamps.split(',');
-                media.tags.push(tag);
+                item.metadata.ramp.tags.push(tag);
             });
 
+            // event tracks / MetaQ
+            item.cues = {};
             var metaqs = $(node).find("seq[xml\\:id^=metaqs]");
             metaqs.find('ref').each(function (i, metaq){
                 var event = {};
                 $(metaq).find('param').each( function (i, val) {
                     var param = $(val);
                     var name =  param.attr('name');
-                    var text =  SmilService.deSmart( param.text() );
+                    var text =  self.deSmart( param.text() );
                     if( name == "code" ) {
                         var code = $.parseJSON( text );
                         $.extend(true, event, code);
@@ -1175,219 +2215,167 @@
                         event[ name ] = text;
 
                 });
-                if( ! media.metaq[event.plugin] )
-                    media.metaq[event.plugin] = [];
+                if( ! item.cues[event.plugin] )
+                    item.cues[event.plugin] = [];
 
-                media.metaq[event.plugin].push(event);
+                item.cues[event.plugin].push(event);
             });
 
+            // transcript
             var smilText = $(node).find("smilText");
-            media.captions = SmilService.parseCaptions(smilText);
-
-            return media;
+            item.cues.captions = this.parseCaptions(smilText);
+            return item;
         },
 
-        search : function ( query, callback, scope) {
+        parseCaptions : function (xml) {
+            // static factory constructor
+            var self = this;
+            var nodes = $(xml).contents();
+            var cues  = [
+            ];
 
-            var url = this._data.metadata.searchapi;
-
-            if( SmilService.rebase ) {
-                url = url.replace(/^(.*\/\/[\w.]+)/, ""); // make match local domain root
-            }
-
-            var params = {
-                q : query
+            var current = {
+                text : '',
+                start: 0,
+                offset : 0
             };
 
-            if( ! query ) {
-                var response = {
-                    query : [],
-                    results : []
+            var previous;
+
+            var getStart = function (node, lastCue) {
+                var el = $(node);
+                var parseSeconds = this.parseSeconds;
+
+
+                var begin = el.attr('begin');
+                if( begin != null )
+                    return self.parseSeconds(begin);
+
+                var _next = el.attr('next');
+                if( _next != null )
+                    return self.parseSeconds(_next) + lastCue.start;
+            };
+
+            var handleNode = function (node, text) {
+                var start = getStart(node);
+                previous = current;
+                previous.end = start;
+                if( text )
+                    previous.text += text ;
+                cues.push(previous);
+                current = {
+                    text: '',
+                    start : start,
+                    offset : current.offset+1
                 };
-                this.dispatch("search", response);
-                callback.call(scope, response);
-                return;
-            }
+            };
 
-            $.ajax(url, {
-                dataType : "xml",
-                timeout : 15000,
-                context: this,
-                data : params,
-                error : function (jqXHR, textStatus, errorThrown) {
-                    console.error("Load search error: " + textStatus + ", url: " + url);
-                },
-                success : function (response, textStatus, jqXHR) {
-                    var results = SmilService.parseSearch(response);
-                    this.dispatch("search", results);
-                    if( callback )
-                        callback.call(scope, results);
+            nodes.each( function ( i, node ){
+                var text = nodes[i].data;
+                if( node.tagName === undefined ){
+                    if( self.config.msQuotes ) {
+                        text = self.deSmart(text);
+                    }
+                    current.text += text;
+                    return;
+                }
+
+                switch (node.tagName) {
+                    case "smil:clear":
+                    case "clear":
+                        handleNode(node);
+                        break;
+
+                    case "smil:tev":
+                    case "tev":
+                        handleNode(node);
+                        break;
+
+                    case "smil:br":
+                    case "br":
+                        handleNode(node, "<br />" );
+                        break;
+
+                    case "smil:div":
+                    case "smil:p":
+                    case "smil:span":
+                    default:
+                        throw "unsupported tag";
+                    // unsupported...
                 }
             });
-        }
-    };
-    SmilService.parseSearch = function (xml) {
-        var node = $(xml);
-        var ret = {
-            query : [],
-            results : []
-        };
 
-        var terms = node.find('SearchTerms Term');
-        terms.each(function() {
-            ret.query.push( SmilService.deSmart( $(this).text() ) );
-        });
+            if( current.text )
+                cues.push(current);
 
-        var snippets = node.find('Snippets Snippet');
-        snippets.each( function (i, snip) {
-            var node = $(snip);
-            var s = {
-                start : node.attr('time'),
-                words : []
-            };
-            var words = node.find('T');
-            $.each(words, function (i, word){
-                var el = $(word);
-                s.words.push({
-                    match : Boolean( el.find('MQ').length ),
-                    start : el.attr('s'),
-                    text : SmilService.deSmart( el.text() )
-                })
-            });
-            ret.results.push(s);
-        });
-        return ret;
-    },
+            return cues;
+        },
 
-    SmilService.parseCaptions = function (xml) {
-        // static factory constructor
-        var nodes = $(xml).contents();
-        var cues  = [
-        ];
+        parseSeconds : function (str) {
+            // http://www.w3.org/TR/smil/smil-timing.html#Timing-ClockValueSyntax
+            var lastChar = str.substr(-1);
+            var val = parseFloat(str);
 
-        var current = {
-            text : '',
-            start: 0,
-            offset : 0
-        };
+            if( lastChar == "s")
+                return val;
 
-        var previous;
+            if( lastChar == "m")
+                return val * 60;
 
-        var getStart = function (node, lastCue) {
-            var el = $(node);
-            var parseSeconds = SmilService.parseSeconds;
+            if( lastChar == "h")
+                return val * 3600;
 
+            var sec = 0;
+            var p = str.split(':');
+            for (var i = 0; i < Math.min(p.length, 4); i++)
+                sec += Math.pow(60, i) * parseFloat(p[i]);
+            return sec;
+        },
 
-            var begin = el.attr('begin');
-            if( begin != null )
-                return parseSeconds(begin);
+        parseUrl : function ( url, obj ) {
+            var parts = url.split(':');
+            if( obj == undefined)
+                obj = {};
+            if( parts[0] !== "ramp" )
+                obj.url = url;
+            else {
+                obj.rampHost = parts[1];
+                obj.rampId = parts[2];
+            }
+            return obj;
+        },
 
-            var _next = el.attr('next');
-            if( _next != null )
-                return parseSeconds(_next) + lastCue.start;
-        };
+        toUrl : function ( item ) {
+            return "ramp:" + item.ramp.rampHost + ":" + item.ramp.rampId;
+        },
 
-        var handleNode = function (node, text) {
-            var start = getStart(node);
-            previous = current;
-            previous.end = start;
-            if( text )
-                previous.text += text ;
-            cues.push(previous);
-            current = {
-                text: '',
-                start : start,
-                offset : current.offset+1
-            };
-        };
+        deSmart : function (text) {
+            return text.replace(/\xC2\x92/, "\u2019" );
+        },
 
-        nodes.each( function ( i, node ){
-            var text = nodes[i].data;
-            if( node.tagName === undefined ){
-                if( SmilService.msQuotes ) {
-                    text = SmilService.deSmart(text);
-                }
-                current.text += text;
-                return;
+        resolveType : function ( url ) {
+            var ext = url.substr( url.lastIndexOf('.') + 1 );
+
+            if( url.match("www.youtube.com") ) {
+                return "video/youtube"
             }
 
-            switch (node.tagName) {
-                case "smil:clear":
-                case "clear":
-                    handleNode(node);
-                    break;
+            if( ext == "ogv")
+                return "video/ogg";
 
-                case "smil:tev":
-                case "tev":
-                    handleNode(node);
-                    break;
-
-                case "smil:br":
-                case "br":
-                    handleNode(node, "<br />" );
-                    break;
-
-                case "smil:div":
-                case "smil:p":
-                case "smil:span":
-                default:
-                    throw "unsupported tag";
-                // unsupported...
-            }
-        });
-
-        if( current.text )
-            cues.push(current);
-
-        return cues;
-    };
-
-    SmilService.parseSeconds = function (str) {
-        // http://www.w3.org/TR/smil/smil-timing.html#Timing-ClockValueSyntax
-        var lastChar = str.substr(-1);
-        var val = parseFloat(str);
-
-        if( lastChar == "s")
-            return val;
-
-        if( lastChar == "m")
-            return val * 60;
-
-        if( lastChar == "h")
-            return val * 3600;
-
-        var sec = 0;
-        var p = str.split(':');
-        for (var i = 0; i < Math.min(p.length, 4); i++)
-            sec += Math.pow(60, i) * parseFloat(p[i]);
-        return sec;
-    };
-
-    SmilService.deSmart = function (text) {
-       return text.replace(/\xC2\x92/, "\u2019" );
-    };
-
-    SmilService.resolveType = function ( url ) {
-        var ext = url.substr( url.lastIndexOf('.') + 1 );
-
-        if( url.match("www.youtube.com") ) {
-            return "video/youtube"
-        }
-
-        if( ext == "ogv")
-            return "video/ogg";
-
-        // none of these seem to work on ipad4
-        if( ext == "m3u8" )
+            // none of these seem to work on ipad4
+            if( ext == "m3u8" )
             // return  "application.vnd.apple.mpegurl";
             // return  "vnd.apple.mpegURL";
-            return  "application/application.vnd.apple.mpegurl";
+                return  "application/application.vnd.apple.mpegurl";
 
-        return "video/"+ext;
+            return "video/"+ext;
+        }
     };
 
 
 })();
+
 (function () {
 
     var $ = jQuery;
@@ -1405,22 +2393,24 @@
         controls : true
     };
 
-    var Html5Player = function (el, options ){
+    var Html5Player = function (parent, options ){
         if( !(this instanceof Html5Player ))
-            return new Html5Player(el, options);
+            return new Html5Player(parent, options);
 
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
         this.config = $.extend({}, defaults, options);
-        this._createMarkup(el);
-    };
-
-    MetaPlayer.html5 = function (video, options) {
-        return Html5Player(video, options).video;
+        this._createMarkup(parent);
     };
 
     MetaPlayer.addPlayer("html5", function (options) {
-       return MetaPlayer.html5(this.video, options);
+        var html5 = new Html5Player(this.layout.stage, options);
+        this.video = html5.video;
     });
+
+    MetaPlayer.html5 = function (target, options) {
+        var html5 = new Html5Player(target, options);
+        return html5.video;
+    };
 
     Html5Player.prototype = {
         _createMarkup : function ( parent ) {
@@ -1448,6 +2438,8 @@
                 video.controls = this.config.controls;
                 video.muted = this.config.muted;
                 video.volume = this.config.volume
+                video.style.height = "100%";
+                video.style.width = "100%";
                 this.video = video;
                 p.append(video);
             }
@@ -1456,7 +2448,8 @@
 
     };
 
-})();(function () {
+})();
+(function () {
 
     var $ = jQuery;
     var $f = window.flowplayer;
@@ -1472,6 +2465,10 @@
         fpConfig : {
             clip : {
                 scaling : "fit"
+            },
+            canvas : {
+                backgroundColor : "#0000000",
+                backgroundGradient : "none"
             }
         }
     };
@@ -1483,7 +2480,7 @@
 
         this.config = $.extend(true, {}, defaults, options);
 
-        this.dispatcher = MetaPlayer.dispatcher(el);
+        this.dispatcher = MetaPlayer.dispatcher(this);
 
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
         this.__seeking = null;
@@ -1520,10 +2517,10 @@
         // single argument mode: function(options) {
         if(!  el.getCommonClip  ) {
             options = el;
-            el = $("<div></div>").appendTo(this.video);
+            el = $("<div></div>").appendTo(this.layout.stage);
         }
-
-        return FlowPlayer(el, options).video;
+        this.flowplayer = FlowPlayer(el, options);
+        this.video = this.flowplayer.video;
     });
 
     FlowPlayer.prototype = {
@@ -1564,33 +2561,42 @@
 
             // Player listeners
             this._flowplayer.onVolume( function (level) {
-                self.dispatcher.dispatch("volumechange");
+                self.dispatch("volumechange");
             });
 
             this._flowplayer.onMute( function (level) {
-                self.dispatcher.dispatch("volumechange");
+                self.dispatch("volumechange");
             });
 
             this._flowplayer.onUnmute( function (level) {
-                self.dispatcher.dispatch("volumechange");
+                self.dispatch("volumechange");
             });
 
             this._flowplayer.onPlaylistReplace( function () {
-                self.dispatcher.dispatch("playlistChange");
+                self.dispatch("playlistChange");
             });
 
             this._flowplayer.onClipAdd( function () {
-                self.dispatcher.dispatch("playlistChange");
+                self.dispatch("playlistChange");
             });
 
             this.controls( this.config.controls );
 
 
             // apply src from before we were loaded, if any
-            if( this.__src )
+            if( this.__src ) {
                 this.src( this.__src );
+            }
+            else {
+                var c = fp.getClip(0);
+                if( c ){
+                    this._addClipListeners(c);
+                    this.__src = c.url;
+                }
 
-            self.dispatcher.dispatch('loadstart');
+            }
+
+            self.dispatch('loadstart');
 
             if( this.preload() || this.autoplay()  )
                 this.load();
@@ -1598,6 +2604,9 @@
 
         _addClipListeners : function (clip) {
             var self = this;
+
+            if( ! clip )
+                return;
 
             clip.onBeforeBegin( function (clip) {
                 return true;
@@ -1618,10 +2627,10 @@
                     $(self._flowplayer.getParent() ).find('video').get(0).controls = false;
                 }
 
-                self.dispatcher.dispatch('loadeddata');
+                self.dispatch('loadeddata');
                 self.__duration = clip.duration;
-                self.dispatcher.dispatch("durationchange");
-                self.dispatcher.dispatch('loadedmetadata');
+                self.dispatch("durationchange");
+                self.dispatch('loadedmetadata');
             });
 
             clip.onStop( function (clip) {
@@ -1634,45 +2643,49 @@
                 self.__seeking = null;
                 self._setPlaying(false);
                 self._flowplayer.stop();
-                self.dispatcher.dispatch("ended");
+                self.dispatch("ended");
             });
 
             clip.onPause( function (clip) {
+
                 self._setPlaying(false);
                 self._setReady();
             });
 
             clip.onResume( function (clip) {
                 self._setPlaying(true);
-                self.dispatcher.dispatch("play");
+                self.dispatch("play");
             });
 
             clip.onBeforeSeek( function (clip) {
-                self.dispatcher.dispatch("seeking");
-                self.dispatcher.dispatch("timeupdate");
+
+                self.dispatch("seeking");
+                self.dispatch("timeupdate");
 
                 // fp doesn't do seeks while paused until it plays again, so we fake
                 if( self.paused() )  {
-                    self.dispatcher.dispatch("seeked");
+                    self.dispatch("seeked");
                     self.__seeking = null;
                 }
             });
 
             clip.onSeek( function (clip) {
+                this.__currentTimeCache = 0;
                 self.__seeking = null;
                 if( ! self.paused() )
-                    self.dispatcher.dispatch("seeked");
+                    self.dispatch("seeked");
             });
+
         },
 
         _setReady : function (){
             if( this.__readyState != 4 ) {
                 this.__readyState = 4;
-                this.dispatcher.dispatch("canplay");
+                this.dispatch("canplay");
             }
             else {
-                this.dispatcher.dispatch("seeking");
-                this.dispatcher.dispatch("seeked");
+                this.dispatch("seeking");
+                this.dispatch("seeked");
             }
         },
 
@@ -1869,6 +2882,7 @@
             if( val !== undefined ) {
                 this.__src = val;
                 this.__loaded  = false;
+                this.__duration  = NaN;
                 var fp = this._flowplayer;
                 if( fp.isLoaded() ) {
                     fp.setClip({
@@ -1891,7 +2905,6 @@
 
         attach : function (target) {
             target = MetaPlayer.proxy.getProxyObject(target);
-            this.dispatcher.attach(target);
             MetaPlayer.proxy.proxyPlayer(this, target);
             return target;
         },
@@ -1904,63 +2917,50 @@
 
             this._statepoll.reset();
             if( this.paused()  ) {
-                this.dispatcher.dispatch("pause");
+                this.dispatch("pause");
                 this._timeupdater.reset();
             }
             else {
                 this.autoplay(true);
-                this.dispatcher.dispatch("playing");
-                this.dispatcher.dispatch("play");
+                this.dispatch("playing");
+                this.dispatch("play");
                 this._timeupdater.start();
             }
         },
 
         _onTimeUpdate : function  () {
-            this.dispatcher.dispatch("timeupdate");
+            this.dispatch("timeupdate");
         }
 
     };
 })();
 (function () {
 
+    // save reference for no conflict support
     var $ = jQuery;
 
     var defaults = {
         autoplay : false,
         preload : true,
-        controls : true,
-        chromeless : false,
-        loop : false,
-        hd : true,
-        annotations: false,
-        modestbranding : true,
-        related : false,
-        showinfo : false,
-        captions : false,
-        apiUrl  : "http://www.youtube.com/apiplayer", // chromeless
-        videoUrl : "http://www.youtube.com/v/u1zgFlCw8Aw" // controls, need some id
-    };
-
-    // play nice in the global context by preserving other listeners, hope they do the same for us
-    var oldReady = window.onYouTubePlayerReady;
-
-    window.onYouTubePlayerReady = function (id){
-        if( oldReady ){
-            oldReady.apply(this, arguments);
+        updateMsec : 500,
+        playerVars : {
+            enablejsapi : 1,
+            version : 3,
+            autohide : 0,
+            autoplay : 0,
+            controls : 1,
+            fs : 1,
+            hd : 1,
+            rel : 1,
+            showinfo : 1,
+            iv_load_policy : 0,
+            cc_load_policy : 0,
+            wmode : "transparent"
         }
-        var instance = MetaPlayer.youtube.instances[id];
-        if( instance )
-            instance.onReady();
     };
 
-
-    var YouTubePlayer = function (target, options) {
-        var config = $.extend(true, {}, defaults, options);
-
-        this.video = $(target).get(0);
-
-        this.apiUrl = config.apiUrl;
-        this.videoUrl = config.videoUrl;
+    var YouTubePlayer = function (youtube, options) {
+        this.config = $.extend(true, {}, defaults, options);
 
         this.__seeking = false;
         this.__readyState = 0;
@@ -1970,167 +2970,169 @@
         this.__duration = NaN;
         this.__currentTime = 0;
         this.__volume = 1;
-
-        this.controls = config.controls;
-        this.__loop = config.loop;
-        this.preload = config.preload;
-        this.autoplay = config.autoplay;
+        this.__loop = this.config.loop;
         this.__src = "";
 
+        if( this.config.chromeless ){
+            var pv = this.config.playerVars;
+            pv.controls = 0;
+            pv.rel = 0;
+            pv.showinfo = 0;
+        }
+        this.preload = this.config.preload;
+        this.autoplay = this.config.autoplay;
+        this.updateMsec = this.config.updateMsec;
 
-        this.apiId = "YT" + YouTubePlayer.embedCount++ + "T" + (new Date()).getTime() ;
-        this.hd = config.hd;
-        this.annotations = config.annotations;
-        this.modestbranding = config.modestbranding;
-        this.showinfo = config.showinfo;
-        this.related = config.related;
-        this.captions = config.captions;
-        this.chromeless = config.chromeless;
 
-        MetaPlayer.proxy.proxyPlayer(this, this.video );
-        this.doEmbed( this.video );
-        this.dispatcher = MetaPlayer.dispatcher( this.video );
-        MetaPlayer.youtube.instances[ this.apiId ] = this;
 
-        this.video.player = this;
+        MetaPlayer.dispatcher( this );
+
+        if( typeof youtube == "string" || ! youtube.getVideoEmbedCode ) {
+            this.target = $(youtube).get(0);
+            this.init();
+        }
+        else {
+            this.youtube = youtube;
+            this.target = youtube.a.parentNode;
+            this.addListeners();
+        }
+
+        this.video = MetaPlayer.proxy.proxyPlayer(this, this.target);
     };
 
 
-    if( window.MetaPlayer ) {
-        MetaPlayer.addPlayer("youtube", function ( options ) {
-            var el = $("<div></div>").appendTo(this.video);
-            return new YouTubePlayer(el, null, options).video;
-        });
+    MetaPlayer.addPlayer("youtube", function (youtube, options ) {
+
+        // single arg form
+        if( ! options && youtube instanceof Object && ! youtube.getVideoEmbedCode){
+            options = youtube;
+            youtube = null;
+        }
+
+        if( ! options ) {
+            options = {};
+        }
+
+        if( ! youtube ) {
+
+            // disable default UI if initialized without options
+            if( options.chromeless == null )
+                options.chromeless = true;
+
+           youtube = $("<div></div>")
+               .addClass("mp-yt")
+               .appendTo(this.layout.stage);
+        }
+
+        var yt = new YouTubePlayer(youtube, options);
+        this.video = yt.video;
+        this.youtube = yt
+    });
+
+    MetaPlayer.youtube = function (youtube, options){
+        var yt = new YouTubePlayer(youtube, options);
+        return yt.video;
     }
-    else {
-        // allow stand-alone use
-        window.MetaPlayer = {};
-    }
 
-    MetaPlayer.youtube = function (target, options) {
-        return new YouTubePlayer(target, options).video;
-    };
-
-    MetaPlayer.youtube.instances = {};
-
-    YouTubePlayer.embedCount = 0;
 
     YouTubePlayer.prototype = {
-        doEmbed : function (target) {
-            var url = this.getEmbedUrl();
 
-            var video = $(target);
+        init : function () {
 
-            video.empty();
+            if( window.YT instanceof Function ){
+                this.onApiReady();
+                return;
+            }
 
-            var obj =  $("<object></object>")
-                .attr("width", "100%")
-                .attr("height", "100%");
+            var tag = document.createElement('script');
+            tag.src = "http://www.youtube.com/player_api";
+            var firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-            $("<param>")
-                .attr('name', 'movie')
-                .attr('value', url)
-                .appendTo(obj);
-
-            $("<param>")
-                .attr('name', 'allowFullScreen')
-                .attr('value', true)
-                .appendTo(obj);
-
-            $("<param>")
-                .attr('name', 'allowScriptAccess')
-                .attr('value', 'always')
-                .appendTo(obj);
-
-            $("<param>")
-                .attr('name', 'wmode')
-                .attr('value', 'transparent')
-                .appendTo(obj);
-
-            $("<embed>")
-                .attr('src', url)
-                .attr('type', 'application/x-shockwave-flash')
-                .attr('allowfullscreen', 'true')
-                .attr('allowscriptaccess', 'always')
-                .attr('wmode', 'transparent')
-                .attr("width", "100%")
-                .attr("height", "100%")
-                .appendTo(obj);
-
-            obj.appendTo( video );
-        },
-
-        getEmbedUrl : function () {
-            var url =  this.chromeless ?
-                this.apiUrl :
-                this.videoUrl;
-
-            var params = {
-                enablejsapi : 1,
-                version : 3,
-                playerapiid : this.apiId,
-                autohide : 0,
-                autoplay : this.autoplay ? 1 : 0,
-                controls : this.controls ? 1 : 0,
-                fs : 1,
-                hd : this.hd ? 1 : 0,
-                rel : this.related ? 1 : 0,
-                showinfo : this.showinfo? 1 : 0,
-                iv_load_policy : this.annotations ? 1 : 0,
-                cc_load_policy : this.captions ? 1 : 1
+            // play nice; global context
+            var self = this;
+            var oldReady = window.onYouTubePlayerAPIReady;
+            window.onYouTubePlayerAPIReady = function (){
+                self.onApiReady();
+                if( oldReady )
+                    oldReady.call(window);
             };
-
-            return url + "?" + $.param(params,true);
         },
 
-        getCallbackString : function ( fnName ) {
-            var str = "MetaPlayer.youtube.instances['" + this.apiId +"']";
-            if( fnName != null )
-                str = str.concat( "."+fnName );
-            return str;
+        onApiReady : function () {
+            this.youtube = new YT.Player( this.target, {
+                height: '100%',
+                width: '100%',
+//                playerVars : this.getParams()
+                playerVars : this.config.playerVars
+            });
+            this.addListeners();
+        },
+
+        addListeners : function () {
+            var yt = this.youtube;
+            var self = this;
+
+            yt.addEventListener("onReady", function(e) {
+                self.onReady(e);
+            });
+            yt.addEventListener("onStateChange", function(e) {
+                self.onStateChange(e);
+            });
+            yt.addEventListener("onError", function(e) {
+                self.onError(e);
+            });
         },
 
         onReady : function () {
-            var video = $(this.video);
-            var obj = video.find("object").get(0);
-            var embed = video.find("embed").get(0);
-            this.youtube = obj['playVideo'] != null ? obj : embed;
+            if( ! this.isReady() ) {
+                this.error = "unabled to find youtube player";
+                this.dispatch("error");
+                return;
+            }
+
             // flash implemented, works in IE?
             // player.addEventListener(event:String, listener:String):Void
-            this.youtube.addEventListener("onStateChange", this.getCallbackString("onStateChange") );
             this.startVideo();
         },
 
+        isReady : function () {
+            return this.youtube && this.youtube.playVideo;
+        },
 
-        onStateChange : function (state) {
-            /*
-            http://code.google.com/apis/youtube/js_api_reference.html#Events
-             */
+        onStateChange : function (e) {
+            var state = e.data;
 
+            // http://code.google.com/apis/youtube/js_api_reference.html#Events
             switch(state) {
                 case -1: // unstarted
                     break;
                 case 0: //ended
                     this.__ended = true;
-                    this.video.dispatch("ended");
+                    this.dispatch("ended");
                     break;
                 case 1: // playing
                     this.__paused = false;
-                    this.video.dispatch("playing");
-                    this.video.dispatch("play");
+                    this.dispatch("playing");
+                    this.dispatch("play");
                     break;
                 case 2: // paused
                     this.__paused = true;
-                    this.video.dispatch("pause");
+                    this.dispatch("pause");
                     break;
                 case 3: // buffering
+                    this.startDurationCheck();
+                    this.startTimeCheck(); // check while paused to handle event-less seeks
                     break;
                 case 5: // queued
-                    this.video.dispatch("canplay");
-                    this.video.dispatch("loadeddata");
-                    this.startTimeCheck();
+                    this.dispatch("canplay");
+                    this.dispatch("loadeddata");
                     break;
             }
+        },
+
+        onError : function (e) {
+            this.dispatch("error");
         },
 
         startTimeCheck : function () {
@@ -2141,7 +3143,7 @@
 
             this._timeCheckInterval = setInterval(function () {
                 self.onTimeUpdate();
-            }, 500);
+            }, this.updateMsec);
 
             // set an initial value, too
             this.updateTime();
@@ -2154,7 +3156,7 @@
 
         onTimeUpdate: function () {
             this.updateTime();
-            this.video.dispatch("timeupdate");
+            this.dispatch("timeupdate");
         },
 
         updateTime : function () {
@@ -2163,20 +3165,23 @@
 
         startDurationCheck : function () {
             var self = this;
+            if( this.__duration )
+                return;
+
             if( this._durationCheckInterval ) {
                 return;
             }
             this._durationCheckInterval = setInterval(function () {
                 self.onDurationCheck();
-            }, 1000);
+            }, this.updateMsec);
         },
 
         onDurationCheck : function () {
             var duration = this.youtube.getDuration();
             if( duration > 0 ) {
                 this.__duration = duration;
-                this.video.dispatch("loadedmetadata");
-                this.video.dispatch("durationchange");
+                this.dispatch("loadedmetadata");
+                this.dispatch("durationchange");
                 clearInterval( this._durationCheckInterval );
                 this._durationCheckInterval = null;
             }
@@ -2184,7 +3189,7 @@
 
         startVideo : function () {
             // not loaded yet
-            if( ! this.youtube )
+            if( ! this.isReady() )
                 return;
 
             this.__ended = false;
@@ -2201,14 +3206,14 @@
             }
 
             if( this.__readyState < 4 ){
-                this.video.dispatch("loadstart");
+                this.dispatch("loadstart");
                 this.__readyState = 4;
             }
 
-            if( src.match(/^http:/) )
-                this.youtube.cueVideoByUrl( src );
-            else
-                this.youtube.cueVideoById( src );
+            if( src.match("^http") ){
+                var videoId = src.match( /www.youtube.com\/(watch\?v=|v\/)([\w-]+)/ )[2];
+            }
+            this.youtube.cueVideoById( videoId || src );
 
             if( this.autoplay )
                 this.play();
@@ -2219,7 +3224,7 @@
 
         doSeek : function (time) {
             this.__seeking = true;
-            this.video.dispatch("seeking");
+            this.dispatch("seeking");
             this.youtube.seekTo( time );
             this.__currentTime = time;
 
@@ -2229,8 +3234,8 @@
             setTimeout (function () {
                 self.updateTime(); // trigger a time update
                 self.__seeking = false;
-                self.video.dispatch("seeked");
-                self.video.dispatch("timeupdate");
+                self.dispatch("seeked");
+                self.dispatch("timeupdate");
             }, 1500)
         },
 
@@ -2238,26 +3243,29 @@
 
         load : function () {
             this.preload = true;
-            if( ! this.youtube )
+
+            if( ! this.isReady() )
+                return;
+
+            if( this.youtube.getPlayerState() != -1 )
                 return;
 
             var src = this.src();
             // kickstart the buffering so we get the duration
             this.youtube.playVideo();
             this.youtube.pauseVideo();
-            this.startDurationCheck();
         },
 
         play : function () {
             this.autoplay = true;
-            if( ! this.youtube )
+            if( ! this.isReady() )
                 return;
 
             this.youtube.playVideo()
         },
 
         pause : function () {
-            if(! this.youtube  )
+            if(! this.isReady()  )
                 return false;
             this.youtube.pauseVideo()
         },
@@ -2279,13 +3287,13 @@
         },
 
         ended : function () {
-            if(! this.youtube  )
+            if(! this.isReady()  )
                 return false;
             return (this.youtube.getPlayerState() == 0);
         },
 
         currentTime : function (val){
-            if(! this.youtube  )
+            if(! this.isReady()  )
                 return 0;
             if( val != undefined ) {
                 this.__ended = false;
@@ -2297,26 +3305,26 @@
         muted : function (val){
             if( val != null ){
                 this.__muted = val
-                if( ! this.youtube )
+                if( ! this.isReady() )
                     return val;
                 if( val  )
                     this.youtube.mute();
                 else
                     this.youtube.unMute();
-                this.video.dispatch("volumechange");
+                this.dispatch("volumechange");
                 return val;
             }
 
-            return this.youtube.isMuted();
+            return this.__muted;
         },
 
         volume : function (val){
             if( val != null ){
                 this.__volume = val;
-                if( ! this.youtube )
+                if( ! this.isReady() )
                     return val;
                 this.youtube.setVolume(val * 100)
-                this.video.dispatch("volumechange");
+                this.dispatch("volumechange");
             }
             return this.__volume;
         },

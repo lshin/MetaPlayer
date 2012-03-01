@@ -9,7 +9,7 @@
         cssPrefix : 'metaplayer-overlay',
         template : 'templates/ui.overlay.tmpl.html',
         captions : false,
-        mouseDelayMsec : 500,
+        mouseDelayMsec : 1000,
         seekBeforeSec : 1,
         hideOnEnded : true
     };
@@ -21,9 +21,9 @@
 
         this.config = $.extend({}, defaults, options);
 
+        this.player = player;
         this.video = player.video;
         this.dispatcher = player.dispatcher;
-        this.service = player.service;
         this.popcorn = player.popcorn;
         this.playlist = player.playlist;
 
@@ -62,13 +62,13 @@
             if( this._touchDevice || ! this.config.autoHide )
                 this.find('close-btn').show();
 
-            if( Ramp.embed ) {
-                this.embed = Ramp.embed( this.find('embed'), this.service );
+            if( MetaPlayer.Embed ) {
+                this.embed = new MetaPlayer.Embed(this.find('embed'), this.player);
                 this.find('embed').show();
             }
 
-            if( Ramp.social )
-                Ramp.social( this.find('social'), this.service );
+            if( MetaPlayer.Social )
+                this.social = new MetaPlayer.Social( this.find('social'), this.player );
         },
 
         addUIListeners : function () {
@@ -103,7 +103,7 @@
 
             this.find('results-close').click( function (e) {
                 self.find('search-input').val('');
-                self.service.search('', self.onSearchResult, self);
+                self.player.search.query('', self.onSearchResult, self);
             });
 
             var volume_bg = this.find('volume-bg');
@@ -149,12 +149,15 @@
         },
 
         addServiceListeners : function () {
-            if( ! this.service )
-                return;
-            this.service.listen("tags", this.onTags, this);
+            var metadata = this.player.metadata;
+            metadata.listen(MetaPlayer.MetaData.DATA, this.onTags, this);
         },
 
-        onTags : function (e, tags) {
+        onTags : function (e) {
+            if( ! e.data.ramp )
+                return;
+            var tags = e.data.ramp.tags || [];
+
             var self = this;
             $.each(tags, function (i, tag){
                 self.createTag(tag.term);
@@ -162,12 +165,16 @@
         },
 
         renderNextUp : function (){
-            var nextup = this.playlist.nextTrack();
-            if( nextup ){
-                this.find('preview-thumb').attr('src', nextup.thumbnail);
-                this.find('preview-title').text(nextup.title);
-                this.find('next').show();
-            }
+            var metadata = this.player.metadata;
+            var nextTrack = this.playlist.nextTrack();
+            if( nextTrack )
+                metadata.load( nextTrack, this.onNextData, this)
+        },
+
+        onNextData : function (data) {
+            this.find('preview-thumb').attr('src', data.thumbnail);
+            this.find('preview-title').text(data.title);
+            this.find('next').show();
         },
 
         onPlaylistChange : function () {
@@ -205,7 +212,7 @@
 
         doSearch : function () {
             var q = this.find('search-input').val();
-            this.service.search(q, this.onSearchResult, this);
+            this.player.search.query(q, this.onSearchResult, this);
         },
 
         onSearchResult : function (response) {
@@ -276,13 +283,12 @@
         },
 
         setCaptions : function ( bool ){
-            if(! this.popcorn )
-                return;
+            var cues = this.player.cues;
 
             if( bool )
-                this.popcorn.enable('subtitle');
+                cues.enable('captions');
             else
-                this.popcorn.disable('subtitle');
+                cues.disable('captions');
 
             this.find('cc').toggle(bool);
             this.find('cc-off').toggle(!bool)
@@ -291,8 +297,9 @@
 
         addPlayerListeners : function () {
             var self = this;
+            var video = $(this.player.video);
 
-            $(this.video).bind('canplay', function(e){
+            video.bind('canplay', function(e){
                 // check if volume adjustment is not supported (eg. iOS)
                 var hold = self.video.volume;
                 var test =  .5;
@@ -302,21 +309,24 @@
                 self.video.volume = hold;
             });
 
-            $(this.video).bind('pause play seeked seeking canplay', function(e){
+            video.bind('pause play seeked seeking canplay', function(e){
                 self.onPlayStateChange();
             });
-            $(this.video).bind('ended', function(e){
+
+            video.bind('ended', function(e){
                 self.onEnded();
             });
-            $(this.video).bind('volumechange', function(e){
+
+            video.bind('volumechange', function(e){
                 self.onVolumeChange();
             });
 
         },
 
         addPlaylistListeners : function (){
-            this.dispatcher.listen("trackchange", this.onTrackChange, this);
-            this.dispatcher.listen("playlistchange", this.onPlaylistChange, this);
+            var playlist = this.player.playlist;
+            playlist.listen("trackchange", this.onTrackChange, this);
+            playlist.listen("playlistchange", this.onPlaylistChange, this);
         },
 
         onVolumeDragStart : function (e) {

@@ -29,6 +29,9 @@
         stopPropagation : function () {
             this.cancelBubble  = true;
         },
+        stopImmediatePropagation : function () {
+            this.cancelBubble  = true;
+        },
         preventDefault : function () {
             if( this.cancelable )
                 this.defaultPrevented = true;
@@ -54,10 +57,18 @@
             }
 
             // and add our convenience functions
-            MetaPlayer.proxy.proxyFunction ( "listen forget dispatch",
+            MetaPlayer.proxy.proxyFunction ( "listen forget dispatch createEvent",
                 this, source);
 
             source.dispatcher = this;
+        },
+
+        destroy : function () {
+            delete this._listeners;
+            delete this.addEventListener;
+            delete this.removeEventListener;
+            delete this.dispatchEvent;
+            this.__destroyed = true; // for debugging / introspection
         },
 
         listen : function ( eventType, callback, scope) {
@@ -102,9 +113,13 @@
         },
 
         dispatchEvent : function (eventObject) {
+
+//            if( eventObject.type != "timeupdate")
+//                   console.log(eventObject.type, eventObject);
+
             var l = this._listeners[eventObject.type] || [];
             for(var i=0; i < l.length; i++ ){
-                if( eventObject.cancelBubble )
+                if( eventObject.cancelBubble ) // via stopPropagation()
                     break;
                 l[i].call(l[i].scope || this, eventObject, eventObject.data )
             }

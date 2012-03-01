@@ -25,28 +25,21 @@ all copies or substantial portions of the Software.
         shareText : "Check this video out -- "
     };
 
-    var Social = function (target, service, options) {
-
-        if( !(this instanceof Social) )
-            return new Social(target, service, options);
+    var Social = function (target, player, options) {
 
         this.config = $.extend(true, {}, defaults, options);
 
-        // if passed in player instance
-        if( service.service )
-            service = service.service;
-
-        this.service = service;
+        this.player = player;
         this.container = target;
 
         this.addDom();
-        this.service.listen("metadata", this.onMetaData, this );
+        this.player.metadata.listen(MetaPlayer.MetaData.DATA, this.onMetaData, this );
     };
 
-    MetaPlayer.social = Social;
+    MetaPlayer.Social = Social;
 
-    MetaPlayer.addPlugin("socia l", function (target, options) {
-        return Social(target, this.service, options);
+    MetaPlayer.addPlugin("social", function (target, options) {
+        new Social(target, player, options);
     });
 
     Social.prototype = {
@@ -56,9 +49,9 @@ all copies or substantial portions of the Software.
             this.create('clear').appendTo( el );
         },
 
-        onMetaData : function (e, data) {
-            this.setFacebook(data);
-            this.setTwitter(data);
+        onMetaData : function (e) {
+            this.setFacebook(e.data);
+            this.setTwitter(e.data);
             this.find().show();
         },
 

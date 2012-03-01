@@ -24,9 +24,15 @@ all copies or substantial portions of the Software.
         cssPrefix : "transcript",
         focusMs : 750,
         fadeMs : 1000,
-        opacity: .4,
-        timestamps : true,
-        breaks : true
+        opacity: 1,
+        timestamps : false,
+        breaks : false
+    };
+
+    // case insensative find
+    $.expr[':'].tx_contains = function(a, i, m) {
+        return $(a).text().toUpperCase()
+            .indexOf(m[3].toUpperCase()) >= 0;
     };
 
     var Transcript = function (target, player, options) {
@@ -38,8 +44,9 @@ all copies or substantial portions of the Software.
         }
         if( typeof target == "string" && Transcript.instances[target] ) {
             var self = Transcript.instances[target];
-            if( player && player.play )
-                self.player = player;
+            if(player && player.play ) {
+                self.setPlayer( player );
+            }
             return self;
         }
 
@@ -47,7 +54,7 @@ all copies or substantial portions of the Software.
             return new Transcript(target, player, options);
 
         this.target = target;
-        this.player = player;
+        this.setPlayer( player );
         this.config = $.extend(true, {}, defaults, options);
 
         this.init();
@@ -60,7 +67,8 @@ all copies or substantial portions of the Software.
 
 
     MetaPlayer.addPlugin("transcript", function (target, options) {
-        return Transcript( target, this.video, options);
+        this.cues.enable("transcript", { target : target }, { clone : "captions"} );
+        this.transcript = Transcript( target, this.video, options);
     });
 
 
@@ -68,9 +76,13 @@ all copies or substantial portions of the Software.
         init : function (){
             this.container = this.create();
             this.scroller = this.create('scroller');
+
+
             this._captions = {};
             $(this.target).append( this.container );
             $(this.container).append( this.scroller );
+
+            this.scrollbar = MetaPlayer.scrollbar( this.container );
         },
 
         addListeners : function (e) {
@@ -94,6 +106,33 @@ all copies or substantial portions of the Software.
             });
         },
 
+        setPlayer : function ( player ) {
+            if( this.player )
+                return;
+
+            this.player = player;
+            var self = this;
+            $(this.player).bind("search", function (e) {
+                var terms = e.originalEvent.data;
+                self.search(terms);
+            })
+        },
+
+        search : function (terms) {
+            if( typeof terms == "string" )
+                terms = terms.split(/\s+/);
+
+            var searchCss = this.cssName("search");
+            this.find('search').removeClass(searchCss);
+
+            var self = this;
+            var matches = [];
+            $.each(terms, function (i, term) {
+                var found = self.find("caption").find("." + self    .cssName('text') + " span:tx_contains(" + term + ")");
+                found.addClass( searchCss );
+            });
+        },
+
         append :  function (options) {
             var el = this.create("caption", this.config.breaks ? 'div' : 'span');
 
@@ -103,9 +142,24 @@ all copies or substantial portions of the Software.
                 el.append(ts);
             }
 
-            var text = this.create("text", 'span');
-            text.text( options.text );
-            el.append(text);
+
+            var self = this;
+            var phrase = $('<span></span>')
+                .addClass( this.cssName("text") )
+                .click( function () {
+                    self.player.currentTime = options.start;
+                })
+                .appendTo(el);
+
+            var terms = options.text.split(/\s+/);
+            $.each(terms, function (i, term) {
+                $('<span></span>')
+                    .text( term )
+                    .appendTo(phrase);
+                $(document.createTextNode(' '))
+                    .appendTo(phrase);
+
+            });
 
             el.data('options', options);
             el.css('opacity', this.config.opacity);
@@ -116,6 +170,7 @@ all copies or substantial portions of the Software.
         clear : function () {
             $(this.scroller).empty();
             this._captions = {};
+            this.scrollbar.render();
         },
 
         focus : function (options) {
@@ -124,8 +179,9 @@ all copies or substantial portions of the Software.
             el.toggleClass( this.cssName('focus'), true );
 
             var top = el.position().top - (this.container.height() / 2);
-            if( ! this.mousing )
-                this.container.animate({ scrollTop: top }, 1000);
+            if( ! this.mousing ) {
+                this.scrollbar.scrollTo(0 , top, 1000 );
+            }
         },
 
         blur : function (options) {
