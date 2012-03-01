@@ -1,1 +1,0 @@
-this.JSON||document.write('<script type="text/javascript" src="src/json2.js"></script>');

@@ -149,7 +149,7 @@ all copies or substantial portions of the Software.
             playlist.listen("trackchange", this.onTrackChange, this);
 
             var search = this.player.search;
-            search.listen("search", this.onSearch, this);
+            search.listen(MetaPlayer.Search.RESULTS, this.onSearch, this);
         },
 
         onTags : function (e) {
@@ -533,7 +533,7 @@ all copies or substantial portions of the Software.
         // display seconds in hh:mm:ss format
         formatTime : function (time) {
             if( isNaN(time) )
-                return "&mdash;:&mdash;";
+                return "-:-";
 
             var zpad = function (val, len) {
                 var r = String(val);

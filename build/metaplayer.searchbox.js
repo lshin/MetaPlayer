@@ -145,7 +145,8 @@ all copies or substantial portions of the Software.
             });
 
             this.player.metadata.listen(MetaPlayer.MetaData.DATA, this.onTags, this);
-            this.player.search.listen("search", this.onSearchResult, this);
+            this.player.search.listen(MetaPlayer.Search.QUERY, this.onSearchStart, this);
+            this.player.search.listen(MetaPlayer.Search.RESULTS, this.onSearchResult, this);
         },
 
         onTags : function (e) {
@@ -195,7 +196,11 @@ all copies or substantial portions of the Software.
         },
 
         onClose : function () {
-            this.clear();
+            this.search('');
+        },
+
+        onSearchStart : function (e) {
+            this.find('input').val(e.query);
         },
 
         onSearchResult : function (e, response) {

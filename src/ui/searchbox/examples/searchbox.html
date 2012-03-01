@@ -64,17 +64,17 @@
 
     <script type="text/javascript">
 
-        var player = MetaPlayer('#target', { forceRelative : true })
+        var player = MetaPlayer('#target')
                 .ramp()
                 .searchbox("#search", {
                     context: 8,
                     strings : {
                         ellipsis : ""
                     }
-                });
+                })
+                .ramp("ramp:/thechewpoc:51416033")
+                .load()
 
-//        player.load("ramp:/advisor:48920875");
-        player.load("ramp:/thechewpoc:51416033");
 
     </script>
 </body>
