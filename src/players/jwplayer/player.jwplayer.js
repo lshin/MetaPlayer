@@ -28,7 +28,8 @@
 
         this.config = $.extend(true, {}, defaults, options);
         this.__autoplay = this.config.autostart;
-        this.__volume = this.config.volume;
+        this.__autobuffer = this.config.autobuffer;
+        this.__volume = (this.config.volume/100);
         this.__seeking = null;
         this.__readyState = 0;
         this.__ended = false;
@@ -37,6 +38,7 @@
         this.__metadata = null;
         this.__started = false;
         this.__currentTime = 0;
+        this.__src = "";
 
         this._jwplayer = this._render( $(el).get(0) );
         this.video = this._jwplayer.container;
@@ -75,25 +77,13 @@
         _onLoad: function() {
             var self = this;
 
-            self.dispatch('loadstart');
-            this.dispatch("canplay");
-
             //console.log("_onLoad", this._jwplayer.getMeta());
             // Player listeners
             this._jwplayer.onPlay( function (level) {
-                if (! self.__started ) {
-                    // these events fire only onece.
-                    self.__metadata = self._jwplayer.getMeta();
-                    if (typeof self.__metadata.duration !== 'undefined')
-                        self.__duration = self.__metadata.duration;
-                    self.dispatch("loadeddata");
-                    self.dispatch("loadedmetadata");
-                    self.dispatch("durationchange");
-                }
-                self.dispatch("play");
                 self.__ended = false;
                 self.__paused = false;
                 self.__started = true;
+                self.dispatch("play");
             });
 
             this._jwplayer.onPause( function (level) {
@@ -103,7 +93,7 @@
 
             this._jwplayer.onTime( function (e) {
                 self.__currentTime = e.position;
-                self.dispatch("timeupdate", e);
+                self.dispatch("timeupdate");
             });
 
             this._jwplayer.onIdle( function (level) {
@@ -127,33 +117,40 @@
                 self.dispatch("ended");
             });
 
-            this._jwplayer.onVolume( function (level) {
+            this._jwplayer.onVolume( function (e) {
                 self.dispatch("volumechange");
             });
 
-            this._jwplayer.onMute( function (level) {
-                self.dispatch("volumechange");
-            });
-
-            this._jwplayer.onUnmute( function (level) {
+            this._jwplayer.onMute( function (e) {
                 self.dispatch("volumechange");
             });
 
             this._jwplayer.onMeta( function (e) {
-                // don't know why it doesn't fire.
-                self.__started = false;
-                self.dispatch("loadedmetadata");
-            })
+                self.__metadata = e.metadata;   
+                if ( e.metadata.duration && e.metadata.duration > 0 ) {
+                    self.__duration = e.metadata.duration;
+                    self.dispatch("loadeddata");
+                    self.dispatch("loadedmetadata");
+                    self.dispatch("durationchange");
+                }
+            });
 
             this._jwplayer.onPlaylist( function (level) {
                 self.__started = false;
                 self.dispatch("playlistChange");
             });
 
-            this._jwplayer.onError( function (level) {
+            this._jwplayer.onError( function (e) {
                 self.__started = false;
-                console.log("onError", level);
             });
+
+            this.__src = this._getSrc();
+
+            this.dispatch('loadstart');
+            this.dispatch("canplay");
+
+            if( this._getAutoBuffer() || this._getAutoPlay() )
+                this.load();
         },
 
         _doSeek : function (time) {
@@ -176,6 +173,19 @@
             this.__currentTime = this._jwplayer.getPosition();
         },
 
+        _getAutoPlay : function () {
+            return this.__autoplay;
+        },
+
+        _getAutoBuffer : function () {
+            return this.__autobuffer;
+        },
+
+        _getSrc : function () {
+            if (! this._jwplayer ) return "";
+            return this._jwplayer.getPlaylist()[0].file;
+        },
+
         /**
          * MetaPlayer Media Interfaces
          *
@@ -187,14 +197,20 @@
          *
          */
         load : function () {
-            
+            if( this._jwplayer ) {
+                if( this._getAutoPlay() ) {
+                    this._jwplayer.play();
+                } else {
+                    // in jwplayer, it doesn't have a autobuffer. add a trick with play/pause.
+                    this._jwplayer.play();
+                    this._jwplayer.pause();
+                }
+            }
         },
         play : function () {
-            this.__paused = false;
             this._jwplayer.play();
         },
         pause : function () {
-            this.__paused = true;
             this._jwplayer.pause();
         },
         canPlayType : function (val) {
@@ -240,6 +256,8 @@
             return this.__readyState;
         },
         muted : function (val) {
+            if( val !== undefined )
+                this._jwplayer.setMute();
             return this._jwplayer.getMute();
         },
         volume : function (val) {
@@ -248,10 +266,10 @@
                 if( ! this._jwplayer )
                     return val;
                 // ovp doesn't support to change any volume level.
-                this._jwplayer.setVolume(val);
+                this._jwplayer.setVolume(val*100);
                 this.dispatch("volumechange");
             }
-            return this.__volume;
+            return (this.__volume > 1)? (this.__volume/100):this.__volume;
         },
         src : function (val) {
             if( val !== undefined ) {
