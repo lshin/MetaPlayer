@@ -33,15 +33,15 @@
         this.config = $.extend(true, {}, defaults, options);
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
 
-
-        var t = $(target);
-        target = t.get(0);
+        // on ipad, target might be an object created by MetaPlayer.proxy.proxyVideo
+        var t = $(target._proxyNode || target);
+        var elem  = t.get(0);
 
         var base;
         var stage = t.find('.mp-video');
         var video = t.find('video');
         var isVideo = (target.play instanceof Function);
-        var isFrame = (target.tagName.toUpperCase() == "IFRAME");
+        var isFrame = (elem.tagName.toUpperCase() == "IFRAME");
 
         // set up main wrapper
         if( isVideo || isFrame ){
