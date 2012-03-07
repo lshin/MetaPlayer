@@ -53,7 +53,8 @@
                 this.load(data.ramp.serviceURL );
                 // let others know we're on it.
                 e.stopPropagation();
-                e.preventDefault();
+                // on ie8, it's an unrecognizable method
+                if(e.preventDefault) e.preventDefault();
             }
             else {
             // fall through to noop if not recognized
