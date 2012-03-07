@@ -55,7 +55,7 @@
             self._onLoad();
         });
 
-        this.video = this.attach( this._flowplayer.getParent() );
+        this.video = MetaPlayer.proxy.proxyPlayer(this, this._flowplayer.getParent());
     };
 
     MetaPlayer.flowplayer = function (el, options) {
@@ -450,12 +450,6 @@
             if( val !== undefined )
                 this.__readyState = val;
             return this.__readyState;
-        },
-
-        attach : function (target) {
-            target = MetaPlayer.proxy.getProxyObject(target);
-            MetaPlayer.proxy.proxyPlayer(this, target);
-            return target;
         },
 
         /* Timer Handlers */

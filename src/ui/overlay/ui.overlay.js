@@ -36,7 +36,7 @@
             this.init();
         }
         else {
-            this.container = this.config.target || this.video.parentNode;
+            this.container = this.config.target || this.player.layout.stage;
             this.createMarkup(); // async init
         }
         this.video.overlay = this;

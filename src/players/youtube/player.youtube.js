@@ -181,6 +181,7 @@
                     break;
                 case 0: //ended
                     this.__ended = true;
+                    this.__duration = NaN;
                     this.dispatch("ended");
                     break;
                 case 1: // playing

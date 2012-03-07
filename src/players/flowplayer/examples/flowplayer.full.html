@@ -82,9 +82,7 @@
 
 <h3>Metaplayer &raquo; Flowplayer Plugin</h3>
 
-<div id='target'>
-    <div id='video'></div>
-</div>
+<div id='video'></div>
 
 <script type="text/javascript">
     jQuery.noConflict(true);
@@ -100,16 +98,18 @@
                 },
                 playlist : []
             });
+    fp.ipad({ simulateiDevice : false });
+    fp.load();
 
     player = MetaPlayer( MetaPlayer.flowplayer(fp) )
             .overlay()
             .endcap()
             .controls()
             .captions()
-            .ramp("ramp:/thechewpoc:51416098");
+            .ramp("ramp:/thechewpoc:51416098")
+            .load();
 
     player.video.autoplay = true;
-
 
 </script>
 

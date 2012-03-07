@@ -36,6 +36,8 @@
 
         this.annotations = [];
         this.video.controls = false;
+//        this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+        this._iOS = 1;
 
         if( this.config.createMarkup )
             this.createMarkup();
@@ -59,6 +61,11 @@
         if( this.config.showBelow ) {
             this.config.autoHide = false;
             this.showBelow(true);
+        }
+
+        if( this._iOS ){
+            this.toggle(false, 0);
+            this.showBelow(false);
         }
 
         if( this.config.autoHide )
@@ -200,6 +207,14 @@
 
         onPlayStateChange : function (e) {
             // manage our timers based on play state
+
+            if( ! this.config.autoHide ) {
+                this.toggle(true);
+                if( this.config.showBelow  ){
+                    this.showBelow(true);
+                }
+            }
+
             if(! this.video.paused ){
                 this.clockTimer.start();
                 this.trackTimer.start();
@@ -236,7 +251,7 @@
             var track = this.find('track');
 
             var parent = knob.parent().offset();
-            var x = e.pageX - parent.left;
+            var x = ( e.pageX || e.originalEvent.touches[0].pageX ) - parent.left;
 
 
             x = Math.min(x, track.width());

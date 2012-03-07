@@ -536,15 +536,15 @@
         this.config = $.extend(true, {}, defaults, options);
         this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
 
-
-        var t = $(target);
-        target = t.get(0);
+        // on ipad, target might be an object created by MetaPlayer.proxy.proxyVideo
+        var t = $(target._proxyNode || target);
+        var elem  = t.get(0);
 
         var base;
         var stage = t.find('.mp-video');
         var video = t.find('video');
         var isVideo = (target.play instanceof Function);
-        var isFrame = (target.tagName.toUpperCase() == "IFRAME");
+        var isFrame = (elem.tagName.toUpperCase() == "IFRAME");
 
         // set up main wrapper
         if( isVideo || isFrame ){
@@ -1411,9 +1411,14 @@
             catch(e){
             }
 
-            // iOS, fake as best we can
+            // iOS, fake as best we can, adding props as needed
             var target = {
-                parentNode : dom.parentNode
+                _proxyNode : dom,
+                parentNode : dom.parentNode,
+                tagName : dom.tagName,
+                ownerDocument : dom.ownerDocument,
+                style : dom.style,
+                appendChild : function() { dom.appendChild.apply(dom, arguments) }
             };
             try {
                 Object.defineProperty(target, "__proptest", {} );
@@ -2521,7 +2526,7 @@
             self._onLoad();
         });
 
-        this.video = this.attach( this._flowplayer.getParent() );
+        this.video = MetaPlayer.proxy.proxyPlayer(this, this._flowplayer.getParent());
     };
 
     MetaPlayer.flowplayer = function (el, options) {
@@ -2918,12 +2923,6 @@
             return this.__readyState;
         },
 
-        attach : function (target) {
-            target = MetaPlayer.proxy.getProxyObject(target);
-            MetaPlayer.proxy.proxyPlayer(this, target);
-            return target;
-        },
-
         /* Timer Handlers */
 
         _onPlayStatePoll : function () {
@@ -3132,6 +3131,7 @@
                     break;
                 case 0: //ended
                     this.__ended = true;
+                    this.__duration = NaN;
                     this.dispatch("ended");
                     break;
                 case 1: // playing

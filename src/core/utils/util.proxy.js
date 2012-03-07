@@ -103,9 +103,14 @@
             catch(e){
             }
 
-            // iOS, fake as best we can
+            // iOS, fake as best we can, adding props as needed
             var target = {
-                parentNode : dom.parentNode
+                _proxyNode : dom,
+                parentNode : dom.parentNode,
+                tagName : dom.tagName,
+                ownerDocument : dom.ownerDocument,
+                style : dom.style,
+                appendChild : function() { dom.appendChild.apply(dom, arguments) }
             };
             try {
                 Object.defineProperty(target, "__proptest", {} );
