@@ -66,7 +66,9 @@
         // single argument mode: function(options) {
         if(!  el.getCommonClip  ) {
             options = el;
-            el = $("<div></div>").appendTo(this.layout.stage);
+            el = $("<div></div>")
+                .addClass("mp-video")
+                .appendTo(this.layout.stage);
         }
         this.flowplayer = FlowPlayer(el, options);
         this.video = this.flowplayer.video;

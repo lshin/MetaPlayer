@@ -146,7 +146,7 @@
     if( ! window.Ramp )
         window.Ramp = {};
 
-    Ramp.proxy = Proxy;
+    MetaPlayer.proxy = Proxy;
 
 
 })();

@@ -36,8 +36,8 @@
 
         this.annotations = [];
         this.video.controls = false;
-//        this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
-        this._iOS = 1;
+        this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+        //this._iOS = 1;
 
         if( this.config.createMarkup )
             this.createMarkup();
@@ -430,6 +430,9 @@
 
             if( cssClass)
                 marker.addClass( this.cssName(cssClass) );
+
+            if( end == start )
+                end = null;
 
             overlay.append(marker);
             this.annotations.modified = true;

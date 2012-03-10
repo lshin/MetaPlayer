@@ -21,7 +21,7 @@
         this.config = $.extend({}, defaults, options);
         this.player = player;
 
-        this.baseUrl = Ramp.script.base('(metaplayer||ui).endcap(.min)?.js');
+        this.baseUrl = MetaPlayer.script.base();
 
         this.container = this.player.layout.stage;
         this.getTemplate();

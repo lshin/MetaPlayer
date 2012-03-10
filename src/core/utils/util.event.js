@@ -14,7 +14,7 @@
         this.attach(source);
     };
 
-    Ramp.dispatcher = EventDispatcher;
+    MetaPlayer.dispatcher = EventDispatcher;
 
     EventDispatcher.Event = function () {
         this.cancelBubble = false;

@@ -16,7 +16,7 @@
             "Silverlight":{"src":"ovp-2.3.1.xap","minver":"4.0","controls":false, "plugins":[]},
             "HTML5":{"minver":"0","controls":false}
         },
-        status_timer : 250,
+        status_timer : 500,
         // OVP video default configs
         ovpConfig: {
             sources:[
@@ -34,6 +34,15 @@
         }
     };
 
+    var status = {
+        LOAD  : 0,
+        READY : 1,
+        PLAY  : 2,
+        PAUSE : 3,
+        SEEK  : 4,
+        ENDED : 5
+    };
+
     var OVPlayer = function(el, options) {
         if(!(this instanceof OVPlayer))
             return new OVPlayer(el, options);
@@ -48,9 +57,10 @@
         this.__volume = 1;
         this.__muted = false;
         this.__src = "";
+        this.__status = status.LOAD;
         
         this._ovp = this._render( $(el).get(0) );
-        this.video = this._ovp.getWrapperNode();
+        this.video = $(el).get(0);
         this.dispatcher = MetaPlayer.dispatcher( this );
         MetaPlayer.proxy.proxyPlayer( this, this.video );
         this._setControls();
@@ -89,8 +99,6 @@
             
             this._statustimer = Ramp.timer(this.config.status_timer);
             this._statustimer.listen('time', this._onStatus, this);
-            
-            this.video.listen('playerready', this._onReady, this);
         },
         _onBeforeLoad : function () {
             if(typeof this._ovp.player !== "object")
@@ -106,6 +114,8 @@
             this.dispatch("loadeddata");
             this.dispatch("canplay");
             this.load();
+
+            this.__status = status.READY;
             
             this.video.pause();
             if(this.config.immediately || this.config.ovpConfig.autoplay) {
@@ -129,6 +139,7 @@
                 this.dispatch("loadeddata");
                 this.dispatch("loadedmetadata");
                 this.dispatch("durationchange");
+                this.dispatch("timeupdate");
                 clearInterval( this._durationCheckInterval );
                 this._durationCheckInterval = null;
             }
@@ -137,15 +148,23 @@
         _onStatus : function () {
             if ( this._ovp.isPlaying() ) {
                 this.__paused = false;
-                this.dispatch("playing");
-                this.dispatch("play");
+                if( this.__status !== status.PLAY ) {
+                    this.dispatch("play");
+                }
                 this.dispatch("timeupdate");
+                this.__status = status.PLAY;
             } else if ( this._ovp.isEnded() ){
                 this.__paused = true;
-                this.dispatch("ended");
+                if( this.__status !== status.ENDED ) {
+                    this.dispatch("ended");
+                }
+                this.__status = status.ENDED;
             } else {
                 this.__paused = true;
-                this.dispatch("pause");
+                if( this.__status !== status.PAUSE ) {
+                    this.dispatch("pause");
+                }
+                this.__status = status.PAUSE;
             }
         },
         _setControls : function () {
@@ -174,6 +193,7 @@
             this.dispatch("seeking");
             this._ovp.seekTo( time );
             this.__currentTime = time;
+            this.__status = status.SEEK;
 
             // no seeking events exposed, so fake best we can
             // will be subject to latency, etc
@@ -202,7 +222,10 @@
             if (! this._ovp.player )
                 return;
             
-            var src = this.src();
+            var f = this.src();
+            if(f) {
+                this.config.ovpConfig.sources = [{src: f}];
+            }
             // start to play video.
         },
         play : function () {
@@ -242,7 +265,7 @@
         ended : function () {
             return this.__ended;
         },
-        currentTime : function (val) {    
+        currentTime : function (val) {
             if( typeof val !== 'undefined' ) {
                 if( val < 0 )
                     val = 0;
@@ -291,7 +314,7 @@
             return this.__src
         },
         controls : function (val) {
-            if( typeof val !== 'undefined' ) {
+            if( typeof val !== 'undefined' || val != false ) {
                 this.__controls = val;
             }
             return this.__controls;

@@ -50,6 +50,7 @@
 
     Transcript.instances = {};
 
+    MetaPlayer.Transcript = Transcript;
 
     MetaPlayer.addPlugin("transcript", function (target, options) {
         this.cues.enable("transcript", { target : target }, { clone : "captions"} );

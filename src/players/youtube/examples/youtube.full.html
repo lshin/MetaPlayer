@@ -12,9 +12,6 @@
     <!--Dependency: Popcorn -->
     <script src="../../../../external/popcorn/popcorn.js" type="text/javascript"></script>
 
-    <!-- Dependency: swfobject -->
-    <script src="../../../../external/swfobject/swfobject.js" type="text/javascript"></script>
-
     <!-- Core: Ramp -->
     <script src="../../../core/metaplayer.js"></script>
     <script src="../../../core/utils/util.event.js"></script>
@@ -93,6 +90,13 @@
             .overlay()
             .ramp("http://dev.api.ramp.com/v1/mp2/playlist?e=52345506&apikey=0302cd28e05e0800f752e0db235d5440")
             .load();
+
+    player.video.autoplay = true;
+
+    player.video.addEventListener("play", function (){
+        player.video.currentTime = 30;
+    });
+
 </script>
 
 </body>

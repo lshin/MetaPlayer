@@ -20,6 +20,10 @@
         },
 
         base : function (filename) {
+
+            if( ! filename )
+                filename = 'metaplayer(-complete)?(\.min)?\.js';
+
             var src = this.url(filename) || '';
             return src.substr(0, src.lastIndexOf('/') + 1);
         }

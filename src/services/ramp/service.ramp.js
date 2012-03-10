@@ -85,7 +85,10 @@
                 context: this,
                 data : params,
                 error : function (jqXHR, textStatus, errorThrown) {
-                    this.player.video.dispatch("error");
+                    var e = this.createEvent();
+                    e.initEvent(textStatus, false, true);
+                    e.message = errorThrown;
+                    this.dispatchEvent(e);
                 },
                 success : function (response, textStatus, jqXHR) {
                     var items = this.parse(response, url);
@@ -160,8 +163,8 @@
             });
 
             if( item.metadata.ramp.rampId && ! item.metadata.ramp.serviceURL ){
-                if( uri.match( /mp2-playlist/ ) ) {
-                    item.metadata.ramp.serviceURL = uri.replace(/(mp2-playlist[-\?]e=)(\d+)/, "$1" + item.metadata.ramp.rampId);
+                if( uri.match( /mp2[-\/]playlist/ ) ) {
+                    item.metadata.ramp.serviceURL = uri.replace(/e=(\d+)/, "e=" + item.metadata.ramp.rampId);
                 }
             }
 

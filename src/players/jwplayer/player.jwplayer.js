@@ -51,7 +51,7 @@
         });
     };
 
-    if( window.jwplayer ) {
+    if( window.MetaPlayer ) {
         MetaPlayer.addPlayer("jwplayer", function ( options ) {
             var target = $("<div></div>").appendTo(this.layout.stage);
             // jwplayer always requires with a element id.
@@ -197,6 +197,10 @@
          *
          */
         load : function () {
+            if( this.src() ) {
+                var f = this.src();
+                this._jwplayer.load([{file: f}]);
+            }
             if( this._jwplayer ) {
                 if( this._getAutoPlay() ) {
                     this._jwplayer.play();
