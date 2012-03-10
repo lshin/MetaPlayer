@@ -49,7 +49,7 @@
         });
     };
 
-    if( window.jwplayer ) {
+    if( window.MetaPlayer ) {
         MetaPlayer.addPlayer("jwplayer", function ( options ) {
             var target = $("<div></div>").appendTo(this.layout.stage);
             // jwplayer always requires with a element id.
