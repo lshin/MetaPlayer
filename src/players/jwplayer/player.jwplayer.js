@@ -7,8 +7,6 @@
         autostart  : true,
         autobuffer : true,
         controlbar :  "none",
-        flashplayer: "",
-        file       : "",
         image      : "",
         id         : "jwplayer",
         //duration   : 0,
@@ -96,11 +94,12 @@
                 self.dispatch("timeupdate");
             });
 
-            this._jwplayer.onIdle( function (level) {
+            this._jwplayer.onIdle( function (e) {
                 // not sure what should do for this event.
             });
 
             this._jwplayer.onBuffer( function (e) {
+                self.__readyState = 4;
                 self.dispatch("buffering");       
             });
 
@@ -135,7 +134,7 @@
                 }
             });
 
-            this._jwplayer.onPlaylist( function (level) {
+            this._jwplayer.onPlaylist( function (e) {
                 self.__started = false;
                 self.dispatch("playlistChange");
             });
@@ -187,6 +186,31 @@
         },
 
         /**
+         * adding to video src to jwplayer's playlist
+         * due to its async for getting a video src,
+         * creates a interval to check the player is initiated or not to put a video source.
+         */ 
+        _addToPlaylist : function (val) {
+            var self = this;
+            if( val !== 'undefined' && val.length > 0 ) {
+                self.__src = val;
+                if( self._jwplayer && self._jwplayer.getState() ) {
+                    self._jwplayer.detachMedia();
+                    self._jwplayer.load({file : val});
+                    clearInterval( self._playlistCheckInterval );
+                    self._playlistCheckInterval = null;
+                } else {
+                    if( self._playlistCheckInterval ) {
+                        return;
+                    }
+                    self._playlistCheckInterval = setInterval(function () {
+                        self._addToPlaylist(val);
+                    }, 1000);
+                }
+            }
+        },
+
+        /**
          * MetaPlayer Media Interfaces
          *
          * @Functions
@@ -197,10 +221,6 @@
          *
          */
         load : function () {
-            if( this.src() ) {
-                var f = this.src();
-                this._jwplayer.load([{file: f}]);
-            }
             if( this._jwplayer ) {
                 if( this._getAutoPlay() ) {
                     this._jwplayer.play();
@@ -257,6 +277,8 @@
             return this.__currentTime;
         },
         readyState : function (val) {
+            if( val !== undefined )
+                this.__readyState = val;
             return this.__readyState;
         },
         muted : function (val) {
@@ -276,9 +298,7 @@
             return (this.__volume > 1)? (this.__volume/100):this.__volume;
         },
         src : function (val) {
-            if( val !== undefined ) {
-                this.__src = val;
-            }
+            this._addToPlaylist(val);
             return this.__src
         },
         controls : function (val) {

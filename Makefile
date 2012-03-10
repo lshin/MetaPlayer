@@ -14,7 +14,7 @@ CORE_SRC=src/core/metaplayer.js src/core/*/*js
 CORE_MIN=$(CORE:.js=.min.js)
 
 ALL_SERVICES=service.mrss service.ramp
-ALL_PLAYERS=player.html5 player.flowplayer player.youtube
+ALL_PLAYERS=player.html5 player.flowplayer player.youtube player.ovp player.jwplayer
 ALL_UI=ui.controls ui.overlay ui.transcript ui.captions ui.searchbox ui.videojs ui.endcap ui.social ui.embed ui.framefeed ui.headlines
 ALL_THEME=theme.mp2
 
