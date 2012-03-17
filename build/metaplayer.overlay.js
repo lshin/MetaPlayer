@@ -1,4 +1,6 @@
 /*
+Metaplayer - A standards-based, multiple player, UI and Event framework for JavaScript.
+
 Copyright (c) 2011 RAMP Holdings, Inc.
 
 Licensed under the MIT license: http://www.opensource.org/licenses/mit-license.php
@@ -43,7 +45,7 @@ all copies or substantial portions of the Software.
         this.playlist = player.playlist;
 
         // used to find our templates
-        this.baseUrl = Ramp.script.base('(metaplayer||ui).overlay(.min)?.js');
+        this.baseUrl = MetaPlayer.script.base();
         this._touchDevice = /iPad|iPhone|iPod/i.test(navigator.userAgent);
 
         if( this.config.container ) {
@@ -301,12 +303,12 @@ all copies or substantial portions of the Software.
         },
 
         setCaptions : function ( bool ){
-            var cues = this.player.cues;
+            var pop = this.player.popcorn;
 
             if( bool )
-                cues.enable('captions');
+                pop.enable('captions');
             else
-                cues.disable('captions');
+                pop.disable('captions');
 
             this.find('cc').toggle(bool);
             this.find('cc-off').toggle(!bool)

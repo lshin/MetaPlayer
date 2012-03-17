@@ -47,9 +47,6 @@
         this.autoplay = this.config.autoplay;
         this.updateMsec = this.config.updateMsec;
 
-
-
-
         MetaPlayer.dispatcher( this );
 
         if( typeof youtube == "string" || ! youtube.getVideoEmbedCode ) {
@@ -62,7 +59,6 @@
             this.youtube = youtube;
             // wrap so we have a non-iframe container to append source elements to
             this.container  = $("<div></div>")
-                .addClass("mp-youtube")
                 .appendTo( youtube.a.parentNode )
                 .append( youtube.a )
                 .get(0);
@@ -92,7 +88,7 @@
                 options.chromeless = true;
 
            youtube = $("<div></div>")
-               .addClass("mp-youtube")
+               .addClass("mp-video")
                .appendTo(this.layout.stage);
         }
 

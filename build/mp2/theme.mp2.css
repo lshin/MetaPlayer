@@ -901,7 +901,7 @@
     left: 0;
 }
 
-.mp-video {
+.mp-stage {
     position: absolute;
     top: 0;
     bottom: 0;
@@ -909,6 +909,8 @@
     right: 0;
 }
 
+.mp-video,
+.mp-video iframe,
 .mp-video video,
 .mp-video object {
     width: 100% !important;

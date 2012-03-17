@@ -221,6 +221,10 @@
          *
          */
         load : function () {
+            if( this.src() ) {
+                var f = this.src();
+                this._jwplayer.load([{file: f}]);
+            }
             if( this._jwplayer ) {
                 if( this._getAutoPlay() ) {
                     this._jwplayer.play();

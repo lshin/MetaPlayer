@@ -1,4 +1,6 @@
 /*
+Metaplayer - A standards-based, multiple player, UI and Event framework for JavaScript.
+
 Copyright (c) 2011 RAMP Holdings, Inc.
 
 Licensed under the MIT license: http://www.opensource.org/licenses/mit-license.php
@@ -51,8 +53,8 @@ all copies or substantial portions of the Software.
 
         this.annotations = [];
         this.video.controls = false;
-//        this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
-        this._iOS = 1;
+        this._iOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+        //this._iOS = 1;
 
         if( this.config.createMarkup )
             this.createMarkup();
@@ -445,6 +447,9 @@ all copies or substantial portions of the Software.
 
             if( cssClass)
                 marker.addClass( this.cssName(cssClass) );
+
+            if( end == start )
+                end = null;
 
             overlay.append(marker);
             this.annotations.modified = true;

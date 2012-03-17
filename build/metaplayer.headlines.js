@@ -1,4 +1,6 @@
 /*
+Metaplayer - A standards-based, multiple player, UI and Event framework for JavaScript.
+
 Copyright (c) 2011 RAMP Holdings, Inc.
 
 Licensed under the MIT license: http://www.opensource.org/licenses/mit-license.php
@@ -56,7 +58,7 @@ all copies or substantial portions of the Software.
         this.headlines = Headlines(target, options);
     });
 
-    MetaPlayer.Headlines;
+    MetaPlayer.Headlines = Headlines;
 
     Headlines.prototype = {
 

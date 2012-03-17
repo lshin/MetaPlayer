@@ -41,7 +41,7 @@
         this.headlines = Headlines(target, options);
     });
 
-    MetaPlayer.Headlines;
+    MetaPlayer.Headlines = Headlines;
 
     Headlines.prototype = {
 

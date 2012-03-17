@@ -38,7 +38,7 @@
         var elem  = t.get(0);
 
         var base;
-        var stage = t.find('.mp-video');
+        var stage = t.find('.mp-stage');
         var video = t.find('video');
         var isVideo = (target.play instanceof Function);
         var isFrame = (elem.tagName.toUpperCase() == "IFRAME");
@@ -62,7 +62,7 @@
         // set up the video playback area "stage"
         if( stage.length == 0) {
             stage = $('<div></div>')
-                .addClass('mp-video');
+                .addClass('mp-stage');
             stage.appendTo(base);
         }
 

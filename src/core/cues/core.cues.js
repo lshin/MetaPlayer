@@ -93,6 +93,10 @@
                 return this.getCueLists();
             }
 
+            if( this._rules[type] && this._rules[type].clone ){
+                type = this._rules[type].clone;
+            }
+
             if(! this._cues[guid]  || ! this._cues[guid][type])
                 return [];
             return this._cues[guid][type];

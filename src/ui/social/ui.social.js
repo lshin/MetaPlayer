@@ -24,7 +24,7 @@
     MetaPlayer.Social = Social;
 
     MetaPlayer.addPlugin("social", function (target, options) {
-        new Social(target, player, options);
+        new Social(target, this, options);
     });
 
     Social.prototype = {

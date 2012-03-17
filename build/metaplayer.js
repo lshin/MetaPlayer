@@ -1,5 +1,5 @@
 /**
- Metaplayer - A media player framework for HTML5/JavaScript for use with RAMP services.
+ Metaplayer - A standards-based, multiple player, UI and Event framework for JavaScript.
 
  Copyright (c) 2011 RAMP Holdings, Inc.
 
@@ -18,25 +18,58 @@
  Created: 2011 by Greg Kindel <greg@gkindel.com>
 
  Dependencies: jQuery
+
  */
+/**
+ * @fileOverview A media player framework for HTML5/JavaScript for use with RAMP services.
+ * @author Greg Kindel <greg@gkindel.com>
+ * @version 1.0
+ */
+
 (function () {
 
     var $ = window.jQuery;
     var Popcorn = window.Popcorn;
 
-    /**
-     * Sets up player plugin container, playlist, and DOM scaffolding
-     * @constructor
-     * @target an HTML5 Media element
-     */
-    var defaults = {
+
+    var defaults  = {
         debug : "",
-        useLayout : true,
-        useMetaData: true,
-        useCues: true,
-        useSearch: true
+        layout : {},
+        metadata : {},
+        search : {},
+        cues : {}
     };
 
+    /**
+     * Create a MetaPlyer instance. Sets up core player plugins, and DOM scaffolding.
+     * By default, search, metadata, and cues interfaces are queued for load(). If a DOM element is passed,
+     * then the layout and playlist interfaces are queued as well.
+     *
+     * Example:
+     * In the page
+     * <code><pre>
+     *      &lt;video id="myVideo" src="myvideo.mp4" /&gt;
+     * </pre></code>
+     *
+     *
+     * In JavaScript, after DOM loaded:
+     * <code><pre>
+     *      var mp = MetaPlayer("#myVideo")
+     *          .pluginA()
+     *          .pluginB()
+     *          .load()
+     * </pre></code>
+     *
+     * @name MetaPlayer
+     * @constructor
+     * @this {MetaPlayer}
+     * @param {MediaElement,String} [video] An HTML5 Media element, a DIV element, or jQuery selector string.
+     * @param {Object} [options] A map of configuration options
+     * @param {Object} options.layout Default options passed in to Layout module, defaults to empty object.
+     * @param {Object} options.metadata Default options passed in to MetaDat module, defaults to empty object.
+     * @param {Object} options.search Default options passed in to Search module, defaults to empty object.
+     * @param {Object} options.cues Default options passed in to Cues module, defaults to empty object.
+     */
     var MetaPlayer = function (video, options ) {
 
         if( ! (this instanceof MetaPlayer) )
@@ -51,15 +84,15 @@
         this.target = video;
 
         // metadata interface
-        if( this.config.useMetaData )
-            this.metadata = new MetaPlayer.MetaData(this, this.config );
+        if( this.config.metadata )
+            this.metadata = new MetaPlayer.MetaData(this, this.config);
 
         // search interface
-        if( this.config.useSearch )
+        if( this.config.search )
             this.search = new MetaPlayer.Search(this, this.config );
 
         // cues interface
-        if( this.config.useCues )
+        if( this.config.cues )
             this.cues = new MetaPlayer.Cues(this, this.config );
 
         // resolve video element from string, popcorn instance, or direct reference
@@ -81,7 +114,7 @@
         }
 
         // optional layout disabling, use at own risk for player UI layout
-        if( video && this.config.useLayout ) {
+        if( video && this.config.layout ) {
             this.layout = MetaPlayer.layout(video);
         }
 
@@ -95,68 +128,32 @@
 
     /**
      * Fired when all plugins are loaded.
-     * @static
      * @constant
-     * @event
      */
     MetaPlayer.READY = "ready";
 
     /**
      * Fired when player destructor called to allow plugins to clean up.
-     * @static
      * @constant
-     * @event
      */
     MetaPlayer.DESTROY = "destroy";
-
-    /**
-     * Registers a non-playback plugin.
-     * @static
-     * @param keyword
-     * @param callback
-     */
-    MetaPlayer.addPlugin= function (keyword, callback ) {
-        var p = MetaPlayer.prototype;
-        if( p[keyword] )
-            throw "keyword unavailable: " + keyword;
-
-        p[keyword] = function () {
-            // wait for load()
-            if( ! this.ready ) {
-                this._loadQueue.push({
-                    name : keyword,
-                    args : arguments,
-                    fn : callback
-                })
-            }
-            else { // post load(), fire now
-                 callback.apply(this, arguments);
-            }
-            return this;
-        };
-    };
-
-
-    /**
-     * Registers a function as a playback plugin.
-     * @param keyword
-     * @param callback Function reference to invoke to inititialize plugin, with player as "this"
-     */
-    MetaPlayer.addPlayer = function (keyword, callback ) {
-        var p = MetaPlayer.prototype;
-
-        if( p[keyword] )
-            throw "keyword unavailable: " + keyword;
-
-        p[keyword] = function () {
-            callback.apply(this, arguments);
-            return this;
-        };
-    };
 
 
     MetaPlayer.prototype = {
 
+        /**
+         * Initializes requested player plugins, optionally begins playback.
+         * @this {MetaPlayer}
+         */
+        load : function () {
+            this._load();
+            return this;
+        },
+
+        /**
+         * Disabled MP instance, frees up memory resources. Fires DESTROY event for plugin notification.
+         * @this {MetaPlayer}
+         */
         destroy : function () {
             this.dispatcher.dispatch( MetaPlayer.DESTROY );
 
@@ -180,10 +177,6 @@
             console.log.apply(console, arr);
         },
 
-        /**
-         * Initializes requested player plugins, optionally begins playback.
-         * @param url (optional) initial url or tracks
-         */
         _load : function () {
 
             if (! this._loadQueue ) {
@@ -196,7 +189,7 @@
                 this.html5();
 
             if( this.video && ! this.playlist )
-                this.playlist = new MetaPlayer.Playlist(this, this.config.playlist);
+                this.playlist = new MetaPlayer.Playlist(this, this.config);
 
             if( this.video && ! this.popcorn && Popcorn != null )
                 this.popcorn = Popcorn(this.video);
@@ -214,28 +207,78 @@
             this.dispatcher.dispatch( MetaPlayer.READY );
 
             this.ready = true;
-        },
-
-        load : function (url) {
-            this._load();
-
-            if( url ) {
-                this.playlist.empty();
-                this.playlist.queue(url);
-            }
-
-            // calling load() explicitly will cause the player to apply sources;
-//            this.playlist.selectSource();
-
-
-            return this;
         }
+
+    };
+
+    /**
+     * Registers a plugin.
+     *
+     * For example:
+     * <code><pre>
+     *      MetaPlayer.addPlugin("foo", function (id) {
+     *          this.video.src = id + ".mp4";
+     *      });
+     *      var mp = MetaPlayer("#mydiv").foo("trailer").load();
+     * </pre></code>
+     * @param {String} keyword The name to be use
+     * @param {Function} callback Function reference to invoke to initialize plugin,
+     *  with metaplayer instance as "this". All args are passed through.
+     */
+    MetaPlayer.addPlugin= function (keyword, callback ) {
+        var p = MetaPlayer.prototype;
+        if( p[keyword] )
+            throw "keyword unavailable: " + keyword;
+
+        p[keyword] = function () {
+            // wait for load()
+            if( ! this.ready ) {
+                this._loadQueue.push({
+                    name : keyword,
+                    args : arguments,
+                    fn : callback
+                })
+            }
+            else { // post load(), fire now
+                callback.apply(this, arguments);
+            }
+            return this;
+        };
+    };
+
+
+    /**
+     * Registers a function as a playback plugin.  Playback plugins are initialized earlier than other plugins.
+     *
+     * For example:
+     * <code><pre>
+     *      MetaPlayer.addPlayer("foo", function (id) {
+     *          this.video = document.getElementById(id);
+     *      });
+     *      var mp = MetaPlayer("#mydiv").foo("myVid").load();
+     * </pre></code>
+     * @param {String} keyword The name to be use
+     * @param {Function} callback Function reference to invoke to initialize plugin,
+     *  with metaplayer instance as "this". All args are passed through.
+     */
+    MetaPlayer.addPlayer = function (keyword, callback ) {
+        var p = MetaPlayer.prototype;
+
+        if( p[keyword] )
+            throw "keyword unavailable: " + keyword;
+
+        p[keyword] = function () {
+            callback.apply(this, arguments);
+            return this;
+        };
     };
 
     window.MetaPlayer = MetaPlayer;
-    window.MPF = MetaPlayer;
     window.Ramp = MetaPlayer;
+    window.MPF = MetaPlayer;
+
 })();
+
 
 (function () {
 
@@ -330,6 +373,10 @@
 
             if( ! type ) {
                 return this.getCueLists();
+            }
+
+            if( this._rules[type] && this._rules[type].clone ){
+                type = this._rules[type].clone;
             }
 
             if(! this._cues[guid]  || ! this._cues[guid][type])
@@ -541,7 +588,7 @@
         var elem  = t.get(0);
 
         var base;
-        var stage = t.find('.mp-video');
+        var stage = t.find('.mp-stage');
         var video = t.find('video');
         var isVideo = (target.play instanceof Function);
         var isFrame = (elem.tagName.toUpperCase() == "IFRAME");
@@ -565,7 +612,7 @@
         // set up the video playback area "stage"
         if( stage.length == 0) {
             stage = $('<div></div>')
-                .addClass('mp-video');
+                .addClass('mp-stage');
             stage.appendTo(base);
         }
 
@@ -1148,7 +1195,7 @@
         this.attach(source);
     };
 
-    Ramp.dispatcher = EventDispatcher;
+    MetaPlayer.dispatcher = EventDispatcher;
 
     EventDispatcher.Event = function () {
         this.cancelBubble = false;
@@ -1454,7 +1501,7 @@
     if( ! window.Ramp )
         window.Ramp = {};
 
-    Ramp.proxy = Proxy;
+    MetaPlayer.proxy = Proxy;
 
 
 })();
@@ -1480,6 +1527,10 @@
         },
 
         base : function (filename) {
+
+            if( ! filename )
+                filename = 'metaplayer(-complete)?(\.min)?\.js';
+
             var src = this.url(filename) || '';
             return src.substr(0, src.lastIndexOf('/') + 1);
         }
@@ -2104,7 +2155,10 @@
                 context: this,
                 data : params,
                 error : function (jqXHR, textStatus, errorThrown) {
-                    this.player.video.dispatch("error");
+                    var e = this.createEvent();
+                    e.initEvent(textStatus, false, true);
+                    e.message = errorThrown;
+                    this.dispatchEvent(e);
                 },
                 success : function (response, textStatus, jqXHR) {
                     var items = this.parse(response, url);
@@ -2179,8 +2233,8 @@
             });
 
             if( item.metadata.ramp.rampId && ! item.metadata.ramp.serviceURL ){
-                if( uri.match( /mp2-playlist/ ) ) {
-                    item.metadata.ramp.serviceURL = uri.replace(/(mp2-playlist[-\?]e=)(\d+)/, "$1" + item.metadata.ramp.rampId);
+                if( uri.match( /mp2[-\/]playlist/ ) ) {
+                    item.metadata.ramp.serviceURL = uri.replace(/e=(\d+)/, "e=" + item.metadata.ramp.rampId);
                 }
             }
 
@@ -2537,7 +2591,9 @@
         // single argument mode: function(options) {
         if(!  el.getCommonClip  ) {
             options = el;
-            el = $("<div></div>").appendTo(this.layout.stage);
+            el = $("<div></div>")
+                .addClass("mp-video")
+                .appendTo(this.layout.stage);
         }
         this.flowplayer = FlowPlayer(el, options);
         this.video = this.flowplayer.video;
@@ -2997,9 +3053,6 @@
         this.autoplay = this.config.autoplay;
         this.updateMsec = this.config.updateMsec;
 
-
-
-
         MetaPlayer.dispatcher( this );
 
         if( typeof youtube == "string" || ! youtube.getVideoEmbedCode ) {
@@ -3012,7 +3065,6 @@
             this.youtube = youtube;
             // wrap so we have a non-iframe container to append source elements to
             this.container  = $("<div></div>")
-                .addClass("mp-youtube")
                 .appendTo( youtube.a.parentNode )
                 .append( youtube.a )
                 .get(0);
@@ -3042,7 +3094,7 @@
                 options.chromeless = true;
 
            youtube = $("<div></div>")
-               .addClass("mp-youtube")
+               .addClass("mp-video")
                .appendTo(this.layout.stage);
         }
 
@@ -3364,5 +3416,620 @@
             return this.__readyState;
         }
     }
+
+})();
+(function () {
+    var $ = jQuery;
+    var ovp = window.ovp;
+
+    var defaults = {
+        // OVP main default configs
+        strategy : {"order":["HTML5","Flash","Silverlight"]}, // Case is important
+        sliderdelay : 5000,
+        sliderspeed : "slow",
+        immediately : false,
+        controls: {'src_img':'/images/play.png'},
+        ovp_container_class:'ovp',
+        controller_keepalive_seconds: 5,
+        players : {
+            "Flash":{"src":"ovp-2.1.6.swf","minver":"10","controls":false, "plugins":[]},
+            "Silverlight":{"src":"ovp-2.3.1.xap","minver":"4.0","controls":false, "plugins":[]},
+            "HTML5":{"minver":"0","controls":false}
+        },
+        status_timer : 500,
+        // OVP video default configs
+        ovpConfig: {
+            sources:[
+                    {'src':'/videos/trailer.ogv', 'type':'video/ogg'},
+                    {'src':'/videos/trailer.mp4','type':'video/mp4'}
+            ],
+            width : '100%', // swfobject requires width/height of player.
+            height : '100%',
+            posterimg:'/images/poster.png',
+            autobuffer:true,
+            autoplay:false,
+            id: 'ovp',
+            scalemode: 'fit',
+            controls: false
+        }
+    };
+
+    var status = {
+        LOAD  : 0,
+        READY : 1,
+        PLAY  : 2,
+        PAUSE : 3,
+        SEEK  : 4,
+        ENDED : 5
+    };
+
+    var OVPlayer = function(el, options) {
+        if(!(this instanceof OVPlayer))
+            return new OVPlayer(el, options);
+
+        this.config = $.extend(true, {}, defaults, options); 
+        this.__readyState = 0;
+        this.__paused = (! this.config.immediately);
+        this.__duration = NaN;
+        this.__ended = false;
+        this.__seeking = false;
+        this.__controls = false;
+        this.__volume = 1;
+        this.__muted = false;
+        this.__src = "";
+        this.__status = status.LOAD;
+        
+        this._ovp = this._render( $(el).get(0) );
+        this.video = $(el).get(0);
+        this.dispatcher = MetaPlayer.dispatcher( this );
+        MetaPlayer.proxy.proxyPlayer( this, this.video );
+        this._setControls();
+        this._addEventListeners();
+    };
+
+    if( window.MetaPlayer ) {
+        MetaPlayer.addPlayer("ovp", function ( options ) {
+            var target = $("<div></div>").appendTo(this.layout.stage);
+            this.ovp = OVPlayer(target, options);
+            this.video = this.ovp.video;
+        });
+    } else {
+        window.MetaPlayer = {};
+    }
+
+    MetaPlayer.ovp = function (target, options) {
+        var ovp = OVPlayer(target, options);
+        return ovp.video;
+    };
+
+    OVPlayer.prototype = {
+        _render: function (el) { 
+            var presetplay = this.config.immediately;
+            if (! presetplay ) this.config.immediately = true;
+            ovp.init(this.config);
+            this.config.immediately = presetplay;
+            return ovp.render(el, this.config.ovpConfig)[0];
+        },
+        
+        _addEventListeners : function () {
+            // start ovp player status check
+            this._loadtimer = Ramp.timer(this.config.status_timer);
+            this._loadtimer.listen('time', this._onBeforeLoad, this);
+            this._loadtimer.start();
+            
+            this._statustimer = Ramp.timer(this.config.status_timer);
+            this._statustimer.listen('time', this._onStatus, this);
+        },
+        _onBeforeLoad : function () {
+            if(typeof this._ovp.player !== "object")
+                return;
+            this.dispatch('loadstart');
+            this._loadtimer.reset();
+            this._onReady();
+            this._startDurationCheck();
+        },
+        _onReady : function () {
+            this._statustimer.start();
+            this.__readyState = 4;
+            this.dispatch("loadeddata");
+            this.dispatch("canplay");
+            this.load();
+
+            this.__status = status.READY;
+            
+            this.video.pause();
+            if(this.config.immediately || this.config.ovpConfig.autoplay) {
+                this.video.play();
+            }
+        },
+        _startDurationCheck : function () {
+            var self = this;
+            if( this._durationCheckInterval ) {
+                return;
+            }
+            this._durationCheckInterval = setInterval(function () {
+                self._onDurationCheck();
+            }, 1000);
+        },
+
+        _onDurationCheck : function () {
+            var duration = this._ovp.getDuration();
+            if( duration > 0 ) {
+                this.__duration = duration;
+                this.dispatch("loadeddata");
+                this.dispatch("loadedmetadata");
+                this.dispatch("durationchange");
+                this.dispatch("timeupdate");
+                clearInterval( this._durationCheckInterval );
+                this._durationCheckInterval = null;
+            }
+        },
+        
+        _onStatus : function () {
+            if ( this._ovp.isPlaying() ) {
+                this.__paused = false;
+                if( this.__status !== status.PLAY ) {
+                    this.dispatch("play");
+                }
+                this.dispatch("timeupdate");
+                this.__status = status.PLAY;
+            } else if ( this._ovp.isEnded() ){
+                this.__paused = true;
+                if( this.__status !== status.ENDED ) {
+                    this.dispatch("ended");
+                }
+                this.__status = status.ENDED;
+            } else {
+                this.__paused = true;
+                if( this.__status !== status.PAUSE ) {
+                    this.dispatch("pause");
+                }
+                this.__status = status.PAUSE;
+            }
+        },
+        _setControls : function () {
+            if ( this._ovp.controlsState === 'RENDERED' )
+                this.__controls = this._ovp.controls;
+        },
+        _getCurrentTimeFromCache : function () {
+            if (! this._ovp.player )
+                return 0;
+            
+            var now = (new Date()).getTime();
+            var then = this.__currentTimeCache;
+            var diff = now - then;
+
+            if( then && diff < this.config.status_timer )
+                return this.__currentTime + (diff / 1000); // approx our position
+            else
+                this.__currentTimeCache = now;
+            
+            var ovpCurrentTime = this._ovp.getCurrentTime();
+            this.__currentTime = ( ovpCurrentTime < 0 )? 0 : ovpCurrentTime;
+            return this.__currentTime;
+        },
+        doSeek : function (time) {
+            this.__seeking = true;
+            this.dispatch("seeking");
+            this._ovp.seekTo( time );
+            this.__currentTime = time;
+            this.__status = status.SEEK;
+
+            // no seeking events exposed, so fake best we can
+            // will be subject to latency, etc
+            var self = this;
+            setTimeout (function () {
+                self.updateTime(); // trigger a time update
+                self.__seeking = false;
+                self.dispatch("seeked");
+                self.dispatch("timeupdate");
+            }, 1500)
+        },
+        updateTime : function () {
+            this.__currentTime = this._ovp.getCurrentTime();
+        },
+        /**
+         * MetaPlayer Media Interfaces
+         *
+         * @Functions
+         * load()
+         * play()
+         * pause()
+         * canPlayType(type)
+         *
+         */
+        load : function () {
+            if (! this._ovp.player )
+                return;
+            
+            var f = this.src();
+            if(f) {
+                this.config.ovpConfig.sources = [{src: f}];
+            }
+            // start to play video.
+        },
+        play : function () {
+            this.__paused = false;
+            this._ovp.playpause();
+        },
+        pause : function () {
+            this.__paused = true;
+            this._ovp.playpause();
+        },
+        canPlayType : function (val) {
+            // In ovp, it has to be changed the video sources before it checks.
+            return this._ovp.canPlay();
+        },
+        /**
+         * MetaPlayer Media Properties
+         * paused()
+         * duration()
+         * seeking()
+         * ended()
+         * currentTime(val)
+         * muted()
+         * volume(val)
+         * src(val)
+         * readyState()
+         * controls()
+         */
+        paused : function () {
+            return this.__paused;
+        },
+        duration : function () {
+            return this.__duration;
+        },
+        seeking : function () {
+            return this.__seeking;
+        },
+        ended : function () {
+            return this.__ended;
+        },
+        currentTime : function (val) {
+            if( typeof val !== 'undefined' ) {
+                if( val < 0 )
+                    val = 0;
+                if( val > this.duration )
+                    val = this.duration;
+                this.doSeek(val);
+            }
+            
+            return this._getCurrentTimeFromCache();
+        },
+        readyState : function (val) {
+            if( val !== undefined )
+                this.__readyState = val;
+            return this.__readyState;
+        },
+        muted : function (val) {
+            if( val != null ){
+                this.__muted = val;
+                if( ! this._ovp )
+                    return val;
+                if( val )
+                    this._ovp.mutetoggle();
+                else
+                    this._ovp.mutetoggle();
+                this.dispatch("volumechange");
+                return val;
+            }
+
+            return this.__muted;
+        },
+        volume : function (val) {
+            if( val != null ){
+                this.__volume = val;
+                if( ! this._ovp )
+                    return val;
+                // ovp doesn't support to change any volume level.
+                this._ovp.mutetoggle();
+                this.dispatch("volumechange");
+            }
+            return this.__volume;
+        },
+        src : function (val) {
+            if( val !== undefined ) {
+                this.__src = val;
+            }
+            return this.__src
+        },
+        controls : function (val) {
+            if( typeof val !== 'undefined' || val != false ) {
+                this.__controls = val;
+            }
+            return this.__controls;
+        }
+    };
+})();
+(function() {
+
+    var $ = jQuery;
+    var jwplayer = window.jwplayer;
+
+    var defaults = {
+        autostart  : true,
+        autobuffer : true,
+        controlbar :  "none",
+        flashplayer: "",
+        file       : "",
+        image      : "",
+        id         : "jwplayer",
+        //duration   : 0,
+        volume     : 100,
+        width      : "100%",
+        height     : "100%",
+        icons      : false, // disable a big play button on the middle of screen
+        events     : {
+            onTime: function(e) {}, onMeta: function(e) {}
+        },
+        plugins: { viral: { onpause: false, oncomplete: false, allowmenu: false } } // disable all viral features.
+    };
+
+    var JWPlayer = function(el, options) {
+        if(!( this instanceof JWPlayer ))
+            return new JWPlayer(el, options);
+
+        this.config = $.extend(true, {}, defaults, options);
+        this.__autoplay = this.config.autostart;
+        this.__autobuffer = this.config.autobuffer;
+        this.__volume = (this.config.volume/100);
+        this.__seeking = null;
+        this.__readyState = 0;
+        this.__ended = false;
+        this.__paused = (! this.config.autostart);
+        this.__duration = NaN;
+        this.__metadata = null;
+        this.__started = false;
+        this.__currentTime = 0;
+        this.__src = "";
+
+        this._jwplayer = this._render( $(el).get(0) );
+        this.video = this._jwplayer.container;
+        this.dispatcher = MetaPlayer.dispatcher( this );
+        MetaPlayer.proxy.proxyPlayer( this, this.video );
+
+        var self = this;
+        this._jwplayer.onReady(function() {
+            self._onLoad();
+        });
+    };
+
+    if( window.MetaPlayer ) {
+        MetaPlayer.addPlayer("jwplayer", function ( options ) {
+            var target = $("<div></div>").appendTo(this.layout.stage);
+            // jwplayer always requires with a element id.
+            $(target).attr("id", options.id);
+            this.jwplayer = JWPlayer(target, options);
+            this.video = this.jwplayer.video;
+        });
+    } else {
+        window.MetaPlayer = {};
+    }
+
+    MetaPlayer.jwplayer = function (target, options) {
+        var jwplayer = JWPlayer(target, options);
+        return jwplayer.video;
+    };
+
+    JWPlayer.prototype = {
+        _render: function (el) {
+            jwplayer(el).setup(this.config);
+            return jwplayer(el);
+        },
+
+        _onLoad: function() {
+            var self = this;
+
+            //console.log("_onLoad", this._jwplayer.getMeta());
+            // Player listeners
+            this._jwplayer.onPlay( function (level) {
+                self.__ended = false;
+                self.__paused = false;
+                self.__started = true;
+                self.dispatch("play");
+            });
+
+            this._jwplayer.onPause( function (level) {
+                self.__paused = true;
+                self.dispatch("pause");
+            });
+
+            this._jwplayer.onTime( function (e) {
+                self.__currentTime = e.position;
+                self.dispatch("timeupdate");
+            });
+
+            this._jwplayer.onIdle( function (level) {
+                // not sure what should do for this event.
+            });
+
+            this._jwplayer.onBuffer( function (e) {
+                self.dispatch("buffering");       
+            });
+
+            this._jwplayer.onSeek( function (e) {
+                self.__seeking = e.offset;
+                self.__currentTime = e.offset;
+                self.dispatch("seeked");
+            });
+
+            this._jwplayer.onComplete( function (e) {
+                self.__ended = true;
+                self.__started = false;
+                self.__paused = true;
+                self.dispatch("ended");
+            });
+
+            this._jwplayer.onVolume( function (e) {
+                self.dispatch("volumechange");
+            });
+
+            this._jwplayer.onMute( function (e) {
+                self.dispatch("volumechange");
+            });
+
+            this._jwplayer.onMeta( function (e) {
+                self.__metadata = e.metadata;   
+                if ( e.metadata.duration && e.metadata.duration > 0 ) {
+                    self.__duration = e.metadata.duration;
+                    self.dispatch("loadeddata");
+                    self.dispatch("loadedmetadata");
+                    self.dispatch("durationchange");
+                }
+            });
+
+            this._jwplayer.onPlaylist( function (level) {
+                self.__started = false;
+                self.dispatch("playlistChange");
+            });
+
+            this._jwplayer.onError( function (e) {
+                self.__started = false;
+            });
+
+            this.__src = this._getSrc();
+
+            this.dispatch('loadstart');
+            this.dispatch("canplay");
+
+            if( this._getAutoBuffer() || this._getAutoPlay() )
+                this.load();
+        },
+
+        _doSeek : function (time) {
+            this.__seeking = true;
+            this.dispatch("seeking");
+            this._jwplayer.seek( time );
+            this.__currentTime = time;
+
+            // no seeking events exposed, so fake best we can
+            // will be subject to latency, etc
+            var self = this;
+            setTimeout (function () {
+                self._updateTime(); // trigger a time update
+                self.__seeking = false;
+                self.dispatch("seeked");
+                self.dispatch("timeupdate");
+            }, 1500)
+        },
+        _updateTime : function () {
+            this.__currentTime = this._jwplayer.getPosition();
+        },
+
+        _getAutoPlay : function () {
+            return this.__autoplay;
+        },
+
+        _getAutoBuffer : function () {
+            return this.__autobuffer;
+        },
+
+        _getSrc : function () {
+            if (! this._jwplayer ) return "";
+            return this._jwplayer.getPlaylist()[0].file;
+        },
+
+        /**
+         * MetaPlayer Media Interfaces
+         *
+         * @Functions
+         * load()
+         * play()
+         * pause()
+         * canPlayType(type)
+         *
+         */
+        load : function () {
+            if( this.src() ) {
+                var f = this.src();
+                this._jwplayer.load([{file: f}]);
+            }
+            if( this._jwplayer ) {
+                if( this._getAutoPlay() ) {
+                    this._jwplayer.play();
+                } else {
+                    // in jwplayer, it doesn't have a autobuffer. add a trick with play/pause.
+                    this._jwplayer.play();
+                    this._jwplayer.pause();
+                }
+            }
+        },
+        play : function () {
+            this._jwplayer.play();
+        },
+        pause : function () {
+            this._jwplayer.pause();
+        },
+        canPlayType : function (val) {
+            return true;
+        },
+        /**
+         * MetaPlayer Media Properties
+         * paused()
+         * duration()
+         * seeking()
+         * ended()
+         * currentTime(val)
+         * muted()
+         * volume(val)
+         * src(val)
+         * readyState()
+         * controls()
+         */
+        paused : function () {
+            return this.__paused;
+        },
+        duration : function () {
+            return this.__duration;
+        },
+        seeking : function () {
+            return (this.__seeking !== null);
+        },
+        ended : function () {
+            return this.__ended;
+        },
+        currentTime : function (val) {
+            if( val !== undefined ){
+                if( val < 0 )
+                    val = 0;
+                if( val > this.duration )
+                    val = this.duration;
+                this._doSeek(val);
+            }
+
+            return this.__currentTime;
+        },
+        readyState : function (val) {
+            return this.__readyState;
+        },
+        muted : function (val) {
+            if( val !== undefined )
+                this._jwplayer.setMute();
+            return this._jwplayer.getMute();
+        },
+        volume : function (val) {
+            if( val != null ){
+                this.__volume = val;
+                if( ! this._jwplayer )
+                    return val;
+                // ovp doesn't support to change any volume level.
+                this._jwplayer.setVolume(val*100);
+                this.dispatch("volumechange");
+            }
+            return (this.__volume > 1)? (this.__volume/100):this.__volume;
+        },
+        src : function (val) {
+            if( val !== undefined ) {
+                this.__src = val;
+            }
+            return this.__src
+        },
+        controls : function (val) {
+            if( typeof val !== 'undefined' ) {
+                this.__controls = val;
+            }
+            return this.__controls;
+        }
+    };
 
 })();

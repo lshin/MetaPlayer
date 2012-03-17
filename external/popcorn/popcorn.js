@@ -1,3 +1,15 @@
+/*
+ * popcorn.js
+ * http://popcornjs.org
+ *
+ * Copyright 2011, Mozilla Foundation
+ * Licensed under the MIT license
+ *
+ * Modified 2012, RAMP
+ * Added IE8 support.
+ */
+
+
 (function(global, document) {
 
   // Popcorn.js does not support archaic browsers

@@ -28,7 +28,7 @@
         this.playlist = player.playlist;
 
         // used to find our templates
-        this.baseUrl = Ramp.script.base('(metaplayer||ui).overlay(.min)?.js');
+        this.baseUrl = MetaPlayer.script.base();
         this._touchDevice = /iPad|iPhone|iPod/i.test(navigator.userAgent);
 
         if( this.config.container ) {
@@ -286,12 +286,12 @@
         },
 
         setCaptions : function ( bool ){
-            var cues = this.player.cues;
+            var pop = this.player.popcorn;
 
             if( bool )
-                cues.enable('captions');
+                pop.enable('captions');
             else
-                cues.disable('captions');
+                pop.disable('captions');
 
             this.find('cc').toggle(bool);
             this.find('cc-off').toggle(!bool)

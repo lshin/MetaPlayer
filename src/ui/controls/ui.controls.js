@@ -431,6 +431,9 @@
             if( cssClass)
                 marker.addClass( this.cssName(cssClass) );
 
+            if( end == start )
+                end = null;
+
             overlay.append(marker);
             this.annotations.modified = true;
             this.annotations.push({

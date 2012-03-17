@@ -1,5 +1,5 @@
 /**
- Metaplayer - A media player framework for HTML5/JavaScript for use with RAMP services.
+ Metaplayer - A standards-based, multiple player, UI and Event framework for JavaScript.
 
  Copyright (c) 2011 RAMP Holdings, Inc.
 
@@ -18,25 +18,58 @@
  Created: 2011 by Greg Kindel <greg@gkindel.com>
 
  Dependencies: jQuery
+
  */
+/**
+ * @fileOverview A media player framework for HTML5/JavaScript for use with RAMP services.
+ * @author Greg Kindel <greg@gkindel.com>
+ * @version 1.0
+ */
+
 (function () {
 
     var $ = window.jQuery;
     var Popcorn = window.Popcorn;
 
-    /**
-     * Sets up player plugin container, playlist, and DOM scaffolding
-     * @constructor
-     * @target an HTML5 Media element
-     */
-    var defaults = {
+
+    var defaults  = {
         debug : "",
-        useLayout : true,
-        useMetaData: true,
-        useCues: true,
-        useSearch: true
+        layout : {},
+        metadata : {},
+        search : {},
+        cues : {}
     };
 
+    /**
+     * Create a MetaPlyer instance. Sets up core player plugins, and DOM scaffolding.
+     * By default, search, metadata, and cues interfaces are queued for load(). If a DOM element is passed,
+     * then the layout and playlist interfaces are queued as well.
+     *
+     * Example:
+     * In the page
+     * <code><pre>
+     *      &lt;video id="myVideo" src="myvideo.mp4" /&gt;
+     * </pre></code>
+     *
+     *
+     * In JavaScript, after DOM loaded:
+     * <code><pre>
+     *      var mp = MetaPlayer("#myVideo")
+     *          .pluginA()
+     *          .pluginB()
+     *          .load()
+     * </pre></code>
+     *
+     * @name MetaPlayer
+     * @constructor
+     * @this {MetaPlayer}
+     * @param {MediaElement,String} [video] An HTML5 Media element, a DIV element, or jQuery selector string.
+     * @param {Object} [options] A map of configuration options
+     * @param {Object} options.layout Default options passed in to Layout module, defaults to empty object.
+     * @param {Object} options.metadata Default options passed in to MetaDat module, defaults to empty object.
+     * @param {Object} options.search Default options passed in to Search module, defaults to empty object.
+     * @param {Object} options.cues Default options passed in to Cues module, defaults to empty object.
+     */
     var MetaPlayer = function (video, options ) {
 
         if( ! (this instanceof MetaPlayer) )
@@ -51,15 +84,15 @@
         this.target = video;
 
         // metadata interface
-        if( this.config.useMetaData )
-            this.metadata = new MetaPlayer.MetaData(this, this.config );
+        if( this.config.metadata )
+            this.metadata = new MetaPlayer.MetaData(this, this.config);
 
         // search interface
-        if( this.config.useSearch )
+        if( this.config.search )
             this.search = new MetaPlayer.Search(this, this.config );
 
         // cues interface
-        if( this.config.useCues )
+        if( this.config.cues )
             this.cues = new MetaPlayer.Cues(this, this.config );
 
         // resolve video element from string, popcorn instance, or direct reference
@@ -81,7 +114,7 @@
         }
 
         // optional layout disabling, use at own risk for player UI layout
-        if( video && this.config.useLayout ) {
+        if( video && this.config.layout ) {
             this.layout = MetaPlayer.layout(video);
         }
 
@@ -95,68 +128,32 @@
 
     /**
      * Fired when all plugins are loaded.
-     * @static
      * @constant
-     * @event
      */
     MetaPlayer.READY = "ready";
 
     /**
      * Fired when player destructor called to allow plugins to clean up.
-     * @static
      * @constant
-     * @event
      */
     MetaPlayer.DESTROY = "destroy";
-
-    /**
-     * Registers a non-playback plugin.
-     * @static
-     * @param keyword
-     * @param callback
-     */
-    MetaPlayer.addPlugin= function (keyword, callback ) {
-        var p = MetaPlayer.prototype;
-        if( p[keyword] )
-            throw "keyword unavailable: " + keyword;
-
-        p[keyword] = function () {
-            // wait for load()
-            if( ! this.ready ) {
-                this._loadQueue.push({
-                    name : keyword,
-                    args : arguments,
-                    fn : callback
-                })
-            }
-            else { // post load(), fire now
-                 callback.apply(this, arguments);
-            }
-            return this;
-        };
-    };
-
-
-    /**
-     * Registers a function as a playback plugin.
-     * @param keyword
-     * @param callback Function reference to invoke to inititialize plugin, with player as "this"
-     */
-    MetaPlayer.addPlayer = function (keyword, callback ) {
-        var p = MetaPlayer.prototype;
-
-        if( p[keyword] )
-            throw "keyword unavailable: " + keyword;
-
-        p[keyword] = function () {
-            callback.apply(this, arguments);
-            return this;
-        };
-    };
 
 
     MetaPlayer.prototype = {
 
+        /**
+         * Initializes requested player plugins, optionally begins playback.
+         * @this {MetaPlayer}
+         */
+        load : function () {
+            this._load();
+            return this;
+        },
+
+        /**
+         * Disabled MP instance, frees up memory resources. Fires DESTROY event for plugin notification.
+         * @this {MetaPlayer}
+         */
         destroy : function () {
             this.dispatcher.dispatch( MetaPlayer.DESTROY );
 
@@ -180,10 +177,6 @@
             console.log.apply(console, arr);
         },
 
-        /**
-         * Initializes requested player plugins, optionally begins playback.
-         * @param url (optional) initial url or tracks
-         */
         _load : function () {
 
             if (! this._loadQueue ) {
@@ -196,7 +189,7 @@
                 this.html5();
 
             if( this.video && ! this.playlist )
-                this.playlist = new MetaPlayer.Playlist(this, this.config.playlist);
+                this.playlist = new MetaPlayer.Playlist(this, this.config);
 
             if( this.video && ! this.popcorn && Popcorn != null )
                 this.popcorn = Popcorn(this.video);
@@ -214,26 +207,76 @@
             this.dispatcher.dispatch( MetaPlayer.READY );
 
             this.ready = true;
-        },
-
-        load : function (url) {
-            this._load();
-
-            if( url ) {
-                this.playlist.empty();
-                this.playlist.queue(url);
-            }
-
-            // calling load() explicitly will cause the player to apply sources;
-//            this.playlist.selectSource();
-
-
-            return this;
         }
+
+    };
+
+    /**
+     * Registers a plugin.
+     *
+     * For example:
+     * <code><pre>
+     *      MetaPlayer.addPlugin("foo", function (id) {
+     *          this.video.src = id + ".mp4";
+     *      });
+     *      var mp = MetaPlayer("#mydiv").foo("trailer").load();
+     * </pre></code>
+     * @param {String} keyword The name to be use
+     * @param {Function} callback Function reference to invoke to initialize plugin,
+     *  with metaplayer instance as "this". All args are passed through.
+     */
+    MetaPlayer.addPlugin= function (keyword, callback ) {
+        var p = MetaPlayer.prototype;
+        if( p[keyword] )
+            throw "keyword unavailable: " + keyword;
+
+        p[keyword] = function () {
+            // wait for load()
+            if( ! this.ready ) {
+                this._loadQueue.push({
+                    name : keyword,
+                    args : arguments,
+                    fn : callback
+                })
+            }
+            else { // post load(), fire now
+                callback.apply(this, arguments);
+            }
+            return this;
+        };
+    };
+
+
+    /**
+     * Registers a function as a playback plugin.  Playback plugins are initialized earlier than other plugins.
+     *
+     * For example:
+     * <code><pre>
+     *      MetaPlayer.addPlayer("foo", function (id) {
+     *          this.video = document.getElementById(id);
+     *      });
+     *      var mp = MetaPlayer("#mydiv").foo("myVid").load();
+     * </pre></code>
+     * @param {String} keyword The name to be use
+     * @param {Function} callback Function reference to invoke to initialize plugin,
+     *  with metaplayer instance as "this". All args are passed through.
+     */
+    MetaPlayer.addPlayer = function (keyword, callback ) {
+        var p = MetaPlayer.prototype;
+
+        if( p[keyword] )
+            throw "keyword unavailable: " + keyword;
+
+        p[keyword] = function () {
+            callback.apply(this, arguments);
+            return this;
+        };
     };
 
     window.MetaPlayer = MetaPlayer;
-    window.MPF = MetaPlayer;
     window.Ramp = MetaPlayer;
+    window.MPF = MetaPlayer;
+
 })();
+
 
