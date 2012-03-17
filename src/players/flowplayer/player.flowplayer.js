@@ -37,6 +37,7 @@
         this.__ended = false;
         this.__paused = true;
         this.__duration = NaN;
+        this.__youtubePlugin = false;
 
         this._pageSetup(el);
 
@@ -56,6 +57,8 @@
         });
 
         this.video = MetaPlayer.proxy.proxyPlayer(this, this._flowplayer.getParent());
+        // check a flowplayer plugins
+        this._loadPlugins();
     };
 
     MetaPlayer.flowplayer = function (el, options) {
@@ -100,6 +103,17 @@
             }
         },
 
+        _loadPlugins : function () {
+            var config = this._flowplayer.getConfig();
+            if( ! config.hasOwnProperty("plugins") )
+                return;
+
+            var pluginConfig = config.plugins;
+            // check youtube plugin
+            if( pluginConfig.youtube && pluginConfig.youtube.url.length > 0 )
+                this.__youtubePlugin = true;
+        },
+
         _onLoad : function () {
             // fires twice on ipad
             if( this._onLoadFired )
@@ -130,7 +144,6 @@
             });
 
             this.controls( this.config.controls );
-
 
             // apply src from before we were loaded, if any
             if( this.__src ) {
@@ -301,13 +314,16 @@
                 // just accept m3u8
                 if( this._iOS  && type.match(/mpegurl|m3u8/i)  ){
                     canPlay = "probably";
-                }
-                else if( this._video.canPlayType )
+                } else if( this._video.canPlayType )
                     canPlay = this._video.canPlayType(type)
             }
 
+            else if( this.__youtubePlugin && type.match(/youtube$/i) ) {
+                canPlay = "probably";
+            }
+
             // fall through to flash
-            else if( type.match( /mp4|flv|jpg$/ ) ) {
+            else if( type.match( /mp4|flv|jpg/ ) ) {
                 canPlay = "probably";
             }
 
@@ -434,11 +450,7 @@
                 this.__duration  = NaN;
                 var fp = this._flowplayer;
                 if( fp.isLoaded() ) {
-                    fp.setClip({
-                        autoPlay : false,
-                        autoBuffering : false,
-                        url : this.__src
-                    });
+                    fp.setClip(this._createClipData(this.__src));
                     var c = fp.getClip(0);
                     this._addClipListeners(c);
                 }
@@ -473,7 +485,24 @@
 
         _onTimeUpdate : function  () {
             this.dispatch("timeupdate");
-        }
+        },
 
+        /* Create a clip data depending on a plugin */
+        _createClipData : function (src) {
+            var data = {};
+            var config = this._flowplayer.getConfig();
+            if ( typeof src === "undefined" || src.length <= 0 )
+                return data;
+            if ( this.__youtubePlugin && ! src.match(/http|rtmp/i) ) {
+                data.provider = "youtube";
+                data.url = "api:" + src;
+            } else {
+                data.url = src;
+            }
+            data.autoPlay = false;
+            data.autoBuffering = false;
+            data.scaling = config.clip.scaling;
+            return data;
+        }
     };
 })();
