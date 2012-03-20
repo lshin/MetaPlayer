@@ -188,6 +188,12 @@
             this.__currentTime = ( ovpCurrentTime < 0 )? 0 : ovpCurrentTime;
             return this.__currentTime;
         },
+        _addToPlaylist : function(val) {
+            var self = this;
+            if( val !== 'undefined' && val.length > 0 ) {
+                self.__src = val;
+            }
+        },
         doSeek : function (time) {
             this.__seeking = true;
             this.dispatch("seeking");
@@ -309,7 +315,7 @@
         },
         src : function (val) {
             if( val !== undefined ) {
-                this.__src = val;
+                this._addToPlaylist(val);
             }
             return this.__src
         },
