@@ -38,6 +38,7 @@
         this.__paused = true;
         this.__duration = NaN;
         this.__youtubePlugin = false;
+        this.__dfpPlugin = false;
 
         this._pageSetup(el);
 
@@ -114,6 +115,8 @@
             // check youtube plugin
             if( pluginConfig.youtube && pluginConfig.youtube.url.length > 0 )
                 this.__youtubePlugin = true;
+            if( pluginConfig.dfp && pluginConfig.dfp.url.length > 0 )
+                this.__dfpPlugin = true;
         },
 
         _onLoad : function () {
@@ -126,41 +129,45 @@
 
             // Player listeners
             this._flowplayer.onVolume( function (level) {
-                self.dispatch("volumechange");
+                self.dispatchIfClip("volumechange");
             });
 
             this._flowplayer.onMute( function (level) {
-                self.dispatch("volumechange");
+                self.dispatchIfClip("volumechange");
             });
 
             this._flowplayer.onUnmute( function (level) {
-                self.dispatch("volumechange");
+                self.dispatchIfClip("volumechange");
             });
+
 
             this._flowplayer.onPlaylistReplace( function () {
-                self.dispatch("playlistChange");
+                self.dispatchIfClip("playlistChange");
             });
+
 
             this._flowplayer.onClipAdd( function () {
-                self.dispatch("playlistChange");
+                self.dispatchIfClip("playlistChange");
             });
 
+
             this.controls( this.config.controls );
+
 
             // apply src from before we were loaded, if any
             if( this.__src ) {
                 this.src( this.__src );
             }
             else {
-                var c = fp.getClip(0);
-                if( c ){
-                    this._addClipListeners(c);
-                    this.__src = c.url;
-                }
-
+                var fp = this._flowplayer;
+                var clips = fp.getPlaylist();
+                $.each( clips, function (i, clip) {
+                    self._addClipListeners(clip);
+                    self.__src = clip.url;
+                });
             }
 
-            self.dispatch('loadstart');
+            self.dispatchIfClip('loadstart');
 
             if( this.preload() || this.autoplay()  )
                 this.load();
@@ -172,12 +179,20 @@
             if( ! clip )
                 return;
 
+
             clip.onBeforeBegin( function (clip) {
+                self.ad = clip.ovaAd || clip.isInStream;
+                if( self.ad ) {
+                    self.dispatch("adstart");
+                }
                 return true;
             });
 
+
             clip.onBegin( function (clip) {
                 self._flowplayer.setVolume(100);
+                self.__seeking = null;
+                self.__duration = NaN;
                 self._flowplayer.unmute();
                 // if not autoplay, then it's not safe to seek until we get a pause
             });
@@ -191,44 +206,60 @@
                     $(self._flowplayer.getParent() ).find('video').get(0).controls = false;
                 }
 
-                self.dispatch('loadeddata');
+                self.dispatchIfClip('loadeddata');
                 self.__duration = clip.duration;
-                self.dispatch("durationchange");
-                self.dispatch('loadedmetadata');
+
+                self.dispatchIfClip("durationchange");
+                self.dispatchIfClip('loadedmetadata');
             });
 
+
             clip.onStop( function (clip) {
+                if( self.ad ){
+                    self.ad = false;
+                    self.dispatch("adstop");
+                }
                 // this fires some times while play-seeking, not useful.
                 // self._setPlaying(false);
             });
 
             clip.onFinish( function (clip) {
-                self.__ended = true;
+                self.__duration = NaN;
                 self.__seeking = null;
+                if( self.ad ){
+                    self.dispatch("adstop");
+                    self.ad = false;
+                    return;
+                }
+                self.__ended = true;
                 self._setPlaying(false);
                 self._flowplayer.stop();
-                self.dispatch("ended");
+                self.dispatchIfClip("ended");
             });
 
             clip.onPause( function (clip) {
-
                 self._setPlaying(false);
                 self._setReady();
             });
 
             clip.onResume( function (clip) {
                 self._setPlaying(true);
-                self.dispatch("play");
+                self.dispatchIfClip("play");
+
+                if( ! this.__duration ) {
+                    self.__duration = clip.duration;
+                    self.dispatchIfClip("durationchange");
+                }
             });
 
             clip.onBeforeSeek( function (clip) {
 
-                self.dispatch("seeking");
-                self.dispatch("timeupdate");
+                self.dispatchIfClip("seeking");
+                self.dispatchIfClip("timeupdate");
 
                 // fp doesn't do seeks while paused until it plays again, so we fake
                 if( self.paused() )  {
-                    self.dispatch("seeked");
+                    self.dispatchIfClip("seeked");
                     self.__seeking = null;
                 }
             });
@@ -237,7 +268,7 @@
                 this.__currentTimeCache = 0;
                 self.__seeking = null;
                 if( ! self.paused() )
-                    self.dispatch("seeked");
+                    self.dispatchIfClip("seeked");
             });
 
         },
@@ -245,11 +276,11 @@
         _setReady : function (){
             if( this.__readyState != 4 ) {
                 this.__readyState = 4;
-                this.dispatch("canplay");
+                this.dispatchIfClip("canplay");
             }
             else {
-                this.dispatch("seeking");
-                this.dispatch("seeked");
+                this.dispatchIfClip("seeking");
+                this.dispatchIfClip("seeked");
             }
         },
 
@@ -358,8 +389,9 @@
                 this._flowplayer.seek(val);
             }
 
-            if( this.__seeking !== null )
+            if( this.__seeking !== null ) {
                 return this.__seeking;
+            }
 
             if( ! this._flowplayer.isLoaded() )
                 return 0;
@@ -369,8 +401,9 @@
             var then = this.__currentTimeCache;
             var diff = now - then;
 
-            if(then && diff< this.config.statusThrottleMSec )
+            if(then && diff< this.config.statusThrottleMSec ) {
                 return this.__currentTime + (diff / 1000); // approx our position
+            }
             else
                 this.__currentTimeCache = now;
 
@@ -399,6 +432,7 @@
         },
 
         controls : function (val) {
+
             if( ! this._flowplayer.isLoaded() ) {
                 if( val !== undefined )
                     this.config.controls = val;
@@ -446,6 +480,7 @@
         },
 
         src : function (val) {
+
             if( val !== undefined ) {
                 this.__src = val;
                 this.__loaded  = false;
@@ -474,37 +509,62 @@
 
             this._statepoll.reset();
             if( this.paused()  ) {
-                this.dispatch("pause");
+                this.dispatchIfClip("pause");
                 this._timeupdater.reset();
             }
             else {
                 this.autoplay(true);
-                this.dispatch("playing");
-                this.dispatch("play");
+                this.dispatchIfClip("playing");
+                this.dispatchIfClip("play");
                 this._timeupdater.start();
             }
         },
 
         _onTimeUpdate : function  () {
-            this.dispatch("timeupdate");
+            this.dispatchIfClip("timeupdate");
         },
 
         /* Create a clip data depending on a plugin */
         _createClipData : function (src) {
             var data = {};
             var config = this._flowplayer.getConfig();
+
             if ( typeof src === "undefined" || src.length <= 0 )
                 return data;
-            if ( this.__youtubePlugin && ! src.match(/http|rtmp/i) ) {
-                data.provider = "youtube";
-                data.url = "api:" + src;
-            } else {
-                data.url = src;
-            }
-            data.autoPlay = false;
+
+            data.url = src;
+            data = this._pluginDataProvider(data, src);
+            data.autoPlay = config.clip.autoPlay;
             data.autoBuffering = false;
             data.scaling = config.clip.scaling;
+
             return data;
+        },
+
+        _pluginDataProvider : function(data, src) {
+            var config = this._flowplayer.getConfig();
+
+            if ( typeof src === "undefined" || src.length <= 0 )
+                return data;
+
+            if ( this.__youtubePlugin && ! src.match(/http|rtmp/i) ) {
+                data.provider = "youtube";
+                data.urlResolvers = 'youtube';
+                data.url = "api:" + src;
+            }
+
+            if ( this.__dfpPlugin && config.ads ) {
+                data.ads = config.ads;
+            }
+
+            return data;
+        },
+
+        dispatchIfClip : function (e){
+            var clip = this._flowplayer.getClip();
+            if( !(  clip.ovaAd || clip.isInStream) ){
+               this.dispatch(e);
+            }
         }
     };
 })();
