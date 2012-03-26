@@ -39,7 +39,7 @@
         this.__src = "";
 
         this._jwplayer = this._render( $(el).get(0) );
-        this.video = this._jwplayer.container;
+        this.video = this._getVideoContainer($(el).get(0));
         this.dispatcher = MetaPlayer.dispatcher( this );
         MetaPlayer.proxy.proxyPlayer( this, this.video );
 
@@ -50,10 +50,14 @@
     };
 
     if( window.MetaPlayer ) {
-        MetaPlayer.addPlayer("jwplayer", function ( options ) {
-            var target = $("<div></div>").appendTo(this.layout.stage);
-            // jwplayer always requires with a element id.
-            $(target).attr("id", options.id);
+        MetaPlayer.addPlayer("jwplayer", function ( target, options ) {
+            if(! target.container ) {
+                options = target;
+                target = $("<div></div>")
+                    .attr("id", options.id)
+                    .appendTo(this.layout.stage);
+            }
+
             this.jwplayer = JWPlayer(target, options);
             this.video = this.jwplayer.video;
         });
@@ -68,6 +72,10 @@
 
     JWPlayer.prototype = {
         _render: function (el) {
+            if( el.container ) {
+                this.__autoplay = el.config.autostart;
+                return el;
+            }
             jwplayer(el).setup(this.config);
             return jwplayer(el);
         },
@@ -192,11 +200,10 @@
          */ 
         _addToPlaylist : function (val) {
             var self = this;
-            if( val !== 'undefined' && val.length > 0 ) {
-                self.__src = val;
+            if( typeof val !== 'undefined' && val.length > 0 ) {
                 if( self._jwplayer && self._jwplayer.getState() ) {
                     self._jwplayer.detachMedia();
-                    self._jwplayer.load({file : val});
+                    self._jwplayer.load({file : val, autostart: self._jwplayer.config.autostart});
                     clearInterval( self._playlistCheckInterval );
                     self._playlistCheckInterval = null;
                 } else {
@@ -207,7 +214,12 @@
                         self._addToPlaylist(val);
                     }, 1000);
                 }
+                self.__src = val;
             }
+        },
+
+        _getVideoContainer : function (target) {
+            return (target.container)? target.container.parentElement : target;
         },
 
         /**
